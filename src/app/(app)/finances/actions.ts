@@ -1,0 +1,164 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { and, eq, sql } from "drizzle-orm";
+import { db, schema } from "@/db";
+import { requireChurch } from "@/lib/session";
+import {
+  EXPENSE_CATEGORIES,
+  INCOME_CATEGORIES,
+  TITHE,
+  WELFARE_DUES,
+  WELFARE_SUPPORT,
+} from "@/lib/constants";
+
+const { transaction, vendor, projectFund, member } = schema;
+
+export type FormState = { error?: string; ok?: boolean } | undefined;
+
+const s = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
+const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+function amountOf(f: FormData) {
+  const n = Number(s(f, "amount"));
+  return Number.isFinite(n) && n > 0 ? n.toFixed(2) : null;
+}
+
+/** Ensures an optional id belongs to this church before we store it. */
+async function owned(table: typeof member | typeof vendor | typeof projectFund, id: string, churchId: string) {
+  if (!id) return null;
+  const [row] = await db
+    .select({ id: table.id })
+    .from(table)
+    .where(and(eq(table.id, id), eq(table.churchId, churchId)))
+    .limit(1);
+  return row?.id ?? null;
+}
+
+async function nextReceiptNo(churchId: string) {
+  const [{ n }] = await db
+    .select({ n: sql<number>`coalesce(max(${transaction.receiptNo}), 0) + 1` })
+    .from(transaction)
+    .where(eq(transaction.churchId, churchId));
+  return Number(n);
+}
+
+function done() {
+  revalidatePath("/finances");
+  revalidatePath("/giving-analytics");
+  return { ok: true } as const;
+}
+
+/** "Add Transaction" dialog: general income or expense. */
+export async function addTransaction(_prev: FormState, f: FormData): Promise<FormState> {
+  const { church } = await requireChurch();
+  const type = s(f, "type") === "expense" ? "expense" : "income";
+  const category = s(f, "category");
+  const allowed: readonly string[] = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  if (!allowed.includes(category)) return { error: "Choose a category." };
+  const amount = amountOf(f);
+  if (!amount) return { error: "Enter an amount greater than zero." };
+
+  await db.insert(transaction).values({
+    churchId: church.id,
+    type,
+    category,
+    amount,
+    occurredOn: isDate(s(f, "date")) ? s(f, "date") : undefined,
+    description: s(f, "description") || null,
+    memberId: await owned(member, s(f, "memberId"), church.id),
+    vendorId: type === "expense" ? await owned(vendor, s(f, "vendorId"), church.id) : null,
+    projectId: category === "Project Fund" ? await owned(projectFund, s(f, "projectId"), church.id) : null,
+    receiptNo: type === "income" ? await nextReceiptNo(church.id) : null,
+  });
+  return done();
+}
+
+/** Tithes and Welfare Dues tabs: an income tied to a member, with a receipt number. */
+export async function recordContribution(_prev: FormState, f: FormData): Promise<FormState> {
+  const { church } = await requireChurch();
+  const category = s(f, "kind") === "dues" ? WELFARE_DUES : TITHE;
+  const memberId = await owned(member, s(f, "memberId"), church.id);
+  if (!memberId) return { error: "Select a member." };
+  const amount = amountOf(f);
+  if (!amount) return { error: "Enter an amount greater than zero." };
+
+  await db.insert(transaction).values({
+    churchId: church.id,
+    type: "income",
+    category,
+    amount,
+    memberId,
+    occurredOn: isDate(s(f, "date")) ? s(f, "date") : undefined,
+    receiptNo: await nextReceiptNo(church.id),
+  });
+  return done();
+}
+
+/** Welfare Out tab: support paid to a member. */
+export async function recordWelfareOut(_prev: FormState, f: FormData): Promise<FormState> {
+  const { church } = await requireChurch();
+  const memberId = await owned(member, s(f, "memberId"), church.id);
+  if (!memberId) return { error: "Select the beneficiary." };
+  const amount = amountOf(f);
+  if (!amount) return { error: "Enter an amount greater than zero." };
+
+  await db.insert(transaction).values({
+    churchId: church.id,
+    type: "expense",
+    category: WELFARE_SUPPORT,
+    amount,
+    memberId,
+    description: s(f, "description") || null,
+    occurredOn: isDate(s(f, "date")) ? s(f, "date") : undefined,
+  });
+  return done();
+}
+
+export async function deleteTransaction(id: string) {
+  const { church } = await requireChurch();
+  await db.delete(transaction).where(and(eq(transaction.id, id), eq(transaction.churchId, church.id)));
+  done();
+}
+
+export async function saveVendor(_prev: FormState, f: FormData): Promise<FormState> {
+  const { church } = await requireChurch();
+  const name = s(f, "name");
+  if (!name) return { error: "Vendor name is required." };
+  await db.insert(vendor).values({
+    churchId: church.id,
+    name,
+    service: s(f, "service") || null,
+    contactName: s(f, "contactName") || null,
+    phone: s(f, "phone") || null,
+    email: s(f, "email") || null,
+  });
+  return done();
+}
+
+export async function deleteVendor(id: string) {
+  const { church } = await requireChurch();
+  await db.delete(vendor).where(and(eq(vendor.id, id), eq(vendor.churchId, church.id)));
+  done();
+}
+
+export async function saveProject(_prev: FormState, f: FormData): Promise<FormState> {
+  const { church } = await requireChurch();
+  const name = s(f, "name");
+  const target = Number(s(f, "target"));
+  if (!name) return { error: "Project name is required." };
+  if (!(target > 0)) return { error: "Enter a target amount." };
+  await db.insert(projectFund).values({
+    churchId: church.id,
+    name,
+    target: target.toFixed(2),
+    dueOn: isDate(s(f, "dueOn")) ? s(f, "dueOn") : null,
+  });
+  return done();
+}
+
+export async function deleteProject(id: string) {
+  const { church } = await requireChurch();
+  await db.delete(projectFund).where(and(eq(projectFund.id, id), eq(projectFund.churchId, church.id)));
+  done();
+}

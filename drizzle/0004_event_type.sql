@@ -1,0 +1,1 @@
+ALTER TABLE "event" ADD COLUMN "type" text DEFAULT 'Service' NOT NULL;

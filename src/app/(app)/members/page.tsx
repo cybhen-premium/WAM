@@ -1,0 +1,140 @@
+import { and, asc, count, eq, ilike, or, type SQL } from "drizzle-orm";
+import { UserCheck } from "lucide-react";
+import { db, schema } from "@/db";
+import { requireChurch } from "@/lib/session";
+import { MembersToolbar, MemberFilters, MemberRowActions } from "./members-client";
+
+export const metadata = { title: "Members Directory" };
+
+const { member } = schema;
+
+export default async function MembersPage({ searchParams }: PageProps<"/members">) {
+  const { church } = await requireChurch();
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q.trim() : "";
+  const group = typeof sp.group === "string" ? sp.group : "";
+  const status = sp.status === "inactive" ? "inactive" : "active";
+
+  const filters: (SQL | undefined)[] = [eq(member.churchId, church.id), eq(member.active, status === "active")];
+  if (group) filters.push(eq(member.category, group));
+  if (q) {
+    const like = `%${q}%`;
+    filters.push(or(ilike(member.fullName, like), ilike(member.phone, like), ilike(member.occupation, like)));
+  }
+
+  const [rows, counts] = await Promise.all([
+    db
+      .select()
+      .from(member)
+      .where(and(...filters))
+      .orderBy(asc(member.fullName))
+      .limit(500),
+    db
+      .select({ active: member.active, n: count() })
+      .from(member)
+      .where(eq(member.churchId, church.id))
+      .groupBy(member.active),
+  ]);
+  const activeCount = counts.find((c) => c.active)?.n ?? 0;
+  const inactiveCount = counts.find((c) => !c.active)?.n ?? 0;
+
+  return (
+    <div className="space-y-5 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Members Directory</h1>
+          <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">
+            {activeCount} Active Records
+          </p>
+        </div>
+        <MembersToolbar />
+      </div>
+
+      <MemberFilters q={q} group={group} status={status} activeCount={activeCount} inactiveCount={inactiveCount} />
+
+      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-x-auto">
+        <table className="w-full min-w-[800px] text-sm">
+          <thead className="bg-slate-50/50 border-b border-slate-100">
+            <tr>
+              {["Member Profile", "Category", "Contact", "Location", "Welfare"].map((h, i) => (
+                <th
+                  key={h}
+                  className={`px-4 h-16 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400 ${i === 0 ? "pl-8" : ""}`}
+                >
+                  {h}
+                </th>
+              ))}
+              <th className="px-4 pr-8 h-16 text-right align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="h-64 text-center">
+                  <div className="flex flex-col items-center justify-center text-slate-400">
+                    <UserCheck className="h-10 w-10 mb-3 opacity-20" />
+                    <p className="text-sm font-medium italic">
+                      {q || group ? "No members match your filters." : "The member directory is currently empty."}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              rows.map((m) => (
+                <tr key={m.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+                  <td className="px-4 pl-8 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#1e3a8a] text-xs font-black">
+                        {initials(m.fullName)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-900 truncate">{m.fullName}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          {m.baptized ? "Baptized" : "Not Baptized"}
+                          {m.occupation ? ` · ${m.occupation}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-tight text-slate-600">
+                      {m.category}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    <p className="font-semibold">{m.phone ?? "—"}</p>
+                    {m.email && <p className="text-xs text-slate-400">{m.email}</p>}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{m.address ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500 space-y-0.5">
+                    {m.dateOfBirth && <p>🎂 {fmtDay(m.dateOfBirth)}</p>}
+                    {m.weddingAnniversary && <p>💍 {fmtDay(m.weddingAnniversary)}</p>}
+                    {!m.dateOfBirth && !m.weddingAnniversary && "—"}
+                  </td>
+                  <td className="px-4 pr-8 py-3 text-right">
+                    <MemberRowActions member={m} />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join("");
+}
+
+function fmtDay(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}

@@ -1,0 +1,37 @@
+import {
+  LayoutDashboard,
+  Users,
+  DollarSign,
+  ChartColumn,
+  TrendingUp,
+  CreditCard,
+  Calendar,
+  ClipboardCheck,
+  UserCheck,
+  HeartHandshake,
+  Megaphone,
+  MessageSquare,
+  BookOpen,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
+
+export type NavItem = { href: string; label: string; icon: LucideIcon };
+
+export const NAV: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/members", label: "Members", icon: Users },
+  { href: "/finances", label: "Finances", icon: DollarSign },
+  { href: "/giving-analytics", label: "Giving Analytics", icon: ChartColumn },
+  { href: "/growth", label: "Growth", icon: TrendingUp },
+  { href: "/billing", label: "Billing", icon: CreditCard },
+  { href: "/events", label: "Events", icon: Calendar },
+  { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
+  { href: "/follow-up", label: "Follow-up", icon: UserCheck },
+  { href: "/welfare", label: "Welfare", icon: HeartHandshake },
+  { href: "/announcements", label: "Announce", icon: Megaphone },
+  { href: "/message-center", label: "Messages", icon: MessageSquare },
+  { href: "/visitor-conversion", label: "Visitors", icon: TrendingUp },
+  { href: "/sermon-ai", label: "Sermon AI", icon: BookOpen },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
