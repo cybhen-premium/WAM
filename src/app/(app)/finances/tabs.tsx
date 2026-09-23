@@ -156,7 +156,7 @@ export async function ContributionTab({
   const nonContributors = Math.max(members.length - contributors, 0);
   const participation = members.length ? Math.round((contributors / members.length) * 100) : 0;
   const title = kind === "tithes" ? "Contribution Analytics" : "Welfare Dues Analytics";
-  const noun = kind === "tithes" ? "Tithe" : "Welfare";
+  const noun = kind === "tithes" ? "Tithe" : "Welfare Dues";
 
   return (
     <div className="p-4 md:p-6 space-y-5">

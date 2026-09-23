@@ -21,7 +21,7 @@ export const metadata = { title: "Financial Hub" };
 const TABS = [
   { id: "general", label: "General", icon: ChartPie },
   { id: "tithes", label: "Tithes", icon: Wallet },
-  { id: "dues", label: "Dues", icon: HandHeart },
+  { id: "dues", label: "Welfare Dues", icon: HandHeart },
   { id: "analytics", label: "Analytics", icon: TrendingUp },
   { id: "vendors", label: "Vendors", icon: Building2 },
   { id: "receipts", label: "Receipts", icon: Receipt },
@@ -87,7 +87,7 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <SummaryCard label="Total Income" value={cedis(income)} border="border-l-green-500" text="text-green-600" />
-        <SummaryCard label="Total Expenses" value={cedis(expenses)} border="border-l-red-500" text="text-red-600" />
+        <SummaryCard label="Total Expenditure" value={cedis(expenses)} border="border-l-red-500" text="text-red-600" />
         <SummaryCard
           label="Net Balance"
           value={cedis(net)}

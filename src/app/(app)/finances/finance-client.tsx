@@ -40,7 +40,7 @@ function ErrorText({ state }: { state: FormState }) {
 
 export function FinanceHeader(props: {
   period: string;
-  periods: { value: string; label: string }[];
+  periods: { group: string; options: { value: string; label: string }[] }[];
   members: Option[];
   vendors: Named[];
   projects: Named[];
@@ -60,10 +60,14 @@ export function FinanceHeader(props: {
             className="h-10 w-full appearance-none rounded-xl bg-white border border-slate-200 px-3 pr-8 text-xs font-bold outline-none"
             aria-label="Period"
           >
-            {props.periods.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
+            {props.periods.map((g) => (
+              <optgroup key={g.group} label={g.group}>
+                {g.options.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />

@@ -24,7 +24,6 @@ export const NAV: NavItem[] = [
   { href: "/finances", label: "Finances", icon: DollarSign },
   { href: "/giving-analytics", label: "Giving Analytics", icon: ChartColumn },
   { href: "/growth", label: "Growth", icon: TrendingUp },
-  { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/events", label: "Events", icon: Calendar },
   { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
   { href: "/follow-up", label: "Follow-up", icon: UserCheck },

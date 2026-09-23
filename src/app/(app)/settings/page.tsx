@@ -14,7 +14,6 @@ const TABS = [
   { id: "profile", label: "Profile", icon: User },
   { id: "staff", label: "Staff", icon: Users },
   { id: "preferences", label: "Preferences", icon: SlidersHorizontal },
-  { id: "refer", label: "Refer & Earn", icon: Gift },
   // Platform admins only (PLATFORM_ADMIN_EMAILS).
   { id: "integrations", label: "Integrations", icon: Plug },
 ] as const;
@@ -55,7 +54,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         ))}
       </nav>
 
-      {!isAdmin && tab !== "refer" && tab !== "integrations" && (
+      {!isAdmin && tab !== "integrations" && (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
           You can view settings, but only admins can change them.
         </p>
@@ -71,7 +70,6 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
       )}
       {tab === "staff" && <StaffTab churchId={church.id} userId={user.id} isAdmin={isAdmin} />}
       {tab === "preferences" && <PreferencesForm church={church} />}
-      {tab === "refer" && <ReferTab code={church.referralCode} />}
       {tab === "integrations" && <Integrations />}
     </div>
   );
@@ -98,23 +96,11 @@ async function StaffTab({ churchId, userId, isAdmin }: { churchId: string; userI
   );
 }
 
-async function ReferTab({ code }: { code: string | null }) {
-  if (!code) return <ReferralCard code={null} referrals={0} earned={0} />;
-  const [row] = await db
-    .select({
-      referrals: count(),
-      // Bonus is paid once a referred church buys its first plan.
-      upgraded: sql<number>`count(*) filter (where exists (select 1 from ${schema.payment} p where p.church_id = ${schema.church.id} and p.kind = 'plan' and p.status = 'paid'))::int`,
-    })
-    .from(schema.church)
-    .where(eq(schema.church.referredBy, code));
-  return <ReferralCard code={code} referrals={row.referrals} earned={row.upgraded * 100} />;
-}
+
 
 async function Integrations() {
-  const [sms, payments, ai] = await Promise.all([
+  const [sms, ai] = await Promise.all([
     getIntegrationForAdmin("sms"),
-    getIntegrationForAdmin("payments"),
     getIntegrationForAdmin("ai"),
   ]);
   return (
@@ -123,7 +109,6 @@ async function Integrations() {
         Platform-wide settings, visible to platform admins only. Keys are encrypted before they&apos;re stored and are never shown again.
       </p>
       <IntegrationForm kind="sms" saved={sms} />
-      <IntegrationForm kind="payments" saved={payments} />
       <IntegrationForm kind="ai" saved={ai} />
     </div>
   );

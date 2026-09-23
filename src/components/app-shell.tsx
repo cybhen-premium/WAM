@@ -78,22 +78,7 @@ export function AppShell({ churchName, smsCredits, creditLimit, children }: Prop
         </nav>
 
         <div className="p-4 mt-auto bg-slate-900/50 border-t border-slate-800/50 space-y-3">
-          <div className="rounded-xl bg-slate-800/40 p-3 border border-slate-700/50">
-            <div className="flex items-center justify-between text-[10px] mb-1.5 font-black uppercase text-slate-400">
-              <span>Sms Credits</span>
-              <span className="text-white">{smsCredits}</span>
-            </div>
-            <div className="relative w-full overflow-hidden rounded-full h-1 bg-slate-700">
-              <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Link
-              href="/billing"
-              className="inline-flex items-center justify-center rounded-md px-3 bg-amber-500 hover:bg-amber-600 text-slate-900 font-black text-[10px] h-8 transition-all active:scale-[0.98]"
-            >
-              TOP UP
-            </Link>
+          <div className="grid grid-cols-1 gap-2">
             <button
               onClick={logout}
               className="inline-flex items-center justify-center rounded-md px-3 text-slate-400 hover:text-white hover:bg-slate-800 font-black text-[10px] h-8 transition-all"

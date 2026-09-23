@@ -51,7 +51,7 @@ export function Composer({ credits, audiences }: { credits: number; audiences: A
           </div>
         </div>
         <span className="inline-flex items-center gap-1.5 self-start rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#1e3a8a]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#1e3a8a]" /> Wallet: {credits} credits
+          <span className="h-1.5 w-1.5 rounded-full bg-[#1e3a8a]" /> Wallet: Unlimited
         </span>
       </div>
 
@@ -99,7 +99,7 @@ export function Composer({ credits, audiences }: { credits: number; audiences: A
                 ))}
               </div>
               <span className="text-[10px] font-bold text-slate-400">
-                {body.length} chars · {segments} SMS · AI refine costs 1 credit
+                {body.length} chars · {segments} SMS
               </span>
             </div>
           </div>
@@ -109,7 +109,7 @@ export function Composer({ credits, audiences }: { credits: number; audiences: A
               <p className={cn("text-sm font-semibold", flash.ok ? "text-emerald-600" : "text-red-600")}>{flash.text}</p>
             ) : (
               <p className="text-xs text-slate-400">
-                {selected ? `${selected.count} recipients · about ${segments * selected.count} credits` : ""}
+                {selected ? `${selected.count} recipients` : ""}
               </p>
             )}
             <button

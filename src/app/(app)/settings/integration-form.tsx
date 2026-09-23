@@ -130,7 +130,7 @@ export function IntegrationForm({ kind, saved }: { kind: IntegrationKey; saved: 
 
         <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4">
           <span className="text-sm font-bold text-slate-800">Enabled</span>
-          <input type="checkbox" name="enabled" defaultChecked={saved?.enabled ?? true} className="peer sr-only" />
+          <input type="checkbox" name="enabled" defaultChecked={saved?.enabled ?? kind === "sms"} className="peer sr-only" />
           <span className="relative h-7 w-12 shrink-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-500 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5" />
         </label>
 

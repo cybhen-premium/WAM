@@ -95,26 +95,21 @@ export default async function DashboardPage() {
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight">Dashboard</h1>
-          <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 h-5 text-[9px] font-black uppercase border-slate-200 bg-slate-50">
-            {church.plan}
-          </span>
         </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="grid gap-4 md:grid-cols-3">
-          <StatCard icon={CreditCard} tone="bg-primary text-primary-foreground" label="Current Credits" value={church.smsCredits} hint={`${cap(church.plan)} Plan`} />
+        <div className="grid gap-4 md:grid-cols-2">
           <StatCard icon={Users} tone="bg-secondary text-secondary-foreground" label="Total Members" value={total} hint="In your congregation" />
           <StatCard icon={Cake} tone="bg-accent text-accent-foreground" label="Upcoming Celebrations" value={upcoming} hint="This week" />
         </div>
       </div>
 
-      <div className="grid gap-2 grid-cols-3 sm:grid-cols-5">
+      <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
         <QuickLink href="/members" icon={Users} label="Members" color="text-blue-600" />
         <QuickLink href="/finances" icon={DollarSign} label="Finances" color="text-emerald-600" />
         <QuickLink href="/events" icon={Calendar} label="Events" color="text-purple-600" />
         <QuickLink href="/attendance" icon={ClipboardCheck} label="Attendance" color="text-orange-600" />
-        <QuickLink href="/billing" icon={CreditCard} label="Credits" color="text-amber-600" bg="bg-amber-50" />
       </div>
 
       <div className="space-y-3">
@@ -240,7 +235,7 @@ function cap(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function StatCard(props: { icon: LucideIcon; tone: string; label: string; value: number; hint: string }) {
+function StatCard(props: { icon: LucideIcon; tone: string; label: string; value: number | string; hint: string }) {
   const Icon = props.icon;
   return (
     <div className="flex items-center gap-4 rounded-xl bg-card p-5 shadow-card transition-all duration-300 hover:shadow-card-hover animate-slide-up">

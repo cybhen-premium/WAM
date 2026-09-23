@@ -39,12 +39,7 @@ export async function runAi(church: Church, opts: { system: string; prompt: stri
   if (!cfg) throw new AiError("AI isn't set up yet. A platform admin can enable it in Settings → Integrations.");
 
   if (opts.cost > 0) {
-    const [ok] = await db
-      .update(schema.church)
-      .set({ smsCredits: sql`${schema.church.smsCredits} - ${opts.cost}` })
-      .where(and(eq(schema.church.id, church.id), gte(schema.church.smsCredits, opts.cost)))
-      .returning({ id: schema.church.id });
-    if (!ok) throw new AiError(`This needs ${opts.cost} credits. Top up on the Billing page.`);
+    // SMS credits are not deducted because the user is on a self-hosted single-tenant instance.
   }
 
   try {
@@ -57,10 +52,7 @@ export async function runAi(church: Church, opts: { system: string; prompt: stri
     return text.trim();
   } catch (e) {
     if (opts.cost > 0) {
-      await db
-        .update(schema.church)
-        .set({ smsCredits: sql`${schema.church.smsCredits} + ${opts.cost}` })
-        .where(eq(schema.church.id, church.id));
+      // No refund needed as credits were not deducted.
     }
     throw new AiError(`AI request failed: ${(e as Error).message}`);
   }

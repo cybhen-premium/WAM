@@ -65,15 +65,7 @@ export async function sendSms(
   }
 
   const cost = creditsFor(body, recipients.length);
-  // Reserve credits atomically so two sends can't overspend the wallet.
-  const [reserved] = await db
-    .update(schema.church)
-    .set({ smsCredits: sql`${schema.church.smsCredits} - ${cost}` })
-    .where(and(eq(schema.church.id, church.id), gte(schema.church.smsCredits, cost)))
-    .returning({ left: schema.church.smsCredits });
-  if (!reserved) {
-    return { status: "failed", recipients: recipients.length, creditsUsed: 0, error: `Not enough credits: this send needs ${cost}.` };
-  }
+  // SMS credits are not deducted because the user buys them directly from the provider.
 
   try {
     const sender = (church.senderIdStatus === "approved" && church.senderId ? church.senderId : (config.common.senderId ?? "CHURCH_APP")).slice(0, 11);
@@ -81,10 +73,7 @@ export async function sendSms(
     await log("sent", cost);
     return { status: "sent", recipients: recipients.length, creditsUsed: cost };
   } catch (e) {
-    await db
-      .update(schema.church)
-      .set({ smsCredits: sql`${schema.church.smsCredits} + ${cost}` })
-      .where(eq(schema.church.id, church.id));
+
     await log("failed", 0);
     return { status: "failed", recipients: recipients.length, creditsUsed: 0, error: (e as Error).message };
   }
