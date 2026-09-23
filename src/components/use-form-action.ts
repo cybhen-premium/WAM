@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { toast } from "sonner";
 
 type Base = { error?: string; ok?: boolean } | undefined;
 
@@ -8,7 +9,12 @@ type Base = { error?: string; ok?: boolean } | undefined;
 export function useFormAction<S extends Base>(action: (prev: S, form: FormData) => Promise<S>, onSuccess?: () => void) {
   return useActionState(async (prev: Awaited<S>, form: FormData) => {
     const result = await action(prev as S, form);
-    if (result?.ok) onSuccess?.();
+    if (result?.ok) {
+      toast.success("Saved successfully!");
+      onSuccess?.();
+    } else if (result?.error) {
+      toast.error(result.error);
+    }
     return result as Awaited<S>;
   }, undefined as Awaited<S>);
 }

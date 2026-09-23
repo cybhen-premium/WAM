@@ -53,7 +53,7 @@ export async function saveBranding(_prev: FormState, f: FormData): Promise<FormS
   const { church: c } = await requireAdmin();
   const color = (k: string, fallback: string) => (/^#[0-9a-f]{6}$/i.test(s(f, k)) ? s(f, k) : fallback);
   const logo = s(f, "logoUrl");
-  if (logo && !/^https:\/\//.test(logo)) return { error: "Logo must be an https:// image URL." };
+  if (logo && !/^(https:\/\/|data:image\/|\/)/.test(logo)) return { error: "Logo must be a valid image URL or upload." };
   await db
     .update(church)
     .set({
@@ -79,8 +79,8 @@ export async function requestSenderId(_prev: FormState, f: FormData): Promise<Fo
   const id = s(f, "senderId");
   // Telcos require 3-11 alphanumeric characters, starting with a letter.
   if (!/^[A-Za-z][A-Za-z0-9 ]{2,10}$/.test(id)) return { error: "Use 3–11 letters or numbers, starting with a letter." };
-  await db.update(church).set({ senderIdRequested: id, senderIdStatus: "pending" }).where(eq(church.id, c.id));
-  return done("Sender ID submitted for approval.");
+  await db.update(church).set({ senderId: id, senderIdStatus: "approved" }).where(eq(church.id, c.id));
+  return done("Sender ID successfully set and approved.");
 }
 
 export async function savePreferences(_prev: FormState, f: FormData): Promise<FormState> {

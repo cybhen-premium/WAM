@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { Search, Trash2 } from "lucide-react";
 import { useSetUrlParam } from "@/components/use-url-param";
+import { toast } from "sonner";
 
 /** Debounced search input bound to the ?q= URL param. */
 export function SearchBox({ placeholder, initial }: { placeholder: string; initial: string }) {
@@ -39,7 +40,16 @@ export function DeleteButton({ action }: { action: () => Promise<void> }) {
       autoFocus
       disabled={pending}
       onBlur={() => setConfirm(false)}
-      onClick={() => startTransition(() => action())}
+      onClick={() => {
+        startTransition(async () => {
+          try {
+            await action();
+            toast.success("Deleted successfully!");
+          } catch (e) {
+            toast.error("Failed to delete.");
+          }
+        });
+      }}
       className="h-8 rounded-lg bg-red-600 px-2 text-[10px] font-black uppercase text-white"
     >
       Confirm

@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useFormAction } from "@/components/use-form-action";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import {
   Briefcase,
   Cake,
@@ -163,7 +164,12 @@ export function MemberRowActions({ member }: { member: Member }) {
       </button>
       <button
         disabled={pending}
-        onClick={() => startTransition(() => setMemberActive(member.id, !member.active))}
+        onClick={() => {
+          startTransition(async () => {
+            await setMemberActive(member.id, !member.active);
+            toast.success(member.active ? "Member deactivated" : "Member activated");
+          });
+        }}
         className={buttonStyles.ghost}
         title={member.active ? "Mark inactive" : "Reactivate"}
         aria-label={member.active ? "Mark inactive" : "Reactivate"}
@@ -173,7 +179,12 @@ export function MemberRowActions({ member }: { member: Member }) {
       {confirmDelete ? (
         <button
           disabled={pending}
-          onClick={() => startTransition(() => deleteMember(member.id))}
+          onClick={() => {
+            startTransition(async () => {
+              await deleteMember(member.id);
+              toast.success("Member deleted");
+            });
+          }}
           onBlur={() => setConfirmDelete(false)}
           autoFocus
           className="h-8 rounded-lg bg-red-600 px-2 text-[10px] font-black uppercase text-white"

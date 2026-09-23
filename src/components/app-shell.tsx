@@ -7,24 +7,29 @@ import { Church, Menu, RotateCcw, X } from "lucide-react";
 import { NAV } from "@/lib/nav";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { Modal, buttonStyles } from "@/components/ui";
 
 type Props = {
   churchName: string;
+  logoUrl?: string;
   smsCredits: number;
   creditLimit: number;
   children: React.ReactNode;
 };
 
-export function AppShell({ churchName, smsCredits, creditLimit, children }: Props) {
+export function AppShell({ churchName, logoUrl, smsCredits, creditLimit, children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const pct = Math.min(100, Math.round((smsCredits / Math.max(creditLimit, 1)) * 100));
 
   async function logout() {
     await authClient.signOut();
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.assign("/login");
+    toast.success("Logged out successfully!");
+    router.push("/login");
+    router.refresh();
   }
 
   return (
@@ -39,8 +44,13 @@ export function AppShell({ churchName, smsCredits, creditLimit, children }: Prop
         )}
       >
         <div className="flex h-14 items-center gap-3 px-5 border-b border-slate-800/50">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shrink-0">
-            <Church className="h-5 w-5 text-white" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shrink-0 overflow-hidden">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt={churchName} className="h-full w-full object-contain" />
+            ) : (
+              <Church className="h-5 w-5 text-white" />
+            )}
           </div>
           <div className="flex flex-col min-w-0 flex-1">
             <span className="text-[11px] font-black text-white truncate leading-none uppercase tracking-tight">
@@ -80,7 +90,7 @@ export function AppShell({ churchName, smsCredits, creditLimit, children }: Prop
         <div className="p-4 mt-auto bg-slate-900/50 border-t border-slate-800/50 space-y-3">
           <div className="grid grid-cols-1 gap-2">
             <button
-              onClick={logout}
+              onClick={() => setConfirmLogout(true)}
               className="inline-flex items-center justify-center rounded-md px-3 text-slate-400 hover:text-white hover:bg-slate-800 font-black text-[10px] h-8 transition-all"
             >
               LOGOUT
@@ -88,6 +98,23 @@ export function AppShell({ churchName, smsCredits, creditLimit, children }: Prop
           </div>
         </div>
       </aside>
+
+      <Modal compact open={confirmLogout} onClose={() => setConfirmLogout(false)} title="Sign out">
+        <p className="text-[13px] font-semibold text-slate-600 mb-5 text-center">
+          Are you sure you want to log out of your account?
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <button onClick={() => setConfirmLogout(false)} className={cn(buttonStyles.outline, "w-full sm:w-auto")}>
+            Cancel
+          </button>
+          <button
+            onClick={logout}
+            className="inline-flex w-full sm:w-auto items-center justify-center whitespace-nowrap transition-all duration-200 active:scale-[0.98] px-6 h-10 md:h-9 text-xs md:text-[11px] font-black rounded-xl bg-red-600 text-white hover:bg-red-700 shadow-md"
+          >
+            Yes, log out
+          </button>
+        </div>
+      </Modal>
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">

@@ -7,6 +7,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <AppShell
       churchName={church.name}
+      logoUrl={church.logoUrl ?? undefined}
       smsCredits={church.smsCredits}
       creditLimit={Math.max(PLAN_CREDITS[church.plan] ?? 20, church.smsCredits)}
     >

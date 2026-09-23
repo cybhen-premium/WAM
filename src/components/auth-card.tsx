@@ -1,12 +1,17 @@
 import { Church } from "lucide-react";
 
-export function AuthCard({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+export function AuthCard({ title, subtitle, logoUrl, children }: { title: string; subtitle: string; logoUrl?: string | null; children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-start justify-center px-4 py-12">
       <div className="w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-slate-200">
         <div className="bg-[#1E3A8A] px-8 py-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10">
-            <Church className="h-7 w-7 text-white" />
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 overflow-hidden">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="Church Logo" className="h-full w-full object-contain bg-white" />
+            ) : (
+              <Church className="h-7 w-7 text-white" />
+            )}
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-white">{title}</h1>
           <p className="mt-1 text-sm text-blue-100/80">{subtitle}</p>

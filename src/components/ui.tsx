@@ -26,6 +26,7 @@ export function Modal({
   icon: Icon,
   children,
   wide,
+  compact,
 }: {
   open: boolean;
   onClose: () => void;
@@ -34,6 +35,7 @@ export function Modal({
   icon?: LucideIcon;
   children: React.ReactNode;
   wide?: boolean;
+  compact?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -51,7 +53,7 @@ export function Modal({
         aria-modal="true"
         className={cn(
           "relative w-[95vw] overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-white shadow-2xl animate-in fade-in-0 zoom-in-95",
-          wide ? "sm:max-w-[800px]" : "sm:max-w-[600px]",
+          wide ? "sm:max-w-[800px]" : compact ? "sm:max-w-[360px]" : "sm:max-w-[600px]",
         )}
       >
         <div className="relative p-5 md:p-6 pb-4 bg-[#1e3a8a] text-white">
@@ -77,7 +79,7 @@ export function Modal({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="max-h-[70vh] overflow-y-auto px-5 md:px-8 py-5 md:py-6">{children}</div>
+        <div className={cn("overflow-y-auto", compact ? "p-4 md:p-5" : "max-h-[70vh] px-5 md:px-8 py-5 md:py-6")}>{children}</div>
       </div>
     </div>
   );

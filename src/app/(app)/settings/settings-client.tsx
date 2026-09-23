@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Copy, Gift, LocateFixed, Mail, Palette, Send, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { useFormAction } from "@/components/use-form-action";
 import { cn } from "@/lib/utils";
@@ -134,6 +134,10 @@ export function BrandingForm({ church }: { church: Church }) {
   const [state, action, pending] = useFormAction(saveBranding);
   const [logo, setLogo] = useState(church.logoUrl ?? "");
 
+  useEffect(() => {
+    setLogo(church.logoUrl ?? "");
+  }, [church.logoUrl]);
+
   return (
     <Section title="Custom Branding & Receipts" subtitle="Personalize your platform experience and official documentation.">
       <form action={action} className="space-y-6">
@@ -142,15 +146,32 @@ export function BrandingForm({ church }: { church: Church }) {
             {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary user-provided logo URL */}
             {logo ? <img src={logo} alt="Church logo" className="h-full w-full object-contain" /> : <Palette className="h-6 w-6 text-slate-300" />}
           </div>
-          <Input
-            className="flex-1"
-            title="Official Organization Logo (image URL)"
-            name="logoUrl"
-            type="url"
-            placeholder="https://…/logo.png"
-            value={logo}
-            onChange={(e) => setLogo(e.target.value)}
-          />
+          <div className="flex-1 space-y-3">
+            <Input
+              title="Official Organization Logo (image URL or upload)"
+              name="logoUrl"
+              type="text"
+              placeholder="https://…/logo.png"
+              value={logo}
+              onChange={(e) => setLogo(e.target.value)}
+            />
+            <label className="inline-flex items-center gap-2 cursor-pointer rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200">
+              Upload Image File
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setLogo(reader.result as string);
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+            </label>
+          </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
