@@ -144,6 +144,15 @@ export const staff = pgTable(
 
 export const genderEnum = pgEnum("gender", ["male", "female"]);
 
+export const department = pgTable("department", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  churchId: uuid("church_id")
+    .notNull()
+    .references(() => church.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const member = pgTable(
   "member",
   {
@@ -151,6 +160,7 @@ export const member = pgTable(
     churchId: uuid("church_id")
       .notNull()
       .references(() => church.id, { onDelete: "cascade" }),
+    departmentId: uuid("department_id").references(() => department.id, { onDelete: "set null" }),
     fullName: text("full_name").notNull(),
     phone: text("phone"),
     email: text("email"),

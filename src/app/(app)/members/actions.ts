@@ -30,6 +30,7 @@ function readMember(form: FormData) {
     maritalStatus: opt("maritalStatus"),
     occupation: opt("occupation"),
     skills: opt("skills"),
+    departmentId: opt("departmentId"),
     address: opt("address"),
     emergencyContactName: opt("emergencyContactName"),
     emergencyContactPhone: opt("emergencyContactPhone"),
@@ -122,6 +123,7 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
       f.set("maritalStatus", col(row, "maritalstatus"));
       f.set("occupation", col(row, "occupation", "profession"));
       f.set("address", col(row, "address", "residentialaddress"));
+      f.set("departmentId", col(row, "department", "departmentid"));
       f.set("dateOfBirth", col(row, "dateofbirth", "birthday"));
       f.set("weddingAnniversary", col(row, "weddinganniversary", "anniversary"));
       return { ...readMember(f), churchId: church.id };

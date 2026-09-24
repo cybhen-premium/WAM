@@ -21,6 +21,7 @@ export type NavItem = { href: string; label: string; icon: LucideIcon };
 export const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/members", label: "Members", icon: Users },
+  { href: "/departments", label: "Departments", icon: Users },
   { href: "/finances", label: "Finances", icon: DollarSign },
   { href: "/giving-analytics", label: "Giving Analytics", icon: ChartColumn },
   { href: "/growth", label: "Growth", icon: TrendingUp },

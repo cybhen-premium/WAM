@@ -13,19 +13,22 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const group = typeof sp.group === "string" ? sp.group : "";
+  const departmentId = typeof sp.departmentId === "string" ? sp.departmentId : "";
   const status = sp.status === "inactive" ? "inactive" : "active";
 
   const filters: (SQL | undefined)[] = [eq(member.churchId, church.id), eq(member.active, status === "active")];
   if (group) filters.push(eq(member.category, group));
+  if (departmentId) filters.push(eq(member.departmentId, departmentId));
   if (q) {
     const like = `%${q}%`;
     filters.push(or(ilike(member.fullName, like), ilike(member.phone, like), ilike(member.occupation, like)));
   }
 
-  const [rows, counts] = await Promise.all([
+  const [rows, counts, departments] = await Promise.all([
     db
-      .select()
+      .select({ member, department: schema.department })
       .from(member)
+      .leftJoin(schema.department, eq(member.departmentId, schema.department.id))
       .where(and(...filters))
       .orderBy(asc(member.fullName))
       .limit(500),
@@ -34,6 +37,11 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
       .from(member)
       .where(eq(member.churchId, church.id))
       .groupBy(member.active),
+    db
+      .select()
+      .from(schema.department)
+      .where(eq(schema.department.churchId, church.id))
+      .orderBy(asc(schema.department.name)),
   ]);
   const activeCount = counts.find((c) => c.active)?.n ?? 0;
   const inactiveCount = counts.find((c) => !c.active)?.n ?? 0;
@@ -47,10 +55,18 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
             {activeCount} Active Records
           </p>
         </div>
-        <MembersToolbar />
+        <MembersToolbar departments={departments} />
       </div>
 
-      <MemberFilters q={q} group={group} status={status} activeCount={activeCount} inactiveCount={inactiveCount} />
+      <MemberFilters 
+        q={q} 
+        group={group} 
+        departmentId={departmentId}
+        status={status} 
+        activeCount={activeCount} 
+        inactiveCount={inactiveCount} 
+        departments={departments}
+      />
 
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-x-auto">
         <table className="w-full min-w-[800px] text-sm">
@@ -82,7 +98,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
                 </td>
               </tr>
             ) : (
-              rows.map((m) => (
+              rows.map(({ member: m, department: d }) => (
                 <tr key={m.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
                   <td className="px-4 pl-8 py-3">
                     <div className="flex items-center gap-3">
@@ -99,9 +115,16 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-tight text-slate-600">
-                      {m.category}
-                    </span>
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-tight text-slate-600">
+                        {m.category}
+                      </span>
+                      {d && (
+                        <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-tight text-[#1e3a8a]">
+                          {d.name}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     <p className="font-semibold">{m.phone ?? "—"}</p>
@@ -114,7 +137,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
                     {!m.dateOfBirth && !m.weddingAnniversary && "—"}
                   </td>
                   <td className="px-4 pr-8 py-3 text-right">
-                    <MemberRowActions member={m} />
+                    <MemberRowActions member={m} departments={departments} />
                   </td>
                 </tr>
               ))

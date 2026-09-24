@@ -30,10 +30,11 @@ import { MARITAL_STATUSES, MEMBER_CATEGORIES } from "@/lib/constants";
 import { deleteMember, importMembers, saveMember, setMemberActive } from "./actions";
 
 type Member = InferSelectModel<typeof schema.member>;
+type Department = InferSelectModel<typeof schema.department>;
 
 /* Header buttons ----------------------------------------------------------- */
 
-export function MembersToolbar() {
+export function MembersToolbar({ departments }: { departments: Department[] }) {
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -64,7 +65,7 @@ export function MembersToolbar() {
         <Plus /> Add Member
       </button>
 
-      <MemberFormModal open={adding} onClose={() => setAdding(false)} />
+      <MemberFormModal open={adding} onClose={() => setAdding(false)} departments={departments} />
       <ImportModal open={importing} onClose={() => setImporting(false)} />
     </div>
   );
@@ -75,9 +76,11 @@ export function MembersToolbar() {
 export function MemberFilters(props: {
   q: string;
   group: string;
+  departmentId: string;
   status: "active" | "inactive";
   activeCount: number;
   inactiveCount: number;
+  departments: Department[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -123,6 +126,15 @@ export function MemberFilters(props: {
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
         </div>
+        <div className="relative w-full sm:w-[160px]">
+          <select value={props.departmentId} onChange={(e) => update("departmentId", e.target.value)} className={select} aria-label="Department">
+            <option value="">All Departments</option>
+            {props.departments.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+        </div>
         <div className="relative w-full sm:w-[180px]">
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           <select
@@ -143,7 +155,7 @@ export function MemberFilters(props: {
 
 /* Per-row actions ---------------------------------------------------------- */
 
-export function MemberRowActions({ member }: { member: Member }) {
+export function MemberRowActions({ member, departments }: { member: Member; departments: Department[] }) {
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -201,14 +213,14 @@ export function MemberRowActions({ member }: { member: Member }) {
           <Trash2 />
         </button>
       )}
-      <MemberFormModal open={editing} onClose={() => setEditing(false)} member={member} />
+      <MemberFormModal open={editing} onClose={() => setEditing(false)} member={member} departments={departments} />
     </div>
   );
 }
 
 /* Add / edit form ---------------------------------------------------------- */
 
-function MemberFormModal({ open, onClose, member }: { open: boolean; onClose: () => void; member?: Member }) {
+function MemberFormModal({ open, onClose, member, departments }: { open: boolean; onClose: () => void; member?: Member; departments: Department[] }) {
   const [state, action, pending] = useFormAction(saveMember, onClose);
 
   return (
@@ -226,6 +238,12 @@ function MemberFormModal({ open, onClose, member }: { open: boolean; onClose: ()
           <TextField label="Phone Number" name="phone" type="tel" icon={Phone} placeholder="024XXXXXXX" defaultValue={member?.phone ?? ""} />
           <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue={member?.gender === "female" ? "Female" : "Male"} />
           <SelectField label="Member Category" name="category" options={MEMBER_CATEGORIES} defaultValue={member?.category ?? "General Member"} />
+          <SelectField 
+            label="Department" 
+            name="departmentId" 
+            options={[{label: "None", value: ""}, ...departments.map(d => ({label: d.name, value: d.id}))]} 
+            defaultValue={member?.departmentId ?? ""} 
+          />
           <SelectField label="Baptism Status" name="baptized" options={["Not Baptized", "Baptized"]} defaultValue={member?.baptized ? "Baptized" : "Not Baptized"} />
           <SelectField label="Marital Status" name="maritalStatus" options={MARITAL_STATUSES} defaultValue={member?.maritalStatus ?? "Single"} />
           <TextField label="Profession / Occupation" name="occupation" icon={Briefcase} placeholder="e.g., Software Engineer, Nurse" defaultValue={member?.occupation ?? ""} />
