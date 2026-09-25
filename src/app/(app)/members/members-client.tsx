@@ -41,7 +41,7 @@ export function MembersToolbar({ departments }: { departments: Department[] }) {
   return (
     <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
       <Link href="/welfare" className={`${buttonStyles.outline} flex-1 sm:flex-none`}>
-        <Cake className="text-pink-500" /> Welfare
+        <Cake className="text-pink-500" /> Member Care
       </Link>
       <div className="flex gap-2 flex-1 sm:flex-none">
         <a href="/members/export" className={`${buttonStyles.outline} flex-1 sm:flex-none`}>

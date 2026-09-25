@@ -72,7 +72,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
         <table className="w-full min-w-[800px] text-sm">
           <thead className="bg-slate-50/50 border-b border-slate-100">
             <tr>
-              {["Member Profile", "Category", "Contact", "Location", "Welfare"].map((h, i) => (
+              {["Member Profile", "Category", "Contact", "Location", "Member Care"].map((h, i) => (
                 <th
                   key={h}
                   className={`px-4 h-16 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400 ${i === 0 ? "pl-8" : ""}`}
