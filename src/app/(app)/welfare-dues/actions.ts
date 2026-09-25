@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { sql, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
+import { WELFARE_DUES } from "@/lib/constants";
 
-const { welfareDues } = schema;
+const { welfareDues, transaction } = schema;
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -24,6 +26,23 @@ export async function recordDuesPayment(_prev: FormState, form: FormData): Promi
     memberId,
     amount: amount.toString(),
     date: dateStr + "T00:00:00.000Z",
+  });
+
+  // Generate receipt number
+  const [{ n }] = await db
+    .select({ n: sql<number>`coalesce(max(${transaction.receiptNo}), 0) + 1` })
+    .from(transaction)
+    .where(eq(transaction.churchId, church.id));
+
+  // Record it in the main ledger for income tracking & receipts
+  await db.insert(transaction).values({
+    churchId: church.id,
+    type: "income",
+    category: WELFARE_DUES,
+    amount: amount.toString(),
+    memberId,
+    receiptNo: Number(n),
+    occurredOn: dateStr,
   });
 
   revalidatePath("/welfare-dues");

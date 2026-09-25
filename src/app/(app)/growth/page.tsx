@@ -22,6 +22,7 @@ export default async function GrowthPage() {
       )
       select to_char(m.m, 'YYYY-MM') as month,
         (select count(*) from ${member} x where x.church_id = ${church.id}
+           and (x.category = 'Visitor' or x.converted_at is not null)
            and date_trunc('month', coalesce(x.joined_at, x.created_at::date)) = m.m) as joined,
         (select count(*) from ${member} x where x.church_id = ${church.id}
            and coalesce(x.joined_at, x.created_at::date) < m.m + interval '1 month') as cumulative,
@@ -61,7 +62,7 @@ export default async function GrowthPage() {
           value={shortCedis(revenue)}
           hint={`${sign(cur.income - prev.income)}${shortCedis(Math.abs(cur.income - prev.income))} from last month`}
         />
-        <Stat icon={TrendingUp} label="Avg Monthly Growth" value={avgGrowth.toFixed(avgGrowth % 1 ? 1 : 0)} hint="New members per month" />
+        <Stat icon={TrendingUp} label="Avg Monthly Growth" value={avgGrowth.toFixed(avgGrowth % 1 ? 1 : 0)} hint="New visitors per month" />
         <Stat icon={Activity} label="Net Income" value={shortCedis(net)} hint="Last 6 months total" />
       </div>
 

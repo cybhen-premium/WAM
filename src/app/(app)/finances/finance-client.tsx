@@ -272,12 +272,12 @@ export function RecordContributionForm({ kind, label, members }: { kind: "tithes
               </option>
             ))}
           </select>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">GH₵</span>
-              <input name="amount" type="number" min="0.01" step="0.01" required placeholder="0.00" className={cn(input, "pl-11 text-slate-900")} aria-label="Amount" />
+              <input name="amount" type="text" inputMode="decimal" pattern="[0-9]*\.?[0-9]*" required placeholder="0.00" className={cn(input, "pl-11 text-slate-900")} aria-label="Amount" />
             </div>
-            <input name="date" type="date" defaultValue={today()} className={cn(input, "w-40 text-slate-900")} aria-label="Date" />
+            <input name="date" type="date" defaultValue={today()} className={cn(input, "w-full sm:w-40 text-slate-900")} aria-label="Date" />
           </div>
           {state?.error && <p className="text-xs font-bold text-red-200">{state.error}</p>}
           <button

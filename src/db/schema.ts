@@ -277,6 +277,28 @@ export const welfareDues = pgTable(
   (t) => [index("welfare_dues_church_idx").on(t.churchId, t.date)],
 );
 
+export const tithe = pgTable(
+  "tithe",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    week: integer("week").notNull(), // 1, 2, 3, 4, 5
+    month: text("month").notNull(), // YYYY-MM
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("tithe_church_idx").on(t.churchId, t.month),
+    // Ensure one entry per member per week per month
+    uniqueIndex("tithe_member_week_idx").on(t.memberId, t.week, t.month),
+  ]
+);
+
 /* --------------------------------------------------- events & attendance -- */
 
 export const event = pgTable(

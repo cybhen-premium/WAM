@@ -20,7 +20,6 @@ export const metadata = { title: "Financial Hub" };
 
 const TABS = [
   { id: "general", label: "General", icon: ChartPie },
-  { id: "tithes", label: "Tithes", icon: Wallet },
   { id: "analytics", label: "Analytics", icon: TrendingUp },
   { id: "vendors", label: "Vendors", icon: Building2 },
   { id: "receipts", label: "Receipts", icon: Receipt },
@@ -144,7 +143,6 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
         </div>
 
         {tab === "general" && <GeneralTab churchId={church.id} period={period} q={q} />}
-        {tab === "tithes" && <ContributionTab kind="tithes" churchId={church.id} period={period} members={members} />}
         {tab === "analytics" && <AnalyticsTab churchId={church.id} />}
         {tab === "vendors" && <VendorsTab churchId={church.id} />}
         {tab === "receipts" && (

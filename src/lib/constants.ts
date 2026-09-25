@@ -5,7 +5,6 @@ export const MEMBER_CATEGORIES = [
   "Deaconess",
   "Elders",
   "Pastors",
-  "Youth",
   "Media Team",
   "Usher",
   "Children",

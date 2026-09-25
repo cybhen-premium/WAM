@@ -24,6 +24,7 @@ export const NAV: NavItem[] = [
   { href: "/members", label: "Members", icon: Users },
   { href: "/departments", label: "Departments", icon: Users },
   { href: "/sob", label: "SOB", icon: GraduationCap },
+  { href: "/tithes", label: "Tithes Tracker", icon: CreditCard },
   { href: "/finances", label: "Finances", icon: DollarSign },
   { href: "/giving-analytics", label: "Giving Analytics", icon: ChartColumn },
   { href: "/growth", label: "Growth", icon: TrendingUp },
