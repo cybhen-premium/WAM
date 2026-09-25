@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { and, asc, count, eq, ne, sql } from "drizzle-orm";
-import { Bot, Cake, Heart, ShieldCheck, TrendingDown, UserMinus } from "lucide-react";
+import { DollarSign, Bot, Cake, Heart, ShieldCheck, TrendingDown, UserMinus } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { atRiskWhere, isThisMonth } from "@/lib/pastoral";
 import { smsProviderConfigured } from "@/lib/sms";
 import { cn, fmtDate } from "@/lib/utils";
 import { AutomationForm, LostSheepActions, ReachOutAllButton } from "./welfare-client";
+import { WelfareOutTab } from "@/app/(app)/finances/tabs";
 
-export const metadata = { title: "Welfare Center" };
+export const metadata = { title: "Member Care" };
 
 const { member, followUp, staff } = schema;
 
@@ -26,7 +27,7 @@ export default async function WelfarePage({ searchParams }: PageProps<"/welfare"
   return (
     <div className="space-y-6 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Welfare Center</h1>
+        <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Member Care</h1>
         <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> Privacy secured dashboard
         </p>

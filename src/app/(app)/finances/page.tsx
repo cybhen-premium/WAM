@@ -21,11 +21,9 @@ export const metadata = { title: "Financial Hub" };
 const TABS = [
   { id: "general", label: "General", icon: ChartPie },
   { id: "tithes", label: "Tithes", icon: Wallet },
-  { id: "dues", label: "Welfare Dues", icon: HandHeart },
   { id: "analytics", label: "Analytics", icon: TrendingUp },
   { id: "vendors", label: "Vendors", icon: Building2 },
   { id: "receipts", label: "Receipts", icon: Receipt },
-  { id: "welfare-out", label: "Welfare Out", icon: Heart },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -147,13 +145,11 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
 
         {tab === "general" && <GeneralTab churchId={church.id} period={period} q={q} />}
         {tab === "tithes" && <ContributionTab kind="tithes" churchId={church.id} period={period} members={members} />}
-        {tab === "dues" && <ContributionTab kind="dues" churchId={church.id} period={period} members={members} />}
         {tab === "analytics" && <AnalyticsTab churchId={church.id} />}
         {tab === "vendors" && <VendorsTab churchId={church.id} />}
         {tab === "receipts" && (
           <ReceiptsTab churchId={church.id} period={period} category={typeof sp.category === "string" ? sp.category : ""} />
         )}
-        {tab === "welfare-out" && <WelfareOutTab churchId={church.id} period={period} members={members} />}
       </div>
     </div>
   );

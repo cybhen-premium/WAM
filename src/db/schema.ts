@@ -238,6 +238,23 @@ export const transaction = pgTable(
   (t) => [index("txn_church_idx").on(t.churchId, t.occurredOn)],
 );
 
+export const welfareDues = pgTable(
+  "welfare_dues",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    date: timestamp("date", { mode: "string" }).notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("welfare_dues_church_idx").on(t.churchId, t.date)],
+);
+
 /* --------------------------------------------------- events & attendance -- */
 
 export const event = pgTable(
