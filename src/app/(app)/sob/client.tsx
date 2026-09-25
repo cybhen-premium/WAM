@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useFormAction } from "@/components/use-form-action";
-import { CheckCircle2, Circle, Undo2, CalendarDays } from "lucide-react";
+import { CheckCircle2, Circle, Undo2, CalendarDays, Search, ChevronDown } from "lucide-react";
 import { completeSobLesson, undoSobLesson } from "./actions";
 
 const LESSONS = [
@@ -10,6 +11,75 @@ const LESSONS = [
   { no: 2, title: "Lesson 2 — Water Baptism" },
   { no: 3, title: "Lesson 3 — Holy Spirit Baptism" },
 ];
+
+const FILTER_OPTIONS = [
+  { value: "all", label: "All Members" },
+  { value: "lesson1", label: "Lesson 1 Only" },
+  { value: "lesson2", label: "Lesson 2 Only" },
+  { value: "completed", label: "Lesson 3 / Completed All" },
+  { value: "not_started", label: "Not Started" },
+];
+
+/* Search + Filter toolbar -------------------------------------------------- */
+
+export function SobToolbar() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const currentQ = searchParams.get("q") ?? "";
+  const currentFilter = searchParams.get("filter") ?? "all";
+
+  const [q, setQ] = useState(currentQ);
+
+  // Debounce search
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      const p = new URLSearchParams(searchParams.toString());
+      if (q) p.set("q", q); else p.delete("q");
+      router.push(`${pathname}?${p.toString()}`);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [q]);
+
+  const handleFilter = (val: string) => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("filter", val);
+    router.push(`${pathname}?${p.toString()}`);
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row gap-2.5">
+      {/* Search */}
+      <div className="relative flex-1 max-w-xs">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search by name…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
+        />
+      </div>
+
+      {/* Filter dropdown */}
+      <div className="relative">
+        <select
+          value={currentFilter}
+          onChange={(e) => handleFilter(e.target.value)}
+          className="h-10 appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-sm font-bold text-slate-700 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 cursor-pointer transition-colors"
+        >
+          {FILTER_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+      </div>
+    </div>
+  );
+}
+
+/* Member card -------------------------------------------------------------- */
 
 export function SobMemberRow({
   member,
@@ -33,11 +103,11 @@ export function SobMemberRow({
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{member.category}</p>
         </div>
         {allDone ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase text-emerald-600">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase text-emerald-600 shrink-0">
             <CheckCircle2 className="h-3.5 w-3.5" /> Baptized
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black uppercase text-amber-600">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-black uppercase text-amber-600 shrink-0">
             {count}/{total} Lessons
           </span>
         )}
@@ -93,13 +163,13 @@ function LessonItem({
 
   return (
     <div className={`flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors ${done ? "bg-emerald-50" : "bg-slate-50"}`}>
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 min-w-0">
         {done ? (
           <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
         ) : (
           <Circle className="h-4 w-4 text-slate-300 shrink-0" />
         )}
-        <span className={`text-sm font-bold ${done ? "text-emerald-700" : "text-slate-600"}`}>
+        <span className={`text-sm font-bold truncate ${done ? "text-emerald-700" : "text-slate-600"}`}>
           {lesson.title}
         </span>
       </div>

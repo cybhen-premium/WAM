@@ -1,18 +1,27 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, ilike } from "drizzle-orm";
 import { GraduationCap, CheckCircle2, Clock, BookOpen } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { SobMemberRow } from "./client";
+import { SobMemberRow, SobToolbar } from "./client";
 
 export const metadata = { title: "School of Baptism" };
 
 const TOTAL_LESSONS = 3;
 
-export default async function SobPage() {
+export default async function SobPage({ searchParams }: PageProps<"/sob">) {
   const { church } = await requireChurch();
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q.trim() : "";
+  const filter = typeof sp.filter === "string" ? sp.filter : "all";
 
-  // Fetch all active members
+  // Fetch all active members (with optional name search)
+  const baseWhere = and(
+    eq(schema.member.churchId, church.id),
+    eq(schema.member.active, true),
+    q ? ilike(schema.member.fullName, `%${q}%`) : undefined,
+  );
+
   const members = await db
     .select({
       id: schema.member.id,
@@ -21,7 +30,7 @@ export default async function SobPage() {
       baptized: schema.member.baptized,
     })
     .from(schema.member)
-    .where(and(eq(schema.member.churchId, church.id), eq(schema.member.active, true)))
+    .where(baseWhere)
     .orderBy(schema.member.fullName);
 
   // Fetch all SOB progress for this church
@@ -37,13 +46,33 @@ export default async function SobPage() {
     progressMap.get(row.memberId)!.push(row.lesson);
   }
 
-  // Compute summary stats
-  const graduated = members.filter((m) => (progressMap.get(m.id)?.length ?? 0) === TOTAL_LESSONS).length;
-  const inProgress = members.filter((m) => {
+  // Apply lesson filter
+  const filteredMembers = members.filter((m) => {
+    const lessons = progressMap.get(m.id) ?? [];
+    const count = lessons.length;
+    // lesson1 = completed lesson 1 but NOT lesson 2 yet
+    if (filter === "lesson1") return lessons.includes(1) && !lessons.includes(2) && !lessons.includes(3);
+    // lesson2 = completed lesson 2 but NOT lesson 3 yet
+    if (filter === "lesson2") return lessons.includes(2) && !lessons.includes(3);
+    // completed = all 3 done
+    if (filter === "completed") return count === TOTAL_LESSONS;
+    if (filter === "not_started") return count === 0;
+    return true;
+  });
+
+  // Compute summary stats (always over all unfiltered members)
+  const allMembers = await db
+    .select({ id: schema.member.id })
+    .from(schema.member)
+    .where(and(eq(schema.member.churchId, church.id), eq(schema.member.active, true)));
+
+  const totalCount = allMembers.length;
+  const graduated = allMembers.filter((m) => (progressMap.get(m.id)?.length ?? 0) === TOTAL_LESSONS).length;
+  const inProgress = allMembers.filter((m) => {
     const c = progressMap.get(m.id)?.length ?? 0;
     return c > 0 && c < TOTAL_LESSONS;
   }).length;
-  const notStarted = members.filter((m) => (progressMap.get(m.id)?.length ?? 0) === 0).length;
+  const notStarted = allMembers.filter((m) => (progressMap.get(m.id)?.length ?? 0) === 0).length;
 
   return (
     <div className="space-y-6 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
@@ -65,7 +94,7 @@ export default async function SobPage() {
         <StatCard
           label="Graduated / Baptized"
           value={graduated}
-          sub={`of ${members.length} total members`}
+          sub={`of ${totalCount} total members`}
           icon={CheckCircle2}
           tone="text-emerald-600 bg-emerald-50"
         />
@@ -85,16 +114,26 @@ export default async function SobPage() {
         />
       </div>
 
+      {/* Toolbar: search + filter */}
+      <SobToolbar />
+
+      {/* Result count hint */}
+      {(q || filter !== "all") && (
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest -mt-2">
+          Showing {filteredMembers.length} of {totalCount} members
+        </p>
+      )}
+
       {/* Member cards grid */}
-      {members.length === 0 ? (
+      {filteredMembers.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-slate-400 space-y-2">
           <GraduationCap className="h-12 w-12 opacity-20" />
-          <p className="font-bold text-sm">No active members found.</p>
-          <p className="text-xs">Add members first to track their SOB progress.</p>
+          <p className="font-bold text-sm">No members found.</p>
+          <p className="text-xs">Try a different search or filter.</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {members.map((m) => (
+          {filteredMembers.map((m) => (
             <SobMemberRow
               key={m.id}
               member={m}
