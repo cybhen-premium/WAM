@@ -21,7 +21,7 @@ export default async function SetupChurchPage({ searchParams }: PageProps<"/setu
     .where(and(eq(schema.staff.email, user.email.toLowerCase()), eq(schema.staff.status, "pending")));
 
   return (
-    <AuthCard title="Welcome to EcclesiaSync" subtitle="Let's set up your sanctuary">
+    <AuthCard title="Welcome to WAM" subtitle="Let's set up your sanctuary">
       {invites.length > 0 && (
         <div className="mb-6 space-y-2">
           <p className="px-1 text-[10px] font-extrabold uppercase tracking-tight text-emerald-600">You&apos;ve been invited</p>

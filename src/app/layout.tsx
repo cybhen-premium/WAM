@@ -10,8 +10,8 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "EcclesiaSync | The Heart of Church Growth. Managed.",
-    template: "%s | EcclesiaSync",
+    default: "WAM | The Heart of Church Growth. Managed.",
+    template: "%s | WAM",
   },
   description: "Church management: members, finances, events, attendance and pastoral care in one place.",
 };

@@ -3,7 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Theme tokens (HSL channels), matching the original EcclesiaSync palette. */
+/* Theme tokens (HSL channels), matching the original WAM palette. */
 :root {
   --background: 210 20% 98%;
   --foreground: 222 47% 11%;

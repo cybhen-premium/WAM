@@ -510,7 +510,7 @@ export function ReferralCard({ code: initial, referrals, earned }: { code: strin
       <button
         disabled={!code}
         onClick={async () => {
-          const text = `Join me on EcclesiaSync to manage your church. Use my code ${code}: ${link}`;
+          const text = `Join me on WAM to manage your church. Use my code ${code}: ${link}`;
           if (navigator.share) await navigator.share({ text }).catch(() => {});
           else {
             await navigator.clipboard.writeText(text);
