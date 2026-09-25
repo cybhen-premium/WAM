@@ -186,6 +186,28 @@ export const member = pgTable(
   (t) => [index("member_church_idx").on(t.churchId)],
 );
 
+// Tracks the 3 SOB lessons each member completes before baptism.
+export const sobProgress = pgTable(
+  "sob_progress",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    // 1, 2, or 3 — the lesson number completed
+    lesson: integer("lesson").notNull(),
+    completedAt: date("completed_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("sob_church_idx").on(t.churchId),
+    uniqueIndex("sob_member_lesson_uq").on(t.memberId, t.lesson),
+  ],
+);
+
 /* ------------------------------------------------------------ finances ---- */
 
 export const txnTypeEnum = pgEnum("txn_type", ["income", "expense"]);
