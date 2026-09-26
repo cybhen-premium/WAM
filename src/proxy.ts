@@ -28,7 +28,6 @@ export const config = {
     "/announcements/:path*",
     "/message-center/:path*",
     "/visitor-conversion/:path*",
-    "/sermon-ai/:path*",
     "/settings/:path*",
     "/setup-church",
     "/print/:path*",

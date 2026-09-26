@@ -11,7 +11,6 @@ import {
   HeartHandshake,
   Megaphone,
   MessageSquare,
-  BookOpen,
   GraduationCap,
   Settings,
   type LucideIcon,
@@ -36,6 +35,5 @@ export const NAV: NavItem[] = [
   { href: "/announcements", label: "Announce", icon: Megaphone },
   { href: "/message-center", label: "Messages", icon: MessageSquare },
   { href: "/visitor-conversion", label: "Visitors", icon: TrendingUp },
-  { href: "/sermon-ai", label: "Sermon AI", icon: BookOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
