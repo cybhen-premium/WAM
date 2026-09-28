@@ -14,16 +14,14 @@ type Props = {
   churchName: string;
   logoUrl?: string;
   smsCredits: number;
-  creditLimit: number;
   children: React.ReactNode;
 };
 
-export function AppShell({ churchName, logoUrl, smsCredits, creditLimit, children }: Props) {
+export function AppShell({ churchName, logoUrl, smsCredits, children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const pct = Math.min(100, Math.round((smsCredits / Math.max(creditLimit, 1)) * 100));
 
   async function logout() {
     await authClient.signOut();

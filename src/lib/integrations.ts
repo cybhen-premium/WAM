@@ -17,7 +17,7 @@ export type FieldDef = {
 
 export type ProviderDef = { id: string; name: string; description: string; fields: FieldDef[] };
 
-export type IntegrationKey = "sms" | "payments" | "ai";
+export type IntegrationKey = "sms" | "ai";
 
 export type IntegrationDef = {
   key: IntegrationKey;
@@ -101,28 +101,6 @@ export const SMS: IntegrationDef = {
   testInput: { name: "phone", label: "Phone number", placeholder: "024XXXXXXX" },
 };
 
-export const PAYMENTS: IntegrationDef = {
-  key: "payments",
-  title: "Payments",
-  description: "Checkout for plan subscriptions and SMS credit top-ups on the Billing page. When off, checkout is disabled.",
-  commonFields: [],
-  providers: [
-    {
-      id: "paystack",
-      name: "Paystack",
-      description: "Cards and Mobile Money in GHS. Use the Secret Key from Paystack → Settings → API Keys (sk_test_… while testing).",
-      fields: [{ name: "secretKey", label: "Secret Key", secret: true, placeholder: "sk_live_…" }],
-    },
-    {
-      id: "flutterwave",
-      name: "Flutterwave",
-      description: "Cards and Mobile Money. Use the Secret Key from Flutterwave → Settings → API Keys (FLWSECK_TEST-… while testing).",
-      fields: [{ name: "secretKey", label: "Secret Key", secret: true, placeholder: "FLWSECK-…" }],
-    },
-  ],
-  testLabel: "Check Connection",
-};
-
 export const AI: IntegrationDef = {
   key: "ai",
   title: "AI Provider",
@@ -161,4 +139,4 @@ export const AI: IntegrationDef = {
   testLabel: "Test Prompt",
 };
 
-export const INTEGRATIONS: Record<IntegrationKey, IntegrationDef> = { sms: SMS, payments: PAYMENTS, ai: AI };
+export const INTEGRATIONS: Record<IntegrationKey, IntegrationDef> = { sms: SMS, ai: AI };

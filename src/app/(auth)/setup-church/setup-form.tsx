@@ -1,11 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { Church, Gift, KeyRound, MapPin, Phone, User } from "lucide-react";
+import { Church, KeyRound, MapPin, Phone, User } from "lucide-react";
 import { Field, SubmitButton } from "@/components/auth-card";
 import { createChurch } from "./actions";
 
-export function SetupForm({ referralCode }: { referralCode: string }) {
+export function SetupForm() {
   const [state, action, pending] = useActionState(createChurch, undefined);
 
   return (
@@ -29,7 +29,6 @@ export function SetupForm({ referralCode }: { referralCode: string }) {
         </label>
       </div>
 
-      <Field label="Referral Code (optional)" name="referralCode" defaultValue={referralCode} placeholder="From a fellow pastor" icon={<Gift />} />
 
       {state?.error && <p className="text-sm font-semibold text-destructive">{state.error}</p>}
       <SubmitButton pending={pending}>Create My Church</SubmitButton>

@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { UserCheck } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
@@ -16,7 +16,12 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
   const departmentId = typeof sp.departmentId === "string" ? sp.departmentId : "";
   const status = sp.status === "inactive" ? "inactive" : "active";
 
-  const filters: (SQL | undefined)[] = [eq(member.churchId, church.id), eq(member.active, status === "active")];
+  const filters: (SQL | undefined)[] = [
+    eq(member.churchId, church.id),
+    eq(member.active, status === "active"),
+    // Exclude visitors and regular attendees - only show full members
+    sql`${member.category} not in ('Visitor', 'Regular Attendee')`,
+  ];
   if (group) filters.push(eq(member.category, group));
   if (departmentId) filters.push(eq(member.departmentId, departmentId));
   if (q) {
@@ -35,7 +40,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
     db
       .select({ active: member.active, n: count() })
       .from(member)
-      .where(eq(member.churchId, church.id))
+      .where(and(eq(member.churchId, church.id), sql`${member.category} not in ('Visitor', 'Regular Attendee')`))
       .groupBy(member.active),
     db
       .select()

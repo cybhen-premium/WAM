@@ -7,7 +7,6 @@ import { getIntegration, isPlatformAdmin, saveIntegration } from "@/lib/platform
 import { INTEGRATIONS, type IntegrationKey } from "@/lib/integrations";
 import { normalizePhone } from "@/lib/sms";
 import { sendWithProvider } from "@/lib/sms-providers";
-import { getGateway } from "@/lib/billing";
 import { modelFor } from "@/lib/ai";
 
 export type IntegrationState = { error?: string; ok?: boolean; message?: string } | undefined;
@@ -72,12 +71,6 @@ export async function testIntegration(key: IntegrationKey, _prev: IntegrationSta
       if (!phone) return { error: "Enter a valid phone number." };
       await sendWithProvider(cfg, cfg.common.senderId ?? "CHURCH_APP", [phone], "Test message from your church platform. SMS is working!");
       return { ok: true, message: `Test sent to +${phone}. Check the phone.` };
-    }
-    if (key === "payments") {
-      const gateway = await getGateway();
-      if (!gateway) return { error: "Payment provider isn't configured." };
-      await gateway.ping();
-      return { ok: true, message: "Connected. The secret key was accepted." };
     }
     const { text } = await generateText({
       model: modelFor(cfg),

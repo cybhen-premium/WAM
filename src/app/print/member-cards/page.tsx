@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import QRCode from "qrcode";
 import { Church } from "lucide-react";
 import { db, schema } from "@/db";
@@ -20,6 +20,7 @@ export default async function MemberCardsPage({ searchParams }: PageProps<"/prin
       and(
         eq(schema.member.churchId, church.id),
         id ? eq(schema.member.id, id) : eq(schema.member.active, true),
+        sql`${schema.member.category} not in ('Visitor', 'Regular Attendee')`,
       ),
     )
     .orderBy(asc(schema.member.fullName));

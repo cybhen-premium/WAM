@@ -9,9 +9,9 @@ const { sobProgress, member } = schema;
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
-const SOB_LESSONS = 3;
+const SOB_LESSONS = 4;
 
-/** Mark a lesson as complete for a member. Auto-baptises when all 3 done. */
+/** Mark a lesson as complete for a member. Auto-baptises when lesson 4 (Baptised) is done. */
 export async function completeSobLesson(_prev: FormState, form: FormData): Promise<FormState> {
   const { church } = await requireChurch();
   const memberId = String(form.get("memberId") ?? "");
@@ -28,16 +28,8 @@ export async function completeSobLesson(_prev: FormState, form: FormData): Promi
     .values({ churchId: church.id, memberId, lesson, completedAt: date })
     .onConflictDoNothing();
 
-  // Check if all lessons are now complete — if so, mark as baptized
-  const completed = await db
-    .select({ lesson: sobProgress.lesson })
-    .from(sobProgress)
-    .where(eq(sobProgress.memberId, memberId));
-
-  const completedLessons = new Set(completed.map((r) => r.lesson));
-  const allDone = [1, 2, 3].every((l) => completedLessons.has(l));
-
-  if (allDone) {
+  // If lesson 4 (Baptised) is completed, mark as baptized
+  if (lesson === 4) {
     await db
       .update(member)
       .set({ baptized: true })
@@ -63,11 +55,13 @@ export async function undoSobLesson(memberId: string, lesson: number): Promise<v
       ),
     );
 
-  // If baptism was granted by SOB, revoke it when a lesson is undone
-  await db
-    .update(member)
-    .set({ baptized: false })
-    .where(and(eq(member.id, memberId), eq(member.churchId, church.id), eq(member.baptized, true)));
+  // If lesson 4 (Baptised) is undone, revoke baptism status
+  if (lesson === 4) {
+    await db
+      .update(member)
+      .set({ baptized: false })
+      .where(and(eq(member.id, memberId), eq(member.churchId, church.id), eq(member.baptized, true)));
+  }
 
   revalidatePath("/sob");
   revalidatePath("/members");

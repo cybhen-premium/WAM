@@ -1,4 +1,4 @@
-import { count, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { Activity, DollarSign, TrendingUp, Users } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
@@ -14,7 +14,7 @@ export default async function GrowthPage() {
   const { church } = await requireChurch();
 
   const [[{ total }], months] = await Promise.all([
-    db.select({ total: count() }).from(member).where(eq(member.churchId, church.id)),
+    db.select({ total: count() }).from(member).where(and(eq(member.churchId, church.id), sql`${member.category} not in ('Visitor', 'Regular Attendee')`)),
     // Last 6 months: new members, cumulative members, income and expenses.
     db.execute<{ month: string; joined: string; cumulative: string; income: string; expense: string }>(sql`
       with m as (
@@ -22,9 +22,10 @@ export default async function GrowthPage() {
       )
       select to_char(m.m, 'YYYY-MM') as month,
         (select count(*) from ${member} x where x.church_id = ${church.id}
-           and (x.category = 'Visitor' or x.converted_at is not null)
+           and x.category not in ('Visitor', 'Regular Attendee')
            and date_trunc('month', coalesce(x.joined_at, x.created_at::date)) = m.m) as joined,
         (select count(*) from ${member} x where x.church_id = ${church.id}
+           and x.category not in ('Visitor', 'Regular Attendee')
            and coalesce(x.joined_at, x.created_at::date) < m.m + interval '1 month') as cumulative,
         (select coalesce(sum(amount), 0) from ${transaction} t where t.church_id = ${church.id}
            and t.type = 'income' and date_trunc('month', t.occurred_on) = m.m) as income,
@@ -62,7 +63,7 @@ export default async function GrowthPage() {
           value={shortCedis(revenue)}
           hint={`${sign(cur.income - prev.income)}${shortCedis(Math.abs(cur.income - prev.income))} from last month`}
         />
-        <Stat icon={TrendingUp} label="Avg Monthly Growth" value={avgGrowth.toFixed(avgGrowth % 1 ? 1 : 0)} hint="New visitors per month" />
+        <Stat icon={TrendingUp} label="Avg Monthly Growth" value={avgGrowth.toFixed(avgGrowth % 1 ? 1 : 0)} hint="New members per month" />
         <Stat icon={Activity} label="Net Income" value={shortCedis(net)} hint="Last 6 months total" />
       </div>
 

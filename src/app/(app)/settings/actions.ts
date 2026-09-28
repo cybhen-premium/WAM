@@ -139,20 +139,4 @@ export async function removeStaff(staffId: string) {
   revalidatePath("/settings");
 }
 
-/* Referral ----------------------------------------------------------------- */
 
-export async function ensureReferralCode() {
-  const { church: c } = await requireChurch();
-  if (c.referralCode) return c.referralCode;
-  const base = c.name.replace(/[^a-z]/gi, "").slice(0, 4).toUpperCase().padEnd(4, "X");
-  for (let i = 0; i < 5; i++) {
-    const code = `${base}${Math.floor(1000 + Math.random() * 9000)}`;
-    const [taken] = await db.select({ id: church.id }).from(church).where(eq(church.referralCode, code)).limit(1);
-    if (!taken) {
-      await db.update(church).set({ referralCode: code }).where(eq(church.id, c.id));
-      revalidatePath("/settings");
-      return code;
-    }
-  }
-  throw new Error("Could not generate a referral code. Try again.");
-}

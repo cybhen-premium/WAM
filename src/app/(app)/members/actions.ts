@@ -8,6 +8,7 @@ import { MEMBER_CATEGORIES } from "@/lib/constants";
 import { sendSms, withFooter } from "@/lib/sms";
 
 const VISITOR = "Visitor";
+const REGULAR_ATTENDEE = "Regular Attendee";
 
 const { member } = schema;
 
@@ -52,7 +53,25 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
       .where(and(eq(member.id, id), eq(member.churchId, church.id)))
       .limit(1);
     if (!before) return { error: "Member not found." };
-    const converted = before.category === VISITOR && values.category !== VISITOR;
+    
+    // Prevent conversion to full member categories without completing SOB
+    if ((before.category === VISITOR || before.category === REGULAR_ATTENDEE) && 
+        (values.category !== VISITOR && values.category !== REGULAR_ATTENDEE)) {
+      const sobCompleted = await db
+        .select({ lesson: schema.sobProgress.lesson })
+        .from(schema.sobProgress)
+        .where(eq(schema.sobProgress.memberId, id));
+      
+      const sobLessons = new Set(sobCompleted.map((r) => r.lesson));
+      const sobDone = [1, 2, 3, 4].every((l) => sobLessons.has(l));
+      
+      if (!sobDone) {
+        return { error: "Member must complete all SOB lessons before becoming a full member." };
+      }
+    }
+    
+    const converted = (before.category === VISITOR || before.category === REGULAR_ATTENDEE) && 
+                      (values.category !== VISITOR && values.category !== REGULAR_ATTENDEE);
     await db
       .update(member)
       .set({ ...values, ...(converted ? { convertedAt: new Date().toISOString().slice(0, 10) } : {}) })
@@ -62,8 +81,8 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
       .insert(member)
       .values({ ...values, churchId: church.id })
       .returning({ id: member.id });
-    if (values.category === VISITOR) {
-      // New visitors enter the follow-up pipeline and optionally get a welcome SMS.
+    if (values.category === VISITOR || values.category === REGULAR_ATTENDEE) {
+      // New visitors and regular attendees enter the follow-up pipeline and optionally get a welcome SMS.
       await db.insert(schema.followUp).values({ churchId: church.id, memberId: created.id, kind: "convert", stage: "new" });
       if (church.autoWelcomeSms && values.phone) {
         const first = values.fullName.split(/\s+/)[0];
@@ -78,6 +97,7 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
   revalidatePath("/dashboard");
   revalidatePath("/visitor-conversion");
   revalidatePath("/follow-up");
+  revalidatePath("/sob");
   return { ok: true };
 }
 

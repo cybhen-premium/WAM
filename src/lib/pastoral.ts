@@ -9,6 +9,7 @@ export function atRiskWhere(church: { id: string; absenceThresholdWeeks: number 
   return and(
     eq(member.churchId, church.id),
     eq(member.active, true),
+    sql`${member.category} not in ('Visitor', 'Regular Attendee')`,
     sql`${member.lastAttendedAt} is not null and ${member.lastAttendedAt} < current_date - ${church.absenceThresholdWeeks * 7}::int`,
   );
 }

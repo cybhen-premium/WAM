@@ -8,6 +8,7 @@ export const MEMBER_CATEGORIES = [
   "Media Team",
   "Usher",
   "Children",
+  "Regular Attendee",
   "Visitor",
 ] as const;
 

@@ -38,7 +38,7 @@ export default async function SetupChurchPage({ searchParams }: PageProps<"/setu
           <p className="pt-2 text-center text-xs text-slate-400">or create a new church below</p>
         </div>
       )}
-      <SetupForm referralCode={typeof sp.ref === "string" ? sp.ref : ""} />
+      <SetupForm />
     </AuthCard>
   );
 }

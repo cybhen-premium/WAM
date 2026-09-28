@@ -68,8 +68,6 @@ export const verification = pgTable("verification", {
 
 /* -------------------------------------------------------------- tenant ---- */
 
-export const planEnum = pgEnum("plan", ["seed", "growth", "abundance", "harvest", "enterprise"]);
-
 export const church = pgTable("church", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -107,13 +105,8 @@ export const church = pgTable("church", {
   absenceThresholdWeeks: integer("absence_threshold_weeks").notNull().default(3),
   aiLanguage: text("ai_language").notNull().default("English"),
   aiTone: text("ai_tone").notNull().default("Warm & Pastoral"),
-  // Billing
-  plan: planEnum("plan").notNull().default("harvest"),
-  billingCycle: text("billing_cycle").notNull().default("monthly"),
-  renewsAt: date("renews_at"),
+  // Messaging credits
   smsCredits: integer("sms_credits").notNull().default(20),
-  referralCode: text("referral_code").unique(),
-  referredBy: text("referred_by"),
   ownerId: text("owner_id")
     .notNull()
     .references(() => user.id),
@@ -197,7 +190,7 @@ export const sobProgress = pgTable(
     memberId: uuid("member_id")
       .notNull()
       .references(() => member.id, { onDelete: "cascade" }),
-    // 1, 2, or 3 — the lesson number completed
+    // 1, 2, 3, or 4 — the lesson number completed
     lesson: integer("lesson").notNull(),
     completedAt: date("completed_at").notNull().defaultNow(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -396,21 +389,7 @@ export const sermon = pgTable("sermon", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-/* ------------------------------------------------------------- billing ---- */
 
-export const payment = pgTable("payment", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  churchId: uuid("church_id")
-    .notNull()
-    .references(() => church.id, { onDelete: "cascade" }),
-  kind: text("kind").notNull(), // plan | topup
-  description: text("description").notNull(),
-  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
-  credits: integer("credits").notNull().default(0),
-  status: text("status").notNull().default("pending"), // pending | paid | failed
-  reference: text("reference").unique(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
 
 /* ------------------------------------------------------------ platform ---- */
 

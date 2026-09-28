@@ -24,7 +24,6 @@ const { member, staff } = schema;
 
 export default async function DashboardPage() {
   const { church } = await requireChurch();
-  const mine = eq(member.churchId, church.id);
 
   // Month/day of a date column compared against today, and against the next 7 days.
   const md = (col: AnyColumn) => sql`to_char(${col}, 'MM-DD')`;
@@ -42,19 +41,19 @@ export default async function DashboardPage() {
     genders,
     ageGroups,
   ] = await Promise.all([
-    db.select({ total: count() }).from(member).where(mine),
+    db.select({ total: count() }).from(member).where(and(eq(member.churchId, church.id), sql`${member.category} not in ('Visitor', 'Regular Attendee')`)),
     db
       .select({ upcoming: count() })
       .from(member)
-      .where(and(mine, sql`(${inNextWeek(member.dateOfBirth)} or ${inNextWeek(member.weddingAnniversary)})`)),
+      .where(and(eq(member.churchId, church.id), sql`(${inNextWeek(member.dateOfBirth)} or ${inNextWeek(member.weddingAnniversary)})`)),
     db
       .select({ id: member.id, fullName: member.fullName, phone: member.phone })
       .from(member)
-      .where(and(mine, sql`${md(member.dateOfBirth)} = ${today}`)),
+      .where(and(eq(member.churchId, church.id), sql`${md(member.dateOfBirth)} = ${today}`)),
     db
       .select({ id: member.id, fullName: member.fullName, phone: member.phone })
       .from(member)
-      .where(and(mine, sql`${md(member.weddingAnniversary)} = ${today}`)),
+      .where(and(eq(member.churchId, church.id), sql`${md(member.weddingAnniversary)} = ${today}`)),
     db
       .select({ status: staff.status, n: count() })
       .from(staff)
@@ -69,7 +68,7 @@ export default async function DashboardPage() {
     db
       .select({ gender: member.gender, n: count() })
       .from(member)
-      .where(mine)
+      .where(and(eq(member.churchId, church.id), sql`${member.category} not in ('Visitor', 'Regular Attendee')`))
       .groupBy(member.gender),
     db
       .select({
@@ -83,7 +82,7 @@ export default async function DashboardPage() {
         n: count(),
       })
       .from(member)
-      .where(mine)
+      .where(and(eq(member.churchId, church.id), sql`${member.category} not in ('Visitor', 'Regular Attendee')`))
       .groupBy(sql`1`),
   ]);
 

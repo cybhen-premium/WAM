@@ -7,7 +7,7 @@ import { SobMemberRow, SobToolbar } from "./client";
 
 export const metadata = { title: "School of Baptism" };
 
-const TOTAL_LESSONS = 3;
+const TOTAL_LESSONS = 4;
 
 export default async function SobPage({ searchParams }: PageProps<"/sob">) {
   const { church } = await requireChurch();
@@ -51,10 +51,12 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
     const lessons = progressMap.get(m.id) ?? [];
     const count = lessons.length;
     // lesson1 = completed lesson 1 but NOT lesson 2 yet
-    if (filter === "lesson1") return lessons.includes(1) && !lessons.includes(2) && !lessons.includes(3);
+    if (filter === "lesson1") return lessons.includes(1) && !lessons.includes(2) && !lessons.includes(3) && !lessons.includes(4);
     // lesson2 = completed lesson 2 but NOT lesson 3 yet
-    if (filter === "lesson2") return lessons.includes(2) && !lessons.includes(3);
-    // completed = all 3 done
+    if (filter === "lesson2") return lessons.includes(2) && !lessons.includes(3) && !lessons.includes(4);
+    // lesson3 = completed lesson 3 but NOT lesson 4 yet
+    if (filter === "lesson3") return lessons.includes(3) && !lessons.includes(4);
+    // completed = all 4 done
     if (filter === "completed") return count === TOTAL_LESSONS;
     if (filter === "not_started") return count === 0;
     return true;
@@ -84,7 +86,7 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">School of Baptism</h1>
           <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">
-            Track member progress through the 3 SOB lessons before baptism
+            Track member progress through the 4 SOB lessons before baptism
           </p>
         </div>
       </div>

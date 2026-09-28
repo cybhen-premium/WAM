@@ -19,7 +19,7 @@ export const config = {
     "/finances/:path*",
     "/giving-analytics/:path*",
     "/growth/:path*",
-    "/billing/:path*",
+
     "/events/:path*",
     "/event-analytics/:path*",
     "/attendance/:path*",

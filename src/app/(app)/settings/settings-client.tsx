@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { Copy, Gift, LocateFixed, Mail, Palette, Send, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { LocateFixed, Mail, Palette, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { useFormAction } from "@/components/use-form-action";
 import { cn } from "@/lib/utils";
 import type { schema } from "@/db";
 import {
   changeRole,
-  ensureReferralCode,
   inviteStaff,
   removeStaff,
   requestSenderId,
@@ -464,64 +463,3 @@ export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; act
   );
 }
 
-/* Refer & Earn ------------------------------------------------------------- */
-
-export function ReferralCard({ code: initial, referrals, earned }: { code: string | null; referrals: number; earned: number }) {
-  const [code, setCode] = useState(initial);
-  const [copied, setCopied] = useState(false);
-  const [pending, startTransition] = useTransition();
-  const link = code && typeof window !== "undefined" ? `${window.location.origin}/signup?ref=${code}` : "";
-
-  return (
-    <div className="overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#1e3a8a] to-indigo-700 p-8 text-white shadow-xl">
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-900">
-        <Gift className="h-3.5 w-3.5" /> Earn 100 credits
-      </span>
-      <h2 className="mt-4 text-3xl font-black">Invite a Fellow Pastor</h2>
-      <p className="mt-2 max-w-xl text-sm text-blue-100">
-        When they use your code during setup, you both receive 100 bonus SMS credits on their first plan upgrade.
-      </p>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl bg-white/10 p-4 sm:col-span-1">
-          <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">Your Unique Referral Code</p>
-          {code ? (
-            <p className="mt-1 font-mono text-2xl font-black tracking-widest">{code}</p>
-          ) : (
-            <button
-              disabled={pending}
-              onClick={() => startTransition(async () => setCode(await ensureReferralCode()))}
-              className="mt-2 rounded-xl bg-white px-4 h-9 text-xs font-black text-[#1e3a8a]"
-            >
-              {pending ? "Generating…" : "Generate Code"}
-            </button>
-          )}
-        </div>
-        <div className="rounded-2xl bg-white/10 p-4">
-          <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">Active Referrals</p>
-          <p className="mt-1 text-2xl font-black">{referrals}</p>
-        </div>
-        <div className="rounded-2xl bg-white/10 p-4">
-          <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">Credits Earned</p>
-          <p className="mt-1 text-2xl font-black">{earned}</p>
-        </div>
-      </div>
-
-      <button
-        disabled={!code}
-        onClick={async () => {
-          const text = `Join me on WAM to manage your church. Use my code ${code}: ${link}`;
-          if (navigator.share) await navigator.share({ text }).catch(() => {});
-          else {
-            await navigator.clipboard.writeText(text);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }
-        }}
-        className="mt-6 inline-flex h-12 items-center gap-2 rounded-2xl bg-amber-400 px-6 text-xs font-black uppercase tracking-widest text-slate-900 hover:bg-amber-300 disabled:opacity-50"
-      >
-        {copied ? <Copy className="h-4 w-4" /> : <Send className="h-4 w-4" />} {copied ? "Copied!" : "Share Referral Link"}
-      </button>
-    </div>
-  );
-}

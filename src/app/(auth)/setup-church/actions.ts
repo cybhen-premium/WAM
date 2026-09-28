@@ -15,16 +15,6 @@ export async function createChurch(_prev: SetupState, form: FormData): Promise<S
   if (!name) return { error: "Church name is required." };
   const opt = (k: string) => String(form.get(k) ?? "").trim() || null;
 
-  // Only keep a referral code that belongs to a real church.
-  let referredBy = opt("referralCode")?.toUpperCase() ?? null;
-  if (referredBy) {
-    const [ref] = await db
-      .select({ id: schema.church.id })
-      .from(schema.church)
-      .where(eq(schema.church.referralCode, referredBy))
-      .limit(1);
-    if (!ref) return { error: "That referral code wasn't found. Check it or leave it blank." };
-  } else referredBy = null;
 
   const [church] = await db
     .insert(schema.church)
@@ -34,7 +24,6 @@ export async function createChurch(_prev: SetupState, form: FormData): Promise<S
       phone: opt("phone"),
       location: opt("location"),
       denominationCode: opt("denominationCode"),
-      referredBy,
       ownerId: user.id,
     })
     .returning({ id: schema.church.id });

@@ -13,6 +13,7 @@ import {
   MessageSquare,
   GraduationCap,
   Settings,
+  HandHeart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ export const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/members", label: "Members", icon: Users },
   { href: "/departments", label: "Departments", icon: Users },
+  { href: "/akwaaba", label: "Akwaaba", icon: HandHeart },
   { href: "/sob", label: "SOB", icon: GraduationCap },
   { href: "/tithes", label: "Tithes Tracker", icon: CreditCard },
   { href: "/finances", label: "Finances", icon: DollarSign },

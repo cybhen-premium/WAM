@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { count, desc, eq, sql } from "drizzle-orm";
-import { Gift, Plug, Settings2, SlidersHorizontal, User, Users } from "lucide-react";
+import { Plug, Settings2, SlidersHorizontal, User, Users } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { getIntegrationForAdmin, isPlatformAdmin } from "@/lib/platform";
 import { IntegrationForm } from "./integration-form";
-import { BrandingForm, PreferencesForm, ProfileForm, ReferralCard, SenderIdForm, StaffPanel, WelcomeToggle } from "./settings-client";
+import { BrandingForm, PreferencesForm, ProfileForm, SenderIdForm, StaffPanel, WelcomeToggle } from "./settings-client";
 
 export const metadata = { title: "Settings & Management" };
 
@@ -34,7 +34,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         </div>
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Settings &amp; Management</h1>
-          <p className="text-sm text-slate-500">Configure your church platform and growth rewards</p>
+          <p className="text-sm text-slate-500">Configure your church platform</p>
         </div>
       </div>
 

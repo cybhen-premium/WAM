@@ -10,13 +10,15 @@ const LESSONS = [
   { no: 1, title: "Lesson 1 — The Fall of Man & Redemption Plan" },
   { no: 2, title: "Lesson 2 — Water Baptism" },
   { no: 3, title: "Lesson 3 — Holy Spirit Baptism" },
+  { no: 4, title: "Baptised" },
 ];
 
 const FILTER_OPTIONS = [
   { value: "all", label: "All Members" },
   { value: "lesson1", label: "Lesson 1 Only" },
   { value: "lesson2", label: "Lesson 2 Only" },
-  { value: "completed", label: "Lesson 3 / Completed All" },
+  { value: "lesson3", label: "Lesson 3 Only" },
+  { value: "completed", label: "Lesson 4 / Completed All" },
   { value: "not_started", label: "Not Started" },
 ];
 
@@ -90,7 +92,7 @@ export function SobMemberRow({
 }) {
   const doneSet = new Set(completedLessons);
   const count = completedLessons.length;
-  const total = 3;
+  const total = 4;
   const pct = Math.round((count / total) * 100);
   const allDone = count === total;
 
