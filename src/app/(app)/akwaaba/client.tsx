@@ -18,6 +18,7 @@ import {
 import { registerPerson, setPersonActive, deletePerson } from "./actions";
 import { Modal, TextField, SelectField, buttonStyles } from "@/components/ui";
 import { MARITAL_STATUSES, MEMBER_CATEGORIES } from "@/lib/constants";
+import { useSetUrlParam } from "@/components/use-url-param";
 
 const FILTER_OPTIONS = [
   { value: "all", label: "All People" },
@@ -25,16 +26,24 @@ const FILTER_OPTIONS = [
   { value: "staying", label: "Staying" },
 ];
 
-/* Add Person Button */
-export function AkwaabaToolbar() {
+export function AkwaabaHeader() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <div className="flex items-center gap-2">
-      <button onClick={() => setAdding(true)} className={buttonStyles.primary}>
-        <Plus /> Register Person
-      </button>
-      <PersonFormModal open={adding} onClose={() => setAdding(false)} />
+    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+      <div className="space-y-1">
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Akwaaba Reception</h1>
+        <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">
+          Register and welcome new people (visiting & staying)
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
+        <button onClick={() => setAdding(true)} className={buttonStyles.primary}>
+          <Plus /> Register Person
+        </button>
+        <PersonFormModal open={adding} onClose={() => setAdding(false)} />
+      </div>
     </div>
   );
 }
@@ -157,13 +166,12 @@ function PersonFormModal({ open, onClose }: { open: boolean; onClose: () => void
       <form action={action} className="space-y-5 md:space-y-6 pb-2 text-left">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           <TextField className="sm:col-span-2" label="Full Name" name="fullName" required placeholder="Enter person's full name" />
+          <TextField label="Date" name="joinedAt" type="date" defaultValue={new Date().toISOString().split("T")[0]} required />
           <TextField label="Phone Number" name="phone" type="tel" icon={Phone} placeholder="024XXXXXXX" />
           <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue="Male" />
-          <SelectField label="Status" name="status" options={["Visiting", "Staying"]} defaultValue="Visiting" />
-          <SelectField label="Marital Status" name="maritalStatus" options={MARITAL_STATUSES} defaultValue="Single" />
-          <TextField label="Profession / Occupation" name="occupation" placeholder="e.g., Software Engineer, Nurse" />
+          <SelectField label="Status (Visit or Join?)" name="status" options={["Visiting", "Staying"]} defaultValue="Visiting" />
+          <TextField label="Who brought you?" name="invitedBy" placeholder="Name of inviter" />
           <TextField className="sm:col-span-2" label="Residential Address" name="address" placeholder="House number, Street, Area" />
-          <TextField label="Birthday" name="dateOfBirth" type="date" />
         </div>
         {state?.error && <p className="text-sm font-semibold text-red-600">{state.error}</p>}
         <button type="submit" disabled={pending} className={buttonStyles.submit}>

@@ -17,17 +17,15 @@ function readPerson(form: FormData) {
   const date = (k: string) => (/^\d{4}-\d{2}-\d{2}$/.test(s(k)) ? s(k) : null);
   const gender = s("gender").toLowerCase();
   const status = s("status"); // "visiting" or "staying"
-
   return {
     fullName: s("fullName"),
     phone: opt("phone"),
     email: opt("email"),
     gender: gender === "male" || gender === "female" ? gender : null,
-    category: status === "staying" ? "Regular Attendee" : "Visitor",
-    maritalStatus: opt("maritalStatus"),
-    occupation: opt("occupation"),
+    category: status.toLowerCase() === "staying" ? "Regular Attendee" : "Visitor",
     address: opt("address"),
-    dateOfBirth: date("dateOfBirth"),
+    invitedBy: opt("invitedBy"),
+    joinedAt: date("joinedAt") || undefined,
   } as const;
 }
 

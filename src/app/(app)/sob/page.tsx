@@ -1,4 +1,4 @@
-import { eq, and, ilike } from "drizzle-orm";
+import { eq, and, ilike, ne } from "drizzle-orm";
 import { GraduationCap, CheckCircle2, Clock, BookOpen } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
@@ -19,6 +19,7 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
   const baseWhere = and(
     eq(schema.member.churchId, church.id),
     eq(schema.member.active, true),
+    ne(schema.member.category, "Visitor"),
     q ? ilike(schema.member.fullName, `%${q}%`) : undefined,
   );
 
@@ -66,7 +67,11 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
   const allMembers = await db
     .select({ id: schema.member.id })
     .from(schema.member)
-    .where(and(eq(schema.member.churchId, church.id), eq(schema.member.active, true)));
+    .where(and(
+      eq(schema.member.churchId, church.id), 
+      eq(schema.member.active, true),
+      ne(schema.member.category, "Visitor")
+    ));
 
   const totalCount = allMembers.length;
   const graduated = allMembers.filter((m) => (progressMap.get(m.id)?.length ?? 0) === TOTAL_LESSONS).length;

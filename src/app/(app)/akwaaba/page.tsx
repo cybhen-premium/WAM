@@ -1,9 +1,11 @@
-import { eq, and, ilike, asc, count } from "drizzle-orm";
-import { HandHeart, Users, Briefcase, MapPin, Phone, UserCheck } from "lucide-react";
+import { eq, and, ilike, asc, desc, count, sql, gte, lt } from "drizzle-orm";
+import { HandHeart, Users, UserCheck } from "lucide-react";
+import Link from "next/link";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { AkwaabaToolbar, AkwaabaFilters, PersonRowActions } from "./client";
+import { parsePeriod } from "@/lib/finance";
+import { AkwaabaHeader, AkwaabaFilters, PersonRowActions } from "./client";
 
 export const metadata = { title: "Akwaaba - Reception" };
 
@@ -12,45 +14,67 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const status = typeof sp.status === "string" ? sp.status : "";
+  const period = parsePeriod(sp.period);
 
-  // Fetch people with filters
-  const filters: any[] = [eq(schema.member.churchId, church.id)];
-  if (status === "visiting") filters.push(eq(schema.member.category, "Visitor"));
-  if (status === "staying") filters.push(eq(schema.member.category, "Regular Attendee"));
-  if (q) {
-    const like = `%${q}%`;
-    filters.push(ilike(schema.member.fullName, like));
+  // Table filters: search + status only (no period — table always shows everyone)
+  const tableFilters: any[] = [eq(schema.member.churchId, church.id)];
+  if (status === "visiting") tableFilters.push(eq(schema.member.category, "Visitor"));
+  if (status === "staying") tableFilters.push(eq(schema.member.category, "Regular Attendee"));
+  if (q) tableFilters.push(ilike(schema.member.fullName, `%${q}%`));
+
+  // Card filters: period only (for stat cards)
+  const cardFilters: any[] = [eq(schema.member.churchId, church.id)];
+  if (period !== "all") {
+    let start: string;
+    let end: string;
+    if (period.length === 4) {
+      const y = Number(period);
+      start = `${y}-01-01`;
+      end = new Date(Date.UTC(y + 1, 0, 1)).toISOString().slice(0, 10);
+    } else {
+      const [y, m] = period.split("-").map(Number);
+      start = `${period}-01`;
+      end = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+    }
+    cardFilters.push(and(gte(schema.member.joinedAt, start), lt(schema.member.joinedAt, end)));
   }
 
-  const [rows, counts] = await Promise.all([
+  const [rows, counts, allMonths] = await Promise.all([
     db
       .select()
       .from(schema.member)
-      .where(and(...filters))
+      .where(and(...tableFilters))
       .orderBy(asc(schema.member.fullName))
       .limit(500),
     db
       .select({ category: schema.member.category, n: count() })
       .from(schema.member)
-      .where(eq(schema.member.churchId, church.id))
+      .where(and(...cardFilters))
       .groupBy(schema.member.category),
+    // Always fetch all months (unfiltered) so nav badges are always shown
+    db
+      .select({
+        month: sql<string>`to_char(${schema.member.joinedAt}, 'YYYY-MM')`,
+        n: count(),
+      })
+      .from(schema.member)
+      .where(eq(schema.member.churchId, church.id))
+      .groupBy(sql`to_char(${schema.member.joinedAt}, 'YYYY-MM')`)
+      .orderBy(desc(sql`to_char(${schema.member.joinedAt}, 'YYYY-MM')`)),
   ]);
 
   const visitingCount = counts.find((c) => c.category === "Visitor")?.n ?? 0;
   const stayingCount = counts.find((c) => c.category === "Regular Attendee")?.n ?? 0;
   const totalCount = rows.length;
+  const periodHint = period === "all"
+    ? "All Time"
+    : period.length === 4
+      ? period
+      : new Date(period + "-01").toLocaleDateString("default", { month: "long", year: "numeric" });
 
   return (
     <div className="space-y-5 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Akwaaba Reception</h1>
-          <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">
-            Register and welcome new people (visiting & staying)
-          </p>
-        </div>
-        <AkwaabaToolbar />
-      </div>
+      <AkwaabaHeader />
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -58,6 +82,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
           label="Visiting"
           value={visitingCount}
           sub="guests and visitors"
+          hint={periodHint}
           icon={Users}
           tone="text-blue-600 bg-blue-50"
         />
@@ -65,6 +90,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
           label="Staying"
           value={stayingCount}
           sub="regular attendees"
+          hint={periodHint}
           icon={UserCheck}
           tone="text-emerald-600 bg-emerald-50"
         />
@@ -72,10 +98,51 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
           label="Total Registered"
           value={totalCount}
           sub="people in system"
+          hint={periodHint}
           icon={HandHeart}
           tone="text-orange-600 bg-orange-50"
         />
       </div>
+
+      {/* Month / Year navigation badges */}
+      {allMonths.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/akwaaba"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors",
+              period === "all"
+                ? "bg-slate-800 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            )}
+          >
+            All
+          </Link>
+          {allMonths.map((m) => {
+            const label = m.month
+              ? new Date(m.month + "-01").toLocaleDateString("default", { month: "short", year: "2-digit" })
+              : "Unknown";
+            const isActive = period === m.month;
+            return (
+              <Link
+                key={m.month || "unknown"}
+                href={m.month ? `/akwaaba?period=${m.month}` : "/akwaaba"}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors",
+                  isActive
+                    ? "bg-orange-500 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                )}
+              >
+                {label}
+                <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-black", isActive ? "bg-orange-400" : "bg-slate-200")}>
+                  {m.n}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       <AkwaabaFilters q={q} status={status} />
 
@@ -91,7 +158,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
         <table className="w-full min-w-[800px] text-sm">
           <thead className="bg-slate-50/50 border-b border-slate-100">
             <tr>
-              {["Person Profile", "Category", "Contact", "Location", "Status"].map((h, i) => (
+              {["Person Profile", "Gender", "Contact", "Location", "Invited By", "Status"].map((h, i) => (
                 <th
                   key={h}
                   className={`px-4 h-16 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400 ${i === 0 ? "pl-8" : ""}`}
@@ -127,21 +194,20 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
                       <div className="min-w-0">
                         <p className="font-bold text-slate-900 truncate">{person.fullName}</p>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          {person.occupation ? person.occupation : "—"}
+                          Joined: {person.joinedAt ? new Date(person.joinedAt).toLocaleDateString() : "—"}
                         </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-tight text-slate-600">
-                      {person.category}
-                    </span>
+                  <td className="px-4 py-3 text-slate-600 capitalize text-xs">
+                    {person.gender ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     <p className="font-semibold">{person.phone ?? "—"}</p>
                     {person.email && <p className="text-xs text-slate-400">{person.email}</p>}
                   </td>
                   <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{person.address ?? "—"}</td>
+                  <td className="px-4 py-3 text-slate-600 text-xs">{person.invitedBy ?? "—"}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-tight ${
                       person.category === "Visitor" 
@@ -177,12 +243,14 @@ function StatCard({
   label,
   value,
   sub,
+  hint,
   icon: Icon,
   tone,
 }: {
   label: string;
   value: number;
   sub: string;
+  hint: string;
   icon: typeof Users;
   tone: string;
 }) {
@@ -200,6 +268,7 @@ function StatCard({
         </span>
       </div>
       <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">{sub}</p>
+      <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-300">{hint}</p>
     </div>
   );
 }

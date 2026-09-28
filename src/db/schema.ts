@@ -169,6 +169,7 @@ export const member = pgTable(
     address: text("address"),
     emergencyContactName: text("emergency_contact_name"),
     emergencyContactPhone: text("emergency_contact_phone"),
+    invitedBy: text("invited_by"),
     joinedAt: date("joined_at").defaultNow(),
     // Set when a "Visitor" is converted to another category.
     convertedAt: date("converted_at"),
