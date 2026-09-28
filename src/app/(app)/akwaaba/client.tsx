@@ -26,6 +26,56 @@ const FILTER_OPTIONS = [
   { value: "staying", label: "Staying" },
 ];
 
+export function PeriodDropdown({ currentPeriod, months }: { currentPeriod: string; months: { month: string; n: number }[] }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const [, startTransition] = useTransition();
+
+  function updatePeriod(value: string) {
+    const next = new URLSearchParams(params);
+    if (value === "all") {
+      next.delete("period");
+    } else {
+      next.set("period", value);
+    }
+    // Preserve search and status parameters
+    const q = params.get("q");
+    const status = params.get("status");
+    if (q) next.set("q", q);
+    if (status) next.set("status", status);
+    startTransition(() => router.replace(`${pathname}?${next}`));
+  }
+
+  if (months.length === 0) return null;
+
+  return (
+    <div className="flex justify-start">
+      <div className="relative w-[200px]">
+        <select
+          value={currentPeriod}
+          onChange={(e) => updatePeriod(e.target.value)}
+          className="w-full appearance-none rounded-xl bg-white shadow-sm pl-3 pr-8 h-10 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-blue-100"
+          aria-label="Time period"
+        >
+          <option value="all">All Time</option>
+          {months.map((m) => {
+            const label = m.month
+              ? new Date(m.month + "-01").toLocaleDateString("default", { month: "long", year: "numeric" })
+              : "Unknown";
+            return (
+              <option key={m.month || "unknown"} value={m.month || ""}>
+                {label}
+              </option>
+            );
+          })}
+        </select>
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+      </div>
+    </div>
+  );
+}
+
 export function AkwaabaHeader() {
   const [adding, setAdding] = useState(false);
 
@@ -64,6 +114,9 @@ export function AkwaabaFilters(props: {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
+    // Preserve period parameter
+    const period = params.get("period");
+    if (period) next.set("period", period);
     startTransition(() => router.replace(`${pathname}?${next}`));
   }
 

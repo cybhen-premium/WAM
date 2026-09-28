@@ -1,11 +1,10 @@
-import { eq, and, ilike, asc, desc, count, sql, gte, lt } from "drizzle-orm";
-import { HandHeart, Users, UserCheck } from "lucide-react";
-import Link from "next/link";
+import { eq, and, ilike, asc, count, sql, gte, lt } from "drizzle-orm";
+import { HandHeart, Users, UserCheck, ChevronDown } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { parsePeriod } from "@/lib/finance";
-import { AkwaabaHeader, AkwaabaFilters, PersonRowActions } from "./client";
+import { AkwaabaHeader, AkwaabaFilters, PersonRowActions, PeriodDropdown } from "./client";
 
 export const metadata = { title: "Akwaaba - Reception" };
 
@@ -51,7 +50,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
       .from(schema.member)
       .where(and(...cardFilters))
       .groupBy(schema.member.category),
-    // Always fetch all months (unfiltered) so nav badges are always shown
+    // Always fetch all months (unfiltered) so dropdown options are always shown
     db
       .select({
         month: sql<string>`to_char(${schema.member.joinedAt}, 'YYYY-MM')`,
@@ -60,7 +59,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
       .from(schema.member)
       .where(eq(schema.member.churchId, church.id))
       .groupBy(sql`to_char(${schema.member.joinedAt}, 'YYYY-MM')`)
-      .orderBy(desc(sql`to_char(${schema.member.joinedAt}, 'YYYY-MM')`)),
+      .orderBy(sql`to_char(${schema.member.joinedAt}, 'YYYY-MM')`),
   ]);
 
   const visitingCount = counts.find((c) => c.category === "Visitor")?.n ?? 0;
@@ -75,6 +74,9 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   return (
     <div className="space-y-5 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
       <AkwaabaHeader />
+
+      {/* Period dropdown for card stats */}
+      <PeriodDropdown currentPeriod={period} months={allMonths} />
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -104,45 +106,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
         />
       </div>
 
-      {/* Month / Year navigation badges */}
-      {allMonths.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/akwaaba"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors",
-              period === "all"
-                ? "bg-slate-800 text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            )}
-          >
-            All
-          </Link>
-          {allMonths.map((m) => {
-            const label = m.month
-              ? new Date(m.month + "-01").toLocaleDateString("default", { month: "short", year: "2-digit" })
-              : "Unknown";
-            const isActive = period === m.month;
-            return (
-              <Link
-                key={m.month || "unknown"}
-                href={m.month ? `/akwaaba?period=${m.month}` : "/akwaaba"}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition-colors",
-                  isActive
-                    ? "bg-orange-500 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                )}
-              >
-                {label}
-                <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-black", isActive ? "bg-orange-400" : "bg-slate-200")}>
-                  {m.n}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+
 
       <AkwaabaFilters q={q} status={status} />
 
