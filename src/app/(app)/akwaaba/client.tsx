@@ -21,7 +21,6 @@ import { MARITAL_STATUSES, MEMBER_CATEGORIES } from "@/lib/constants";
 import { useSetUrlParam } from "@/components/use-url-param";
 
 const FILTER_OPTIONS = [
-  { value: "all", label: "All People" },
   { value: "visiting", label: "Visiting" },
   { value: "staying", label: "Staying" },
 ];
@@ -158,10 +157,20 @@ export function AkwaabaFilters(props: {
 
 export function PersonRowActions({ person }: { person: any }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
 
   return (
     <div className="inline-flex items-center gap-1">
+      <button
+        disabled={pending}
+        onClick={() => setEditing(true)}
+        className={buttonStyles.ghost}
+        title="Edit"
+        aria-label="Edit"
+      >
+        <Pencil />
+      </button>
       <button
         disabled={pending}
         onClick={() => {
@@ -199,36 +208,39 @@ export function PersonRowActions({ person }: { person: any }) {
           <Trash2 />
         </button>
       )}
+      <PersonFormModal open={editing} onClose={() => setEditing(false)} person={person} />
     </div>
   );
 }
 
 /* Add / edit form ---------------------------------------------------------- */
 
-function PersonFormModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function PersonFormModal({ open, onClose, person }: { open: boolean; onClose: () => void; person?: any }) {
   const [state, action, pending] = useFormAction(registerPerson, onClose);
+  const isEditing = !!person;
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Register New Person"
+      title={isEditing ? "Edit Person" : "Register New Person"}
       subtitle="Akwaaba Reception"
       icon={UserPlus}
     >
       <form action={action} className="space-y-5 md:space-y-6 pb-2 text-left">
+        {isEditing && <input type="hidden" name="id" value={person.id} />}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-          <TextField className="sm:col-span-2" label="Full Name" name="fullName" required placeholder="Enter person's full name" />
-          <TextField label="Date" name="joinedAt" type="date" defaultValue={new Date().toISOString().split("T")[0]} required />
-          <TextField label="Phone Number" name="phone" type="tel" icon={Phone} placeholder="024XXXXXXX" />
-          <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue="Male" />
-          <SelectField label="Status (Visit or Join?)" name="status" options={["Visiting", "Staying"]} defaultValue="Visiting" />
-          <TextField label="Who brought you?" name="invitedBy" placeholder="Name of inviter" />
-          <TextField className="sm:col-span-2" label="Residential Address" name="address" placeholder="House number, Street, Area" />
+          <TextField className="sm:col-span-2" label="Full Name" name="fullName" required placeholder="Enter person's full name" defaultValue={person?.fullName} />
+          <TextField label="Date" name="joinedAt" type="date" defaultValue={person?.joinedAt || new Date().toISOString().split("T")[0]} required />
+          <TextField label="Phone Number" name="phone" type="tel" icon={Phone} placeholder="024XXXXXXX" defaultValue={person?.phone} />
+          <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue={person?.gender || "Male"} />
+          <SelectField label="Status (Visit or Join?)" name="status" options={["Visiting", "Staying"]} defaultValue={person?.category === "Regular Attendee" ? "Staying" : "Visiting"} />
+          <TextField label="Who brought you?" name="invitedBy" placeholder="Name of inviter" defaultValue={person?.invitedBy} />
+          <TextField className="sm:col-span-2" label="Residential Address" name="address" placeholder="House number, Street, Area" defaultValue={person?.address} />
         </div>
         {state?.error && <p className="text-sm font-semibold text-red-600">{state.error}</p>}
         <button type="submit" disabled={pending} className={buttonStyles.submit}>
-          {pending ? "Registering…" : "Register Person"}
+          {pending ? (isEditing ? "Updating…" : "Registering…") : (isEditing ? "Update Person" : "Register Person")}
         </button>
       </form>
     </Modal>
