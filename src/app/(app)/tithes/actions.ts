@@ -5,6 +5,8 @@ import { sql, eq, and } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { TITHE } from "@/lib/constants";
+import { sendSms, withFooter } from "@/lib/sms";
+import { cedis } from "@/lib/utils";
 
 const { tithe, transaction, member } = schema;
 
@@ -28,8 +30,9 @@ export async function recordTithe(_prev: FormState, form: FormData): Promise<For
   if (isNaN(week) || week < 1 || week > 5) return { error: "Week must be between 1 and 5." };
 
   // Tithes are for members only — a visitor / regular attendee isn't a member yet.
-  const payer = await tithePayer(church.id, memberId);
-  if ("error" in payer) return { error: payer.error };
+  const result = await tithePayer(church.id, memberId);
+  if ("error" in result) return { error: result.error };
+  const payer = result.payer;
 
   try {
     await db.insert(tithe).values({
@@ -66,6 +69,24 @@ export async function recordTithe(_prev: FormState, form: FormData): Promise<For
 
   revalidatePath("/tithes");
   revalidatePath("/dashboard");
+
+  // Automatic thank-you to the payer — same pattern as the welcome SMS: logged in the message log and
+  // queued (not sent) when no SMS gateway is configured. Never allowed to fail the tithe itself.
+  if (payer.phone) {
+    try {
+      const first = payer.fullName.split(/\s+/)[0];
+      const monthLabel = new Date(month + "-01").toLocaleString("default", { month: "long", year: "numeric" });
+      await sendSms(
+        church,
+        [payer.phone],
+        withFooter(church, `Thank you ${first}! We have received your tithe of ${cedis(amount)} for ${monthLabel}. God bless you.`),
+        { kind: "tithe", topic: memberId, audience: payer.fullName },
+      );
+    } catch {
+      // Messaging problems must never block recording the tithe.
+    }
+  }
+
   return { ok: true };
 }
 
@@ -75,7 +96,7 @@ export async function recordTithe(_prev: FormState, form: FormData): Promise<For
  */
 async function tithePayer(churchId: string, memberId: string) {
   const [payer] = await db
-    .select({ category: member.category })
+    .select({ category: member.category, fullName: member.fullName, phone: member.phone })
     .from(member)
     .where(and(eq(member.id, memberId), eq(member.churchId, churchId)))
     .limit(1);

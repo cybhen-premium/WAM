@@ -85,7 +85,7 @@ export function PeriodDropdown({ currentPeriod, years }: { currentPeriod: string
   );
 }
 
-export function AkwaabaHeader() {
+export function AkwaabaHeader({ printHref }: { printHref: string }) {
   const [adding, setAdding] = useState(false);
 
   return (
@@ -98,6 +98,11 @@ export function AkwaabaHeader() {
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
+        {/* One click prints the people received (the report page itself has the month / section
+            controls, and it splits visitors and staying into their own sections). */}
+        <Link href={printHref} target="_blank" className={buttonStyles.outline}>
+          <Printer className="h-4 w-4" /> Print
+        </Link>
         <button onClick={() => setAdding(true)} className={buttonStyles.primary}>
           <Plus /> Register Person
         </button>
@@ -112,6 +117,9 @@ export function AkwaabaHeader() {
 export function AkwaabaFilters(props: {
   q: string;
   status: string;
+  /** The same year/month combo box that drives the cards, repeated next to the table it filters. */
+  period: string;
+  years: string[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -140,8 +148,8 @@ export function AkwaabaFilters(props: {
     "h-11 md:h-10 w-full appearance-none rounded-xl bg-white shadow-sm pl-3 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-blue-100";
 
   return (
-    <div className="flex flex-col md:flex-row gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
-      <div className="relative flex-grow">
+    <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
+      <div className="relative flex-grow min-w-[200px]">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
         <input
           value={q}
@@ -159,57 +167,8 @@ export function AkwaabaFilters(props: {
         </select>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
       </div>
-    </div>
-  );
-}
-
-/* Print bar ----------------------------------------------------------------- */
-
-const PRINT_GROUPS = [
-  { value: "all", label: "Visitors & Staying" },
-  { value: "visiting", label: "Visitors only" },
-  { value: "staying", label: "Staying only" },
-];
-
-/**
- * Opens the printable Akwaaba report for one month — everyone received in that month, or just the
- * visitors or just the staying attendees. The on-screen table itself is not month-filtered, so the
- * month is chosen here (and can be changed again on the report).
- */
-export function AkwaabaPrintBar({ defaultMonth }: { defaultMonth: string }) {
-  const [month, setMonth] = useState(defaultMonth);
-  const [group, setGroup] = useState("all");
-
-  return (
-    <div className="flex flex-col md:flex-row md:items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Print received members</p>
-      <input
-        type="month"
-        value={month}
-        onChange={(e) => setMonth(e.target.value)}
-        aria-label="Month to print"
-        className="h-11 md:h-10 rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-blue-100"
-      />
-      <div className="relative w-full md:w-[200px]">
-        <select
-          value={group}
-          onChange={(e) => setGroup(e.target.value)}
-          aria-label="Who to print"
-          className="h-11 md:h-10 w-full appearance-none rounded-xl bg-slate-50 pl-3 pr-8 text-xs font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-blue-100 cursor-pointer"
-        >
-          {PRINT_GROUPS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
-      </div>
-      <Link
-        href={`/print/akwaaba?month=${month}&group=${group}`}
-        target="_blank"
-        className={`${buttonStyles.outline} w-full md:w-auto justify-center`}
-      >
-        <Printer className="h-4 w-4" /> Print
-      </Link>
+      {/* Year + month combo box — filters the list (and the cards) to what was received then */}
+      <PeriodDropdown currentPeriod={props.period} years={props.years} />
     </div>
   );
 }

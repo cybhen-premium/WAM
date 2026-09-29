@@ -98,7 +98,7 @@ export default async function VisitorConversionPage() {
                     {v.phone ? ` · ${v.phone}` : ""} · Follow-up: {v.stage ?? "not started"}
                   </p>
                 </div>
-                <ConvertButton memberId={v.id} />
+                <ConvertButton memberId={v.id} memberName={v.fullName} />
               </li>
             ))}
           </ul>

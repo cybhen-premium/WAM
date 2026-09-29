@@ -103,6 +103,7 @@ export async function undoSobLesson(memberId: string, lesson: number): Promise<v
   }
 
   revalidatePath("/sob");
+  revalidatePath("/sob/history");
   revalidatePath("/members");
   revalidatePath("/akwaaba");
   revalidatePath("/dashboard");

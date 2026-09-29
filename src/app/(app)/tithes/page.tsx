@@ -50,22 +50,19 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
   const { church } = await requireChurch();
   const sp = await searchParams;
 
-  // Periods — "YYYY" (whole year) or "YYYY-MM" (single month), defaulting to the current year.
-  // The card period (?cardMonth=) and the list period (?month=) are independent: the dropdown above the
-  // summary cards only re-filters the cards, the one above the member list only re-filters the list.
+  // Period — "YYYY" (whole year) or "YYYY-MM" (single month), defaulting to the current year.
+  // One combo box drives the whole page: the summary cards, the member list and the print report.
   const currentYear = String(new Date().getFullYear());
-  const cardPeriod = parsePeriodParam(sp.cardMonth, currentYear);
-  const listPeriod = parsePeriodParam(sp.month, currentYear);
-  const isCardYear = cardPeriod.length === 4;
-  const isListYear = listPeriod.length === 4;
+  const period = parsePeriodParam(sp.month, currentYear);
+  const isYear = period.length === 4;
 
   // Member search — narrows the rows shown; summary cards and the roster counts stay unfiltered.
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
 
   // Year view has no single month — the toolbar's Record Tithe default falls back to the current month and
-  // per-row "Record Tithe" buttons use the month of the section they sit in. "Print Tithers" follows the card
-  // combo box (?cardMonth=) instead — it can be a month or a whole year.
-  const toolbarMonth = isListYear ? new Date().toISOString().slice(0, 7) : listPeriod;
+  // per-row "Record Tithe" buttons use the month of the section they sit in. "Print Tithers" follows the
+  // same combo box and can be a month or a whole year.
+  const toolbarMonth = isYear ? new Date().toISOString().slice(0, 7) : period;
 
   // Tithes are for members only — visitors / regular attendees are still in the Akwaaba → SOB journey.
   const members = await db
@@ -86,15 +83,13 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
   const search = q.toLowerCase();
   const visibleMembers = search ? members.filter((m) => m.fullName.toLowerCase().includes(search)) : members;
 
-  // Summary cards read their own period, the member list the other. Both are the same query when the two
-  // periods match (the common case), so only fetch twice when they differ.
-  const cardRecords = await titheRecordsFor(church.id, cardPeriod);
-  const listRecords = listPeriod === cardPeriod ? cardRecords : await titheRecordsFor(church.id, listPeriod);
+  // Tithe rows for the selected period — the summary cards and the member list read the same set.
+  const records = await titheRecordsFor(church.id, period);
 
   // This member's tithes per month section, keyed `month|memberId` — feeds the row's Edit button, which
   // opens one of them in the edit form (unique per member/week/month by database constraint).
   const tithesByRow = new Map<string, { id: string; week: number; month: string; amount: string }[]>();
-  for (const r of listRecords) {
+  for (const r of records) {
     const key = `${r.month}|${r.memberId}`;
     const entry = { id: r.id, week: r.week, month: r.month, amount: String(r.amount) };
     const list = tithesByRow.get(key);
@@ -123,14 +118,14 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
   let totalCollected = 0;
   const cardTithers = new Set<string>();
 
-  for (const r of cardRecords) {
+  for (const r of records) {
     cardTithers.add(r.memberId);
     totalCollected += Number(r.amount);
   }
 
-  const monthLabel = isCardYear
-    ? `Year ${cardPeriod}`
-    : new Date(cardPeriod + "-01").toLocaleString("default", { month: "long", year: "numeric" });
+  const monthLabel = isYear
+    ? `Year ${period}`
+    : new Date(period + "-01").toLocaleString("default", { month: "long", year: "numeric" });
   // Counted against the listed roster so "X of Y members" can never exceed the member count.
   const activeTithers = members.filter((m) => cardTithers.has(m.id)).length;
 
@@ -138,14 +133,14 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
   const memberTithes = new Map<string, { [week: number]: number }>();
   const memberMonthTithes = new Map<string, Map<string, { [week: number]: number }>>();
 
-  for (const r of listRecords) {
+  for (const r of records) {
     if (!memberTithes.has(r.memberId)) memberTithes.set(r.memberId, {});
     const map = memberTithes.get(r.memberId)!;
     const amt = Number(r.amount);
     // In year view, later months overwrite earlier ones per week — the Total column still sums everything correctly.
     // (Year view renders per-month groupings below instead of the weekly grid.)
     map[r.week] = (map[r.week] ?? 0) + amt;
-    if (isListYear) {
+    if (isYear) {
       if (!memberMonthTithes.has(r.memberId)) memberMonthTithes.set(r.memberId, new Map());
       const byMonth = memberMonthTithes.get(r.memberId)!;
       if (!byMonth.has(r.month)) byMonth.set(r.month, {});
@@ -155,11 +150,11 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
   }
 
   // Year view: months present in the data + per-month totals, newest first
-  const yearMonths = isListYear
-    ? [...new Set(listRecords.map((r) => r.month))].sort().reverse()
+  const yearMonths = isYear
+    ? [...new Set(records.map((r) => r.month))].sort().reverse()
     : [];
   const yearMonthTotals = new Map<string, number>();
-  for (const r of listRecords) {
+  for (const r of records) {
     yearMonthTotals.set(r.month, (yearMonthTotals.get(r.month) ?? 0) + Number(r.amount));
   }
   // While searching, only the months that have a matching tither are listed.
@@ -170,21 +165,21 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
   /* Member list sections — one per month and year the tithes were recorded for */
   /** Week amounts for one member inside one month section (year view keeps the months apart). */
   const memberWeeks = (month: string, memberId: string) =>
-    isListYear ? (memberMonthTithes.get(memberId)?.get(month) ?? {}) : (memberTithes.get(memberId) ?? {});
+    isYear ? (memberMonthTithes.get(memberId)?.get(month) ?? {}) : (memberTithes.get(memberId) ?? {});
   const sumWeeks = (weeks: { [week: number]: number }) => Object.values(weeks).reduce((sum, amt) => sum + amt, 0);
 
-  const listSections = (isListYear ? shownMonths : [listPeriod]).map((month) => {
+  const listSections = (isYear ? shownMonths : [period]).map((month) => {
     const tithers = visibleMembers.filter((m) => sumWeeks(memberWeeks(month, m.id)) > 0);
     return {
       month,
       label: new Date(month + "-01").toLocaleString("default", { month: "long", year: "numeric" }),
       // Year view lists the members who tithed that month; the month view keeps the whole roster so the
       // members who have not given yet stay visible.
-      rows: isListYear ? tithers : visibleMembers,
+      rows: isYear ? tithers : visibleMembers,
       tithers: tithers.length,
       // While searching, the section total covers the rows shown so the two always agree.
       total:
-        !q && isListYear
+        !q && isYear
           ? (yearMonthTotals.get(month) ?? 0)
           : visibleMembers.reduce((sum, m) => sum + sumWeeks(memberWeeks(month, m.id)), 0),
     };
@@ -202,11 +197,8 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
       </div>
 
       <div className="space-y-5">
-        {/* Card period selector + actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <TithePeriodDropdown scope="cards" currentPeriod={cardPeriod} years={years} />
-          <TithesToolbar month={toolbarMonth} period={cardPeriod} members={memberOptions} />
-        </div>
+        {/* Actions — the period combo box sits with the list further down and drives the cards too */}
+        <TithesToolbar month={toolbarMonth} period={period} members={memberOptions} />
 
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -220,7 +212,7 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
           <SummaryCard
             label="Total Tithes"
             value={cedis(totalCollected)}
-            sub={isCardYear ? "Collected this year" : "Collected this month"}
+            sub={isYear ? "Collected this year" : "Collected this month"}
             tone="text-emerald-600"
             icon={Wallet}
           />
@@ -233,9 +225,9 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
           />
         </div>
 
-        {/* List period selector + member search — sits directly above the list */}
+        {/* Period selector + member search — the combo box filters the cards and the list together */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-3">
-          <TithePeriodDropdown scope="list" currentPeriod={listPeriod} years={years} />
+          <TithePeriodDropdown currentPeriod={period} years={years} />
           <TitheSearch q={q} />
         </div>
 
@@ -250,14 +242,14 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
           </div>
         ) : listSections.length === 0 ? (
           <div className="rounded-2xl border border-slate-100 bg-white shadow-sm py-16 text-center text-slate-400 text-sm italic">
-            {q ? `No tithes recorded for “${q}” in ${listPeriod}.` : `No tithes recorded in ${listPeriod} yet.`}
+            {q ? `No tithes recorded for “${q}” in ${period}.` : `No tithes recorded in ${period} yet.`}
           </div>
         ) : (
           <div className="space-y-4">
             {listSections.map(({ month, label, rows: sectionRows, tithers, total }) => {
               const weekCols = weekColumns(
                 month,
-                listRecords.filter((r) => r.month === month).map((r) => r.week),
+                records.filter((r) => r.month === month).map((r) => r.week),
               );
 
               return (

@@ -73,6 +73,16 @@ export function MembersToolbar({ departments }: { departments: Department[] }) {
 
 /* Search + filters (URL driven) -------------------------------------------- */
 
+/**
+ * Groups offered by the "All Groups" filter. Visitors and regular attendees are still in the Akwaaba
+ * journey (they are not members yet) and children belong with the juniors, so none of them are
+ * offered here — they stay valid member categories in the forms, and anyone already carrying one is
+ * still listed under "All Groups".
+ */
+const GROUP_FILTERS = MEMBER_CATEGORIES.filter(
+  (c) => !["Visitor", "Regular Attendee", "Children"].includes(c),
+);
+
 export function MemberFilters(props: {
   q: string;
   group: string;
@@ -120,7 +130,7 @@ export function MemberFilters(props: {
         <div className="relative w-full sm:w-[160px]">
           <select value={props.group} onChange={(e) => update("group", e.target.value)} className={select} aria-label="Group">
             <option value="">All Groups</option>
-            {MEMBER_CATEGORIES.map((c) => (
+            {GROUP_FILTERS.map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>

@@ -3,8 +3,7 @@ import { eq, and, gte, lt } from "drizzle-orm";
 import { ArrowLeft, Droplets } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
-import { cn } from "@/lib/utils";
-import { HistoryFilters } from "./history-client";
+import { HistoryFilters, HistoryTable } from "./history-client";
 
 export const metadata = { title: "Baptism History" };
 
@@ -104,45 +103,22 @@ export default async function SobHistoryPage({ searchParams }: PageProps<"/sob/h
 
       <HistoryFilters years={years} selection={selection} />
 
-      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-x-auto">
-        {rows.length === 0 ? (
+      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+        This log is kept for accountability — removing a row only hides it from this list. The record
+        stays in the database and the person stays baptised.
+      </p>
+
+      {rows.length === 0 ? (
+        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
           <div className="flex flex-col items-center justify-center py-24 text-slate-400 space-y-2">
             <Droplets className="h-12 w-12 opacity-20" />
             <p className="font-bold text-sm">No baptisms found for this period.</p>
             <p className="text-xs">Try a different year or month.</p>
           </div>
-        ) : (
-          <table className="w-full min-w-[640px] text-sm">
-            <thead className="bg-slate-50/50 border-b border-slate-100">
-              <tr>
-                {["Name", "Category", "Contact", "Baptism Date"].map((h) => (
-                  <th key={h} className="px-4 h-14 text-left align-middle font-black text-[10px] uppercase tracking-widest text-slate-400">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.memberId} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
-                  <td className="px-4 pl-8 py-3">
-                    <p className="font-bold text-slate-900">{r.fullName}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-tight", "bg-slate-100 text-slate-600")}>
-                      {r.category}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 font-semibold">{r.phone ?? "—"}</td>
-                  <td className="px-4 pr-8 py-3 text-slate-600 font-semibold">
-                    {r.completedAt ? new Date(r.completedAt + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+        </div>
+      ) : (
+        <HistoryTable rows={rows} />
+      )}
     </div>
   );
 }

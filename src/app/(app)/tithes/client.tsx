@@ -69,37 +69,28 @@ function useLatestParams() {
 /* Period selector ---------------------------------------------------------- */
 
 /**
- * Period selector for one section of the tracker: the year select + month select pair
- * ("All Months" gives the whole year).
- *
- * `scope` decides which URL param it writes, so the dropdown above the summary cards (?cardMonth=)
- * and the one above the member list (?month=) each re-filter only their own section.
+ * The tracker's period selector: the year select + month select pair ("All Months" gives the whole
+ * year). One selector drives the whole page — the summary cards, the member list and the print report.
  */
 export function TithePeriodDropdown({
   currentPeriod,
   years,
-  scope = "list",
 }: {
   currentPeriod: string;
   years: string[];
-  /** Which section this dropdown belongs to — cards read ?cardMonth=, the list reads ?month=. */
-  scope?: "cards" | "list";
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useLatestParams();
-  const param = scope === "cards" ? "cardMonth" : "month";
-  const scopeLabel = scope === "cards" ? "summary cards" : "member list";
 
   const selYear = currentPeriod.slice(0, 4);
   const selMonth = currentPeriod.length === 7 ? currentPeriod.slice(5, 7) : "";
   const yearOptions = years.includes(selYear) ? years : [...years, selYear].sort().reverse();
 
-  // Only this dropdown's param changes — the other period, the member search and any other param are
-  // copied across untouched, so the two sections keep independent periods.
+  // Only the period changes — the member search and any other param are copied across untouched.
   function setPeriod(value: string) {
     const p = new URLSearchParams(params.current.toString());
-    p.set(param, value);
+    p.set("month", value);
     router.push(`${pathname}?${p.toString()}`);
   }
 
@@ -110,7 +101,7 @@ export function TithePeriodDropdown({
           value={selYear}
           onChange={(e) => setPeriod(e.target.value)}
           className={SELECT_CLASS}
-          aria-label={`Filter ${scopeLabel} by year`}
+          aria-label="Filter by year"
         >
           {yearOptions.map((y) => (
             <option key={y} value={y}>{y}</option>
@@ -123,7 +114,7 @@ export function TithePeriodDropdown({
           value={selMonth}
           onChange={(e) => setPeriod(e.target.value ? `${selYear}-${e.target.value}` : selYear)}
           className={SELECT_CLASS}
-          aria-label={`Filter ${scopeLabel} by month`}
+          aria-label="Filter by month"
         >
           <option value="">All Months</option>
           {MONTH_NAMES.map((m, i) => (

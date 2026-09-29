@@ -3,7 +3,7 @@ import { HandHeart, Users, UserCheck } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { AkwaabaHeader, AkwaabaFilters, AkwaabaPrintBar, PersonRowActions, PeriodDropdown } from "./client";
+import { AkwaabaHeader, AkwaabaFilters, PersonRowActions } from "./client";
 
 export const metadata = { title: "Akwaaba - Reception" };
 
@@ -30,34 +30,35 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   // moves a person to "General Member" and they must stay on this list. The two *current* reception
   // statuses below are what the status filter and the Status column work from.
 
-  // Table filters: search + status only (no period — table always shows everyone)
+  /** Date window a registration must fall in for the selected period ("YYYY" or "YYYY-MM"). */
+  function receptionRange(sel: string) {
+    if (sel.length === 4) {
+      const y = Number(sel);
+      return { start: `${y}-01-01`, end: new Date(Date.UTC(y + 1, 0, 1)).toISOString().slice(0, 10) };
+    }
+    const [y, m] = sel.split("-").map(Number);
+    return { start: `${sel}-01`, end: new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10) };
+  }
+  const range = receptionRange(period);
+
+  // The year/month combo box filters the table *and* the cards — both show what was received in it.
   const tableFilters: (SQL | undefined)[] = [
     eq(schema.member.churchId, church.id),
     eq(schema.member.fromAkwaaba, true),
+    gte(schema.member.joinedAt, range.start),
+    lt(schema.member.joinedAt, range.end),
   ];
   if (status === "visiting") tableFilters.push(eq(schema.member.category, "Visitor"));
   if (status === "staying") tableFilters.push(eq(schema.member.category, "Regular Attendee"));
   if (q) tableFilters.push(ilike(schema.member.fullName, `%${q}%`));
 
-  // Card filters: period always set (year or month)
+  // Cards use the same period window as the table (search / status only narrow the table itself)
   const cardFilters: (SQL | undefined)[] = [
     eq(schema.member.churchId, church.id),
     eq(schema.member.fromAkwaaba, true),
+    gte(schema.member.joinedAt, range.start),
+    lt(schema.member.joinedAt, range.end),
   ];
-  {
-    let start: string;
-    let end: string;
-    if (period.length === 4) {
-      const y = Number(period);
-      start = `${y}-01-01`;
-      end = new Date(Date.UTC(y + 1, 0, 1)).toISOString().slice(0, 10);
-    } else {
-      const [y, m] = period.split("-").map(Number);
-      start = `${period}-01`;
-      end = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
-    }
-    cardFilters.push(and(gte(schema.member.joinedAt, start), lt(schema.member.joinedAt, end)));
-  }
 
   // Years with at least one registration (year dropdown options)
   const [rows, counts, yearRows] = await Promise.all([
@@ -102,10 +103,12 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
 
   return (
     <div className="space-y-5 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
-      <AkwaabaHeader />
+      {/* Print opens the report for the month being viewed (the report page can change it). */}
+      <AkwaabaHeader
+        printHref={`/print/akwaaba?month=${period.length === 7 ? period : new Date().toISOString().slice(0, 7)}&group=all`}
+      />
 
-      {/* Period dropdowns for card stats */}
-      <PeriodDropdown currentPeriod={period} years={years} />
+      {/* The year/month combo box sits in the filter bar above the table and drives the cards too */}
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -137,18 +140,13 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
 
 
 
-      <AkwaabaPrintBar
-        defaultMonth={period.length === 7 ? period : new Date().toISOString().slice(0, 7)}
-      />
+      <AkwaabaFilters q={q} status={status} period={period} years={years} />
 
-      <AkwaabaFilters q={q} status={status} />
-
-      {/* Result count hint */}
-      {(q || status) && (
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest -mt-2">
-          Showing {rows.length} people
-        </p>
-      )}
+      {/* Result count hint — always names the period the table is showing */}
+      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest -mt-2">
+        Showing {rows.length} {rows.length === 1 ? "person" : "people"} received in {periodHint}
+        {q || status ? " matching your filters" : ""}
+      </p>
 
       {/* People table */}
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-x-auto">
@@ -171,11 +169,13 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="h-64 text-center">
+                <td colSpan={7} className="h-64 text-center">
                   <div className="flex flex-col items-center justify-center text-slate-400">
                     <HandHeart className="h-10 w-10 mb-3 opacity-20" />
                     <p className="text-sm font-medium italic">
-                      {q || status ? "No people match your filters." : "No people registered yet."}
+                      {q || status
+                        ? `No people match your filters for ${periodHint}.`
+                        : `No one was received in ${periodHint}.`}
                     </p>
                   </div>
                 </td>
