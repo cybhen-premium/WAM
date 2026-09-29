@@ -38,7 +38,8 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
   if (!values.fullName) return { error: "Full name is required." };
 
   if (values.id) {
-    // Update existing person
+    // Update existing person. `fromAkwaaba` is deliberately left alone — it records how they arrived,
+    // so someone who has since graduated to a full member keeps appearing on the Akwaaba list.
     await db
       .update(member)
       .set({
@@ -67,6 +68,7 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
         joinedAt: values.joinedAt,
         churchId: church.id,
         baptized: false, // Not baptized until SOB completion
+        fromAkwaaba: true, // Received through Akwaaba — kept on the list even after baptism
       })
       .returning({ id: member.id });
 

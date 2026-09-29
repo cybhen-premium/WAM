@@ -173,6 +173,10 @@ export const member = pgTable(
     joinedAt: date("joined_at").defaultNow(),
     // Set when a "Visitor" is converted to another category.
     convertedAt: date("converted_at"),
+    // Permanent marker: the person was received through Akwaaba. Baptism later changes `category`
+    // (Visitor / Regular Attendee → General Member), but this flag never changes, so they stay on the
+    // Akwaaba list after they graduate.
+    fromAkwaaba: boolean("from_akwaaba").notNull().default(false),
     lastAttendedAt: date("last_attended_at"),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),

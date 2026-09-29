@@ -20,22 +20,14 @@ export function AddToPipelineButton({ members }: { members: { id: string; fullNa
       <Modal open={open} onClose={() => setOpen(false)} title="Add to Pipeline" subtitle="Follow-up" icon={UserPlus}>
         <form action={action} className="space-y-5 text-left">
           {members.length === 0 ? (
-            <p className="text-sm text-slate-600">Everyone is already in the pipeline, or there are no members yet.</p>
+            <p className="text-sm text-slate-600">Every visitor is already in the pipeline, or you have no visitors yet.</p>
           ) : (
             <>
               <SelectField
-                label="Member"
+                label="Visitor"
                 name="memberId"
                 required
-                options={[{ value: "", label: "Select member..." }, ...members.map((m) => ({ value: m.id, label: m.fullName }))]}
-              />
-              <SelectField
-                label="Reason"
-                name="kind"
-                options={[
-                  { value: "convert", label: "New convert / visitor" },
-                  { value: "lost_sheep", label: "Lost sheep (absent member)" },
-                ]}
+                options={[{ value: "", label: "Select visitor..." }, ...members.map((m) => ({ value: m.id, label: m.fullName }))]}
               />
               <TextField label="Assigned To" name="assignedTo" placeholder="e.g. Deacon Mensah" />
               <TextAreaField label="Notes" name="notes" rows={2} />

@@ -9,6 +9,9 @@ export const metadata = { title: "Follow-up Pipeline" };
 
 const { followUp, member } = schema;
 
+/** The pipeline tracks Akwaaba visitors only — full members and regular attendees are followed up elsewhere. */
+const VISITOR_CATEGORY = "Visitor";
+
 const COLUMNS = [
   { stage: "new", label: "New", icon: UserPlus, tone: "text-blue-600 bg-blue-50", bar: "bg-blue-500" },
   { stage: "contacted", label: "Contacted", icon: Phone, tone: "text-amber-600 bg-amber-50", bar: "bg-amber-500" },
@@ -23,7 +26,7 @@ export default async function FollowUpPage() {
     .select({ f: followUp, fullName: member.fullName, phone: member.phone, category: member.category })
     .from(followUp)
     .innerJoin(member, eq(member.id, followUp.memberId))
-    .where(eq(followUp.churchId, church.id))
+    .where(and(eq(followUp.churchId, church.id), eq(member.category, VISITOR_CATEGORY)))
     .orderBy(desc(followUp.updatedAt));
 
   const inPipeline = entries.map((e) => e.f.memberId);
@@ -34,6 +37,7 @@ export default async function FollowUpPage() {
       and(
         eq(member.churchId, church.id),
         eq(member.active, true),
+        eq(member.category, VISITOR_CATEGORY),
         inPipeline.length ? notInArray(member.id, inPipeline) : undefined,
       ),
     )
@@ -49,7 +53,7 @@ export default async function FollowUpPage() {
           <div>
             <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Follow-up Pipeline</h1>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Track and nurture your new converts and visitors
+              Track and nurture the visitors you have received
             </p>
           </div>
         </div>

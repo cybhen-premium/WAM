@@ -71,6 +71,13 @@
       "when": 1789992103961,
       "tag": "0009_platform_setting",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790704356816,
+      "tag": "0010_akwaaba_intake",
+      "breakpoints": true
     }
   ]
 }

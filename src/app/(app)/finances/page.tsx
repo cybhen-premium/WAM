@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { eq, sql } from "drizzle-orm";
 import {
-  Building2,
   ChartPie,
   Receipt,
   TrendingUp,
@@ -11,19 +10,18 @@ import { requireChurch } from "@/lib/session";
 import { inPeriod, parsePeriod, periodLabel, sumAmount } from "@/lib/finance";
 import { cedis, cn } from "@/lib/utils";
 import { FinanceHeader } from "./finance-client";
-import { AnalyticsTab, GeneralTab, ReceiptsTab, VendorsTab } from "./tabs";
+import { AnalyticsTab, GeneralTab, ReceiptsTab } from "./tabs";
 
 export const metadata = { title: "Financial Hub" };
 
 const TABS = [
   { id: "general", label: "General", icon: ChartPie },
   { id: "analytics", label: "Analytics", icon: TrendingUp },
-  { id: "vendors", label: "Vendors", icon: Building2 },
   { id: "receipts", label: "Receipts", icon: Receipt },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
-const { transaction, vendor, projectFund } = schema;
+const { transaction, projectFund } = schema;
 
 export default async function FinancesPage({ searchParams }: PageProps<"/finances">) {
   const { church } = await requireChurch();
@@ -34,7 +32,7 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
   const q = typeof sp.q === "string" ? sp.q : "";
 
   const where = inPeriod(church.id, period);
-  const [totals, breakdown, vendors, projects, yearRows] = await Promise.all([
+  const [totals, breakdown, projects, yearRows] = await Promise.all([
     db
       .select({ type: transaction.type, total: sumAmount })
       .from(transaction)
@@ -46,7 +44,6 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
       .where(where)
       .groupBy(transaction.category, transaction.type)
       .orderBy(sql`2, 3 desc`),
-    db.select({ id: vendor.id, name: vendor.name }).from(vendor).where(eq(vendor.churchId, church.id)).orderBy(vendor.name),
     db
       .select({ id: projectFund.id, name: projectFund.name })
       .from(projectFund)
@@ -87,7 +84,6 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
       <FinanceHeader
         period={period}
         years={years}
-        vendors={vendors}
         projects={projects}
       />
 
@@ -153,7 +149,6 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
 
         {tab === "general" && <GeneralTab churchId={church.id} period={period} q={q} />}
         {tab === "analytics" && <AnalyticsTab churchId={church.id} />}
-        {tab === "vendors" && <VendorsTab churchId={church.id} />}
         {tab === "receipts" && (
           <ReceiptsTab churchId={church.id} period={period} category={typeof sp.category === "string" ? sp.category : ""} />
         )}

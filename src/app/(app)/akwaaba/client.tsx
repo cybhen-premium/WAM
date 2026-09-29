@@ -3,13 +3,15 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useFormAction } from "@/components/use-form-action";
+import Link from "next/link";
 import { 
   Plus, 
   Search, 
   ChevronDown, 
   HandHeart, 
   UserPlus, 
-  Pencil, 
+  Pencil,
+  Printer,
   Trash2, 
   UserMinus, 
   UserRoundCheck,
@@ -157,6 +159,57 @@ export function AkwaabaFilters(props: {
         </select>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
       </div>
+    </div>
+  );
+}
+
+/* Print bar ----------------------------------------------------------------- */
+
+const PRINT_GROUPS = [
+  { value: "all", label: "Visitors & Staying" },
+  { value: "visiting", label: "Visitors only" },
+  { value: "staying", label: "Staying only" },
+];
+
+/**
+ * Opens the printable Akwaaba report for one month — everyone received in that month, or just the
+ * visitors or just the staying attendees. The on-screen table itself is not month-filtered, so the
+ * month is chosen here (and can be changed again on the report).
+ */
+export function AkwaabaPrintBar({ defaultMonth }: { defaultMonth: string }) {
+  const [month, setMonth] = useState(defaultMonth);
+  const [group, setGroup] = useState("all");
+
+  return (
+    <div className="flex flex-col md:flex-row md:items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Print received members</p>
+      <input
+        type="month"
+        value={month}
+        onChange={(e) => setMonth(e.target.value)}
+        aria-label="Month to print"
+        className="h-11 md:h-10 rounded-xl bg-slate-50 px-3 text-xs font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-blue-100"
+      />
+      <div className="relative w-full md:w-[200px]">
+        <select
+          value={group}
+          onChange={(e) => setGroup(e.target.value)}
+          aria-label="Who to print"
+          className="h-11 md:h-10 w-full appearance-none rounded-xl bg-slate-50 pl-3 pr-8 text-xs font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-blue-100 cursor-pointer"
+        >
+          {PRINT_GROUPS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+      </div>
+      <Link
+        href={`/print/akwaaba?month=${month}&group=${group}`}
+        target="_blank"
+        className={`${buttonStyles.outline} w-full md:w-auto justify-center`}
+      >
+        <Printer className="h-4 w-4" /> Print
+      </Link>
     </div>
   );
 }

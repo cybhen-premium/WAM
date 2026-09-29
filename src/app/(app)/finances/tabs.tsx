@@ -1,21 +1,20 @@
 import Link from "next/link";
-import { and, countDistinct, desc, eq, ilike, isNotNull, or, sql, count } from "drizzle-orm";
-import { Building2, FileText, Printer } from "lucide-react";
+import { and, countDistinct, desc, eq, ilike, isNotNull, or, sql } from "drizzle-orm";
+import { FileText, Printer } from "lucide-react";
 import { db, schema } from "@/db";
 import { inPeriod, receiptLabel, sumAmount, type Period } from "@/lib/finance";
 import { TITHE, WELFARE_DUES, WELFARE_SUPPORT } from "@/lib/constants";
 import { cedis, cn, fmtDate } from "@/lib/utils";
 import {
   AddProjectButton,
-  AddVendorButton,
   ReceiptTypeFilter,
   RecordContributionForm,
   RecordWelfareButton,
 } from "./finance-client";
 import { DeleteButton, SearchBox } from "@/components/controls";
-import { deleteProject, deleteTransaction, deleteVendor } from "./actions";
+import { deleteProject, deleteTransaction } from "./actions";
 
-const { transaction, member, vendor, projectFund } = schema;
+const { transaction, member, projectFund } = schema;
 
 type Option = { id: string; fullName: string };
 
@@ -44,11 +43,9 @@ export async function GeneralTab({ churchId, period, q }: { churchId: string; pe
     .select({
       t: transaction,
       memberName: member.fullName,
-      vendorName: vendor.name,
     })
     .from(transaction)
     .leftJoin(member, eq(member.id, transaction.memberId))
-    .leftJoin(vendor, eq(vendor.id, transaction.vendorId))
     .where(and(inPeriod(churchId, period), q ? or(ilike(transaction.category, like), ilike(transaction.description, like)) : undefined))
     .orderBy(desc(transaction.occurredOn), desc(transaction.createdAt))
     .limit(200);
@@ -73,7 +70,7 @@ export async function GeneralTab({ churchId, period, q }: { churchId: string; pe
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ t, memberName, vendorName }) => (
+              {rows.map(({ t, memberName }) => (
                 <tr key={t.id} className="border-t border-slate-50 hover:bg-slate-50/50">
                   <td className={cn(TD, "pl-6 text-slate-500 text-xs font-semibold whitespace-nowrap")}>{fmtDate(t.occurredOn)}</td>
                   <td className={TD}>
@@ -87,7 +84,7 @@ export async function GeneralTab({ churchId, period, q }: { churchId: string; pe
                     </span>
                   </td>
                   <td className={cn(TD, "text-slate-600")}>
-                    {[memberName, vendorName, t.description].filter(Boolean).join(" · ") || "—"}
+                    {[memberName, t.description].filter(Boolean).join(" · ") || "—"}
                   </td>
                   <td className={cn(TD, "text-right font-black", t.type === "income" ? "text-green-600" : "text-red-600")}>
                     {t.type === "expense" ? "−" : "+"}
@@ -406,72 +403,6 @@ export async function AnalyticsTab({ churchId }: { churchId: string }) {
             ))}
           </tbody>
         </table>
-      </div>
-    </div>
-  );
-}
-
-/* Vendors ------------------------------------------------------------------ */
-
-export async function VendorsTab({ churchId }: { churchId: string }) {
-  const recent = sql`${transaction.occurredOn} >= current_date - 90`;
-  const [vendors, [recentStats]] = await Promise.all([
-    db
-      .select({
-        v: vendor,
-        spent: sql<string>`coalesce(sum(${transaction.amount}), 0)`,
-        txns: count(transaction.id),
-      })
-      .from(vendor)
-      .leftJoin(transaction, eq(transaction.vendorId, vendor.id))
-      .where(eq(vendor.churchId, churchId))
-      .groupBy(vendor.id)
-      .orderBy(vendor.name),
-    db
-      .select({ total: sumAmount, n: count() })
-      .from(transaction)
-      .where(and(eq(transaction.churchId, churchId), isNotNull(transaction.vendorId), recent)),
-  ]);
-
-  return (
-    <div className="p-4 md:p-6 space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Stat label="Total Vendors" value={vendors.length} />
-        <Stat label="Vendor Expenses (Recent)" value={cedis(recentStats.total)} hint="Last 90 days" tone="text-red-600" />
-        <Stat label="Transactions" value={recentStats.n} hint="Last 90 days" />
-      </div>
-      <div className="rounded-[1.5rem] border border-slate-100">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-black text-slate-900">Vendor Directory</h3>
-          <AddVendorButton />
-        </div>
-        {vendors.length === 0 ? (
-          <div className="text-center py-12">
-            <Building2 className="h-10 w-10 mx-auto text-slate-300 mb-2" />
-            <p className="text-sm font-bold text-slate-700">No vendors yet</p>
-            <p className="text-xs text-slate-500 mt-1">Add your first vendor to start tracking expenses</p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-slate-50">
-            {vendors.map(({ v, spent, txns }) => (
-              <li key={v.id} className="flex items-center justify-between gap-3 px-5 py-3">
-                <div className="min-w-0">
-                  <p className="font-bold text-slate-900 truncate">{v.name}</p>
-                  <p className="text-xs text-slate-500 truncate">
-                    {[v.service, v.contactName, v.phone, v.email].filter(Boolean).join(" · ") || "No details"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-right">
-                    <p className="text-sm font-black text-red-600">{cedis(spent)}</p>
-                    <p className="text-[10px] font-bold uppercase text-slate-400">{txns} payments</p>
-                  </div>
-                  <DeleteButton action={deleteVendor.bind(null, v.id)} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
     </div>
   );

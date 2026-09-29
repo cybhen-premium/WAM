@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { useFormAction } from "@/components/use-form-action";
 import Link from "next/link";
 import {
-  Building2,
   ChevronDown,
   FileChartColumnIncreasing,
   Heart,
@@ -23,7 +22,6 @@ import {
   recordContribution,
   recordWelfareOut,
   saveProject,
-  saveVendor,
   type FormState,
 } from "./actions";
 
@@ -46,7 +44,6 @@ function ErrorText({ state }: { state: FormState }) {
 export function FinanceHeader(props: {
   period: string;
   years: string[];
-  vendors: Named[];
   projects: Named[];
 }) {
   const [setParam] = useSetUrlParam();
@@ -148,12 +145,10 @@ export function FinanceHeader(props: {
 function AddTransactionModal({
   open,
   onClose,
-  vendors,
   projects,
 }: {
   open: boolean;
   onClose: () => void;
-  vendors: Named[];
   projects: Named[];
 }) {
   const [state, action, pending] = useFormAction(addTransaction, onClose);
@@ -196,14 +191,6 @@ function AddTransactionModal({
               label="Project"
               name="projectId"
               options={[{ value: "", label: "Select project..." }, ...projects.map((p) => ({ value: p.id, label: p.name }))]}
-            />
-          )}
-          {type === "expense" && vendors.length > 0 && (
-            <SelectField
-              className="sm:col-span-2"
-              label="Vendor (optional)"
-              name="vendorId"
-              options={[{ value: "", label: "No vendor" }, ...vendors.map((v) => ({ value: v.id, label: v.name }))]}
             />
           )}
         </div>
@@ -355,36 +342,6 @@ export function RecordWelfareButton({ members }: { members: Option[] }) {
           <ErrorText state={state} />
           <button type="submit" disabled={pending} className={buttonStyles.submit}>
             {pending ? "Saving…" : "Record Welfare"}
-          </button>
-        </form>
-      </Modal>
-    </>
-  );
-}
-
-/* Vendors ------------------------------------------------------------------ */
-
-export function AddVendorButton() {
-  const [open, setOpen] = useState(false);
-  const [state, action, pending] = useFormAction(saveVendor, () => setOpen(false));
-
-  return (
-    <>
-      <button onClick={() => setOpen(true)} className={buttonStyles.primary}>
-        <Plus /> Add Vendor
-      </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Add Vendor" subtitle="Supplier Directory" icon={Building2}>
-        <form action={action} className="space-y-5 text-left">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <TextField className="sm:col-span-2" label="Vendor Name" name="name" required placeholder="e.g., ECG, Accra Sound Systems" />
-            <TextField label="Service" name="service" placeholder="e.g., Electricity, PA Rental" />
-            <TextField label="Contact Person" name="contactName" />
-            <TextField label="Phone" name="phone" type="tel" placeholder="024XXXXXXX" />
-            <TextField label="Email" name="email" type="email" />
-          </div>
-          <ErrorText state={state} />
-          <button type="submit" disabled={pending} className={buttonStyles.submit}>
-            {pending ? "Saving…" : "Save Vendor"}
           </button>
         </form>
       </Modal>

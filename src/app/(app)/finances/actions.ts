@@ -10,7 +10,7 @@ import {
   WELFARE_SUPPORT,
 } from "@/lib/constants";
 
-const { transaction, vendor, projectFund, member } = schema;
+const { transaction, projectFund, member } = schema;
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -23,7 +23,7 @@ function amountOf(f: FormData) {
 }
 
 /** Ensures an optional id belongs to this church before we store it. */
-async function owned(table: typeof member | typeof vendor | typeof projectFund, id: string, churchId: string) {
+async function owned(table: typeof member | typeof projectFund, id: string, churchId: string) {
   if (!id) return null;
   const [row] = await db
     .select({ id: table.id })
@@ -66,7 +66,6 @@ export async function addTransaction(_prev: FormState, f: FormData): Promise<For
     occurredOn: isDate(s(f, "date")) ? s(f, "date") : undefined,
     description: s(f, "description") || null,
     memberId: await owned(member, s(f, "memberId"), church.id),
-    vendorId: type === "expense" ? await owned(vendor, s(f, "vendorId"), church.id) : null,
     projectId: category === "Project Fund" ? await owned(projectFund, s(f, "projectId"), church.id) : null,
     receiptNo: type === "income" ? await nextReceiptNo(church.id) : null,
   });
@@ -117,27 +116,6 @@ export async function recordWelfareOut(_prev: FormState, f: FormData): Promise<F
 export async function deleteTransaction(id: string) {
   const { church } = await requireChurch();
   await db.delete(transaction).where(and(eq(transaction.id, id), eq(transaction.churchId, church.id)));
-  done();
-}
-
-export async function saveVendor(_prev: FormState, f: FormData): Promise<FormState> {
-  const { church } = await requireChurch();
-  const name = s(f, "name");
-  if (!name) return { error: "Vendor name is required." };
-  await db.insert(vendor).values({
-    churchId: church.id,
-    name,
-    service: s(f, "service") || null,
-    contactName: s(f, "contactName") || null,
-    phone: s(f, "phone") || null,
-    email: s(f, "email") || null,
-  });
-  return done();
-}
-
-export async function deleteVendor(id: string) {
-  const { church } = await requireChurch();
-  await db.delete(vendor).where(and(eq(vendor.id, id), eq(vendor.churchId, church.id)));
   done();
 }
 

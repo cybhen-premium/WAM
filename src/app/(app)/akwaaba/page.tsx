@@ -1,9 +1,9 @@
-import { eq, and, ilike, asc, count, sql, gte, lt, inArray, type SQL } from "drizzle-orm";
+import { eq, and, ilike, asc, count, sql, gte, lt, type SQL } from "drizzle-orm";
 import { HandHeart, Users, UserCheck } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { AkwaabaHeader, AkwaabaFilters, PersonRowActions, PeriodDropdown } from "./client";
+import { AkwaabaHeader, AkwaabaFilters, AkwaabaPrintBar, PersonRowActions, PeriodDropdown } from "./client";
 
 export const metadata = { title: "Akwaaba - Reception" };
 
@@ -26,13 +26,14 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   }
   const period = parseSelection(sp.period);
 
-  // Akwaaba only tracks reception categories — full members added via /members must never appear here.
-  const AKWAABA_CATEGORIES = ["Visitor", "Regular Attendee"];
+  // Akwaaba lists everyone received through reception — `fromAkwaaba`, not the category: baptism later
+  // moves a person to "General Member" and they must stay on this list. The two *current* reception
+  // statuses below are what the status filter and the Status column work from.
 
   // Table filters: search + status only (no period — table always shows everyone)
   const tableFilters: (SQL | undefined)[] = [
     eq(schema.member.churchId, church.id),
-    inArray(schema.member.category, AKWAABA_CATEGORIES),
+    eq(schema.member.fromAkwaaba, true),
   ];
   if (status === "visiting") tableFilters.push(eq(schema.member.category, "Visitor"));
   if (status === "staying") tableFilters.push(eq(schema.member.category, "Regular Attendee"));
@@ -41,7 +42,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   // Card filters: period always set (year or month)
   const cardFilters: (SQL | undefined)[] = [
     eq(schema.member.churchId, church.id),
-    inArray(schema.member.category, AKWAABA_CATEGORIES),
+    eq(schema.member.fromAkwaaba, true),
   ];
   {
     let start: string;
@@ -80,7 +81,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
       .where(
         and(
           eq(schema.member.churchId, church.id),
-          inArray(schema.member.category, AKWAABA_CATEGORIES),
+          eq(schema.member.fromAkwaaba, true),
         ),
       )
       .groupBy(sql`to_char(${schema.member.joinedAt}, 'YYYY')`)
@@ -92,7 +93,8 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
 
   const visitingCount = counts.find((c) => c.category === "Visitor")?.n ?? 0;
   const stayingCount = counts.find((c) => c.category === "Regular Attendee")?.n ?? 0;
-  const totalCount = visitingCount + stayingCount;
+  // Everyone received — includes the ones who have since graduated to a full member.
+  const totalCount = counts.reduce((sum, c) => sum + c.n, 0);
   const periodHint =
     period.length === 4
       ? period
@@ -126,7 +128,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
         <StatCard
           label="Total Registered"
           value={totalCount}
-          sub="people in system"
+          sub="received through Akwaaba"
           hint={periodHint}
           icon={HandHeart}
           tone="text-orange-600 bg-orange-50"
@@ -134,6 +136,10 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
       </div>
 
 
+
+      <AkwaabaPrintBar
+        defaultMonth={period.length === 7 ? period : new Date().toISOString().slice(0, 7)}
+      />
 
       <AkwaabaFilters q={q} status={status} />
 
@@ -203,9 +209,12 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-tight ${
                       person.category === "Visitor" 
                         ? "bg-blue-50 text-blue-600" 
-                        : "bg-emerald-50 text-emerald-600"
+                        : person.category === "Regular Attendee"
+                          ? "bg-emerald-50 text-emerald-600"
+                          : "bg-slate-100 text-slate-600"
                     }`}>
-                      {person.category === "Visitor" ? "Visiting" : "Staying"}
+                      {/* After baptism the category becomes a full member one — show that instead of "Staying". */}
+                      {person.category === "Visitor" ? "Visiting" : person.category === "Regular Attendee" ? "Staying" : person.category}
                     </span>
                   </td>
                   <td className="px-4 pr-8 py-3 text-right">

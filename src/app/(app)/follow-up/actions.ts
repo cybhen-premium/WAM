@@ -20,16 +20,18 @@ export async function addToPipeline(_prev: FormState, f: FormData): Promise<Form
   const { church } = await requireChurch();
   const memberId = String(f.get("memberId") ?? "");
   const [m] = await db
-    .select({ id: member.id })
+    .select({ id: member.id, category: member.category })
     .from(member)
     .where(and(eq(member.id, memberId), eq(member.churchId, church.id)))
     .limit(1);
   if (!m) return { error: "Select a member." };
+  // The pipeline is for Akwaaba visitors only.
+  if (m.category !== "Visitor") return { error: "Only visitors can be added to the follow-up pipeline." };
 
   await db.insert(followUp).values({
     churchId: church.id,
     memberId: m.id,
-    kind: String(f.get("kind")) === "lost_sheep" ? "lost_sheep" : "convert",
+    kind: "convert",
     assignedTo: String(f.get("assignedTo") ?? "").trim() || null,
     notes: String(f.get("notes") ?? "").trim() || null,
   });
