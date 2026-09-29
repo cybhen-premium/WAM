@@ -10,26 +10,59 @@ export const metadata = { title: "Tithes Tracker" };
 /** Visitors and regular attendees are still in the Akwaaba → SOB journey, so they are not full members yet. */
 const NON_MEMBER_CATEGORIES: string[] = ["Visitor", "Regular Attendee"];
 
+/** "YYYY" (whole year) or "YYYY-MM" (single month), else `fallback` (the current year). */
+function parsePeriodParam(v: unknown, fallback: string): string {
+  if (typeof v === "string") {
+    if (/^\d{4}-(0[1-9]|1[0-2])$/.test(v)) return v;
+    if (/^\d{4}$/.test(v)) return v;
+  }
+  return fallback;
+}
+
+/**
+ * Tithe rows for a "YYYY" year or "YYYY-MM" month, joined to the payer so a non-member tithe is never
+ * counted. tithes.month is stored as "YYYY-MM", so a year uses a prefix range.
+ */
+function titheRecordsFor(churchId: string, period: string) {
+  return db
+    .select({
+      memberId: schema.tithe.memberId,
+      amount: schema.tithe.amount,
+      week: schema.tithe.week,
+      month: schema.tithe.month,
+    })
+    .from(schema.tithe)
+    .innerJoin(schema.member, eq(schema.tithe.memberId, schema.member.id))
+    .where(
+      and(
+        eq(schema.tithe.churchId, churchId),
+        notInArray(schema.member.category, NON_MEMBER_CATEGORIES),
+        period.length === 4
+          ? and(gte(schema.tithe.month, `${period}-01`), lt(schema.tithe.month, `${Number(period) + 1}-01`))
+          : eq(schema.tithe.month, period),
+      )
+    );
+}
+
 export default async function TithesPage({ searchParams }: PageProps<"/tithes">) {
   const { church } = await requireChurch();
   const sp = await searchParams;
 
-  // Determine period — "YYYY" (whole year) or "YYYY-MM" (single month), defaults to current year
-  const rawPeriod = typeof sp.month === "string" ? sp.month : "";
+  // Periods — "YYYY" (whole year) or "YYYY-MM" (single month), defaulting to the current year.
+  // The card period (?cardMonth=) and the list period (?month=) are independent: the dropdown above the
+  // summary cards only re-filters the cards, the one above the member list only re-filters the list.
   const currentYear = String(new Date().getFullYear());
-  const period = /^\d{4}-(0[1-9]|1[0-2])$/.test(rawPeriod)
-    ? rawPeriod
-    : /^\d{4}$/.test(rawPeriod)
-      ? rawPeriod
-      : currentYear;
-  const isYear = period.length === 4;
+  const cardPeriod = parsePeriodParam(sp.cardMonth, currentYear);
+  const listPeriod = parsePeriodParam(sp.month, currentYear);
+  const isCardYear = cardPeriod.length === 4;
+  const isListYear = listPeriod.length === 4;
 
   // Member search — narrows the rows shown; summary cards and the roster counts stay unfiltered.
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
 
   // Year view has no single month — the toolbar (Print Tithers link, Record Tithe default) falls back to the
   // current month; per-row "Record Tithe" buttons use the month of the section they sit in.
-  const toolbarMonth = isYear ? new Date().toISOString().slice(0, 7) : period;
+  const toolbarMonth = isListYear ? new Date().toISOString().slice(0, 7) : listPeriod;
 
   // Tithes are for members only — visitors / regular attendees are still in the Akwaaba → SOB journey.
   const members = await db
@@ -47,26 +80,10 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
   const search = q.toLowerCase();
   const visibleMembers = search ? members.filter((m) => m.fullName.toLowerCase().includes(search)) : members;
 
-  // Fetch tithes for this period (year or month), joined to the payer so a non-member tithe is never counted.
-  // tithes.month is stored as "YYYY-MM", so a year uses a prefix range
-  const titheRecords = await db
-    .select({
-      memberId: schema.tithe.memberId,
-      amount: schema.tithe.amount,
-      week: schema.tithe.week,
-      month: schema.tithe.month,
-    })
-    .from(schema.tithe)
-    .innerJoin(schema.member, eq(schema.tithe.memberId, schema.member.id))
-    .where(
-      and(
-        eq(schema.tithe.churchId, church.id),
-        notInArray(schema.member.category, NON_MEMBER_CATEGORIES),
-        isYear
-          ? and(gte(schema.tithe.month, `${period}-01`), lt(schema.tithe.month, `${Number(period) + 1}-01`))
-          : eq(schema.tithe.month, period),
-      )
-    );
+  // Summary cards read their own period, the member list the other. Both are the same query when the two
+  // periods match (the common case), so only fetch twice when they differ.
+  const cardRecords = await titheRecordsFor(church.id, cardPeriod);
+  const listRecords = listPeriod === cardPeriod ? cardRecords : await titheRecordsFor(church.id, listPeriod);
 
   // Years with at least one member tithe (year dropdown options)
   const yearRows = await db
@@ -84,20 +101,33 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
   const years = [...new Set(yearRows.map((r) => r.year).filter(Boolean))].sort().reverse();
   if (!years.includes(currentYear)) years.unshift(currentYear);
 
+  /* Summary cards — card period only (the member search does not affect them) */
+  let totalCollected = 0;
+  const cardTithers = new Set<string>();
+
+  for (const r of cardRecords) {
+    cardTithers.add(r.memberId);
+    totalCollected += Number(r.amount);
+  }
+
+  const monthLabel = isCardYear
+    ? `Year ${cardPeriod}`
+    : new Date(cardPeriod + "-01").toLocaleString("default", { month: "long", year: "numeric" });
+  // Counted against the listed roster so "X of Y members" can never exceed the member count.
+  const activeTithers = members.filter((m) => cardTithers.has(m.id)).length;
+
+  /* Member list — list period only */
   const memberTithes = new Map<string, { [week: number]: number }>();
   const memberMonthTithes = new Map<string, Map<string, { [week: number]: number }>>();
-  // Only member tithes reach this point, so the totals match the rows listed below.
-  let totalCollected = 0;
 
-  for (const r of titheRecords) {
+  for (const r of listRecords) {
     if (!memberTithes.has(r.memberId)) memberTithes.set(r.memberId, {});
     const map = memberTithes.get(r.memberId)!;
     const amt = Number(r.amount);
     // In year view, later months overwrite earlier ones per week — the Total column still sums everything correctly.
     // (Year view renders per-month groupings below instead of the weekly grid.)
     map[r.week] = (map[r.week] ?? 0) + amt;
-    totalCollected += amt;
-    if (isYear) {
+    if (isListYear) {
       if (!memberMonthTithes.has(r.memberId)) memberMonthTithes.set(r.memberId, new Map());
       const byMonth = memberMonthTithes.get(r.memberId)!;
       if (!byMonth.has(r.month)) byMonth.set(r.month, {});
@@ -106,18 +136,12 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
     }
   }
 
-  const monthLabel = isYear
-    ? `Year ${period}`
-    : new Date(period + "-01").toLocaleString("default", { month: "long", year: "numeric" });
-  // Counted against the listed roster so "X of Y members" can never exceed the member count.
-  const activeTithers = members.filter((m) => memberTithes.has(m.id)).length;
-
   // Year view: months present in the data + per-month totals, newest first
-  const yearMonths = isYear
-    ? [...new Set(titheRecords.map((r) => r.month))].sort().reverse()
+  const yearMonths = isListYear
+    ? [...new Set(listRecords.map((r) => r.month))].sort().reverse()
     : [];
   const yearMonthTotals = new Map<string, number>();
-  for (const r of titheRecords) {
+  for (const r of listRecords) {
     yearMonthTotals.set(r.month, (yearMonthTotals.get(r.month) ?? 0) + Number(r.amount));
   }
   // While searching, only the months that have a matching tither are listed.
@@ -139,7 +163,7 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
       <div className="space-y-5">
         {/* Card period selector + actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <TithePeriodDropdown currentPeriod={period} years={years} />
+          <TithePeriodDropdown scope="cards" currentPeriod={cardPeriod} years={years} />
           <TithesToolbar month={toolbarMonth} members={members.map((m) => ({ id: m.id, name: m.fullName }))} />
         </div>
 
@@ -155,7 +179,7 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
           <SummaryCard
             label="Total Tithes"
             value={cedis(totalCollected)}
-            sub={isYear ? "Collected this year" : "Collected this month"}
+            sub={isCardYear ? "Collected this year" : "Collected this month"}
             tone="text-emerald-600"
             icon={Wallet}
           />
@@ -170,12 +194,12 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
 
         {/* List period selector + member search — sits directly above the list */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-3">
-          <TithePeriodDropdown currentPeriod={period} years={years} />
+          <TithePeriodDropdown scope="list" currentPeriod={listPeriod} years={years} />
           <TitheSearch q={q} />
         </div>
 
         {/* Member table */}
-        {isYear ? (
+        {isListYear ? (
           <div className="space-y-4">
             {members.length === 0 ? (
               <div className="rounded-2xl border border-slate-100 bg-white shadow-sm py-16 text-center text-slate-400 text-sm italic">
@@ -187,7 +211,7 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
               </div>
             ) : shownMonths.length === 0 ? (
               <div className="rounded-2xl border border-slate-100 bg-white shadow-sm py-16 text-center text-slate-400 text-sm italic">
-                {q ? `No tithes recorded for “${q}” in ${period}.` : `No tithes recorded in ${period} yet.`}
+                {q ? `No tithes recorded for “${q}” in ${listPeriod}.` : `No tithes recorded in ${listPeriod} yet.`}
               </div>
             ) : (
               shownMonths.map((ym) => {
@@ -345,7 +369,7 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
                         {total > 0 ? cedis(total) : "—"}
                       </td>
                       <td className="px-4 pr-8 py-3.5 text-right">
-                        <TitheActions memberId={m.id} memberName={m.fullName} month={period} />
+                        <TitheActions memberId={m.id} memberName={m.fullName} month={listPeriod} />
                       </td>
                     </tr>
                   );
