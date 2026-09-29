@@ -253,13 +253,18 @@ export async function AnalyticsTab({ churchId }: { churchId: string }) {
       .having(sql`max(${transaction.occurredOn}) < current_date - 60`)
       .orderBy(sql`3`)
       .limit(10),
+    // Raised = total of the church's transactions tagged to each project. A left join (not a correlated
+    // subquery) because drizzle renders a column inside `sql` unqualified — `... where project_id = "id"`
+    // would bind to transaction.id and always sum to 0.
     db
-      .select({
-        p: projectFund,
-        raised: sql<string>`coalesce((select sum(amount) from ${transaction} where project_id = ${projectFund.id}), 0)`,
-      })
+      .select({ p: projectFund, raised: sumAmount })
       .from(projectFund)
+      .leftJoin(
+        transaction,
+        and(eq(transaction.projectId, projectFund.id), eq(transaction.churchId, churchId)),
+      )
       .where(eq(projectFund.churchId, churchId))
+      .groupBy(projectFund.id)
       .orderBy(projectFund.createdAt),
   ]);
 

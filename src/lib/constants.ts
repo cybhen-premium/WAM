@@ -14,7 +14,7 @@ export const MEMBER_CATEGORIES = [
 
 export const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed"] as const;
 
-export const INCOME_CATEGORIES = ["Offering", "Donation", "Welfare", "Seed Sowing", "Project Fund", "Other"] as const;
+export const INCOME_CATEGORIES = ["Offering", "Seed Sowing", "Project Fund", "Other"] as const;
 export const EXPENSE_CATEGORIES = [
   "Salaries",
   "Utilities",

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   Building2,
   ChartPie,
@@ -23,7 +23,7 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
-const { transaction, member, vendor, projectFund } = schema;
+const { transaction, vendor, projectFund } = schema;
 
 export default async function FinancesPage({ searchParams }: PageProps<"/finances">) {
   const { church } = await requireChurch();
@@ -34,7 +34,7 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
   const q = typeof sp.q === "string" ? sp.q : "";
 
   const where = inPeriod(church.id, period);
-  const [totals, breakdown, members, vendors, projects, yearRows] = await Promise.all([
+  const [totals, breakdown, vendors, projects, yearRows] = await Promise.all([
     db
       .select({ type: transaction.type, total: sumAmount })
       .from(transaction)
@@ -46,11 +46,6 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
       .where(where)
       .groupBy(transaction.category, transaction.type)
       .orderBy(sql`2, 3 desc`),
-    db
-      .select({ id: member.id, fullName: member.fullName })
-      .from(member)
-      .where(and(eq(member.churchId, church.id), eq(member.active, true)))
-      .orderBy(member.fullName),
     db.select({ id: vendor.id, name: vendor.name }).from(vendor).where(eq(vendor.churchId, church.id)).orderBy(vendor.name),
     db
       .select({ id: projectFund.id, name: projectFund.name })
@@ -92,7 +87,6 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
       <FinanceHeader
         period={period}
         years={years}
-        members={members}
         vendors={vendors}
         projects={projects}
       />

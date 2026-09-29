@@ -3,6 +3,7 @@ import { Wallet, TrendingUp, CheckCircle2 } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cedis } from "@/lib/utils";
+import { weekColumns } from "@/lib/weeks";
 import { TithesToolbar, TithePeriodDropdown, TitheActions, TitheSearch } from "./client";
 
 export const metadata = { title: "Tithes Tracker" };
@@ -26,6 +27,7 @@ function parsePeriodParam(v: unknown, fallback: string): string {
 function titheRecordsFor(churchId: string, period: string) {
   return db
     .select({
+      id: schema.tithe.id,
       memberId: schema.tithe.memberId,
       amount: schema.tithe.amount,
       week: schema.tithe.week,
@@ -60,8 +62,9 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
   // Member search — narrows the rows shown; summary cards and the roster counts stay unfiltered.
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
 
-  // Year view has no single month — the toolbar (Print Tithers link, Record Tithe default) falls back to the
-  // current month; per-row "Record Tithe" buttons use the month of the section they sit in.
+  // Year view has no single month — the toolbar's Record Tithe default falls back to the current month and
+  // per-row "Record Tithe" buttons use the month of the section they sit in. "Print Tithers" follows the card
+  // combo box (?cardMonth=) instead — it can be a month or a whole year.
   const toolbarMonth = isListYear ? new Date().toISOString().slice(0, 7) : listPeriod;
 
   // Tithes are for members only — visitors / regular attendees are still in the Akwaaba → SOB journey.
@@ -77,6 +80,9 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
     )
     .orderBy(schema.member.fullName);
 
+  /** { id, name } list for the record / edit modals — one instance shared by every row. */
+  const memberOptions = members.map((m) => ({ id: m.id, name: m.fullName }));
+
   const search = q.toLowerCase();
   const visibleMembers = search ? members.filter((m) => m.fullName.toLowerCase().includes(search)) : members;
 
@@ -84,6 +90,18 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
   // periods match (the common case), so only fetch twice when they differ.
   const cardRecords = await titheRecordsFor(church.id, cardPeriod);
   const listRecords = listPeriod === cardPeriod ? cardRecords : await titheRecordsFor(church.id, listPeriod);
+
+  // This member's tithes per month section, keyed `month|memberId` — feeds the row's Edit button, which
+  // opens one of them in the edit form (unique per member/week/month by database constraint).
+  const tithesByRow = new Map<string, { id: string; week: number; month: string; amount: string }[]>();
+  for (const r of listRecords) {
+    const key = `${r.month}|${r.memberId}`;
+    const entry = { id: r.id, week: r.week, month: r.month, amount: String(r.amount) };
+    const list = tithesByRow.get(key);
+    if (list) list.push(entry);
+    else tithesByRow.set(key, [entry]);
+  }
+  for (const list of tithesByRow.values()) list.sort((a, b) => a.week - b.week);
 
   // Years with at least one member tithe (year dropdown options)
   const yearRows = await db
@@ -149,6 +167,29 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
     ? yearMonths.filter((ym) => visibleMembers.some((m) => memberMonthTithes.get(m.id)?.get(ym)))
     : yearMonths;
 
+  /* Member list sections — one per month and year the tithes were recorded for */
+  /** Week amounts for one member inside one month section (year view keeps the months apart). */
+  const memberWeeks = (month: string, memberId: string) =>
+    isListYear ? (memberMonthTithes.get(memberId)?.get(month) ?? {}) : (memberTithes.get(memberId) ?? {});
+  const sumWeeks = (weeks: { [week: number]: number }) => Object.values(weeks).reduce((sum, amt) => sum + amt, 0);
+
+  const listSections = (isListYear ? shownMonths : [listPeriod]).map((month) => {
+    const tithers = visibleMembers.filter((m) => sumWeeks(memberWeeks(month, m.id)) > 0);
+    return {
+      month,
+      label: new Date(month + "-01").toLocaleString("default", { month: "long", year: "numeric" }),
+      // Year view lists the members who tithed that month; the month view keeps the whole roster so the
+      // members who have not given yet stay visible.
+      rows: isListYear ? tithers : visibleMembers,
+      tithers: tithers.length,
+      // While searching, the section total covers the rows shown so the two always agree.
+      total:
+        !q && isListYear
+          ? (yearMonthTotals.get(month) ?? 0)
+          : visibleMembers.reduce((sum, m) => sum + sumWeeks(memberWeeks(month, m.id)), 0),
+    };
+  });
+
   return (
     <div className="space-y-6 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -164,7 +205,7 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
         {/* Card period selector + actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <TithePeriodDropdown scope="cards" currentPeriod={cardPeriod} years={years} />
-          <TithesToolbar month={toolbarMonth} members={members.map((m) => ({ id: m.id, name: m.fullName }))} />
+          <TithesToolbar month={toolbarMonth} period={cardPeriod} members={memberOptions} />
         </div>
 
         {/* Summary cards */}
@@ -198,186 +239,106 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
           <TitheSearch q={q} />
         </div>
 
-        {/* Member table */}
-        {isListYear ? (
-          <div className="space-y-4">
-            {members.length === 0 ? (
-              <div className="rounded-2xl border border-slate-100 bg-white shadow-sm py-16 text-center text-slate-400 text-sm italic">
-                No full members found.
-              </div>
-            ) : q && visibleMembers.length === 0 ? (
-              <div className="rounded-2xl border border-slate-100 bg-white shadow-sm py-16 text-center text-slate-400 text-sm italic">
-                No members match “{q}”.
-              </div>
-            ) : shownMonths.length === 0 ? (
-              <div className="rounded-2xl border border-slate-100 bg-white shadow-sm py-16 text-center text-slate-400 text-sm italic">
-                {q ? `No tithes recorded for “${q}” in ${listPeriod}.` : `No tithes recorded in ${listPeriod} yet.`}
-              </div>
-            ) : (
-              shownMonths.map((ym) => {
-                const label = new Date(ym + "-01").toLocaleString("default", { month: "long", year: "numeric" });
-                const tithers = visibleMembers.filter((m) => (memberMonthTithes.get(m.id)?.get(ym) ? true : false));
-                // While searching, the header total covers the rows shown so the two always agree.
-                const monthTotal = q
-                  ? tithers.reduce((sum, m) => {
-                      const w = memberMonthTithes.get(m.id)?.get(ym) ?? {};
-                      return sum + (w[1] || 0) + (w[2] || 0) + (w[3] || 0) + (w[4] || 0) + (w[5] || 0);
-                    }, 0)
-                  : (yearMonthTotals.get(ym) ?? 0);
-                return (
-                  <div key={ym} className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-x-auto">
-                    <div className="flex items-center justify-between px-4 sm:px-8 py-3 border-b border-slate-100 bg-slate-50/50">
-                      <p className="text-xs font-black uppercase tracking-widest text-slate-700">{label}</p>
-                      <p className="text-xs font-black text-emerald-600">
-                        {cedis(monthTotal)} · {tithers.length} tither{tithers.length === 1 ? "" : "s"}
-                      </p>
-                    </div>
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50/50 border-b border-slate-100">
-                        <tr>
-                          <th className="px-4 pl-8 h-14 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400 min-w-[200px]">
-                            Member
-                          </th>
-                          <th className="px-4 h-14 text-center align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                            Week 1
-                          </th>
-                          <th className="px-4 h-14 text-center align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                            Week 2
-                          </th>
-                          <th className="px-4 h-14 text-center align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                            Week 3
-                          </th>
-                          <th className="px-4 h-14 text-center align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                            Week 4
-                          </th>
-                          <th className="px-4 h-14 text-center align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                            Week 5
-                          </th>
-                          <th className="px-4 h-14 text-right align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                            Total
-                          </th>
-                          <th className="px-4 pr-8 h-14 text-right align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                            Action
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tithers.map((m) => {
-                          const weeks = memberMonthTithes.get(m.id)?.get(ym) ?? {};
-                          const total = (weeks[1]||0) + (weeks[2]||0) + (weeks[3]||0) + (weeks[4]||0) + (weeks[5]||0);
-                          return (
-                            <tr key={m.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
-                              <td className="px-4 pl-8 py-3.5">
-                                <p className="font-bold text-slate-900">{m.fullName}</p>
-                                <p className="text-[10px] font-bold uppercase text-slate-400">{m.category}</p>
-                              </td>
-                              {[1, 2, 3, 4, 5].map(week => (
-                                <td key={week} className="px-4 py-3.5 text-center">
-                                  {weeks[week] ? (
-                                    <span className="inline-flex items-center justify-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-black text-green-700 w-full min-w-[60px]">
-                                      {cedis(weeks[week])}
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400 w-full min-w-[60px]">
-                                      —
-                                    </span>
-                                  )}
-                                </td>
-                              ))}
-                              <td className="px-4 py-3.5 text-right font-black text-slate-700">
-                                {total > 0 ? cedis(total) : "—"}
-                              </td>
-                              <td className="px-4 pr-8 py-3.5 text-right">
-                                <TitheActions memberId={m.id} memberName={m.fullName} month={ym} />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })
-            )}
+        {/* Member list — a section per month and year the tithes were recorded for */}
+        {members.length === 0 ? (
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm py-16 text-center text-slate-400 text-sm italic">
+            No full members found.
+          </div>
+        ) : q && visibleMembers.length === 0 ? (
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm py-16 text-center text-slate-400 text-sm italic">
+            No members match “{q}”.
+          </div>
+        ) : listSections.length === 0 ? (
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm py-16 text-center text-slate-400 text-sm italic">
+            {q ? `No tithes recorded for “${q}” in ${listPeriod}.` : `No tithes recorded in ${listPeriod} yet.`}
           </div>
         ) : (
-        <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50/50 border-b border-slate-100">
-              <tr>
-                <th className="px-4 pl-8 h-14 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400 min-w-[200px]">
-                  Member
-                </th>
-                <th className="px-4 h-14 text-center align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                  Week 1
-                </th>
-                <th className="px-4 h-14 text-center align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                  Week 2
-                </th>
-                <th className="px-4 h-14 text-center align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                  Week 3
-                </th>
-                <th className="px-4 h-14 text-center align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                  Week 4
-                </th>
-                <th className="px-4 h-14 text-center align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                  Week 5
-                </th>
-                <th className="px-4 h-14 text-right align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                  Total
-                </th>
-                <th className="px-4 pr-8 h-14 text-right align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleMembers.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="h-40 text-center text-slate-400 text-sm italic">
-                    {q ? `No members match “${q}”.` : "No full members found."}
-                  </td>
-                </tr>
-              ) : (
-                visibleMembers.map((m) => {
-                  const weeks = memberTithes.get(m.id) ?? {};
-                  const total = (weeks[1]||0) + (weeks[2]||0) + (weeks[3]||0) + (weeks[4]||0) + (weeks[5]||0);
+          <div className="space-y-4">
+            {listSections.map(({ month, label, rows: sectionRows, tithers, total }) => {
+              const weekCols = weekColumns(
+                month,
+                listRecords.filter((r) => r.month === month).map((r) => r.week),
+              );
 
-                  return (
-                    <tr
-                      key={m.id}
-                      className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors"
-                    >
-                      <td className="px-4 pl-8 py-3.5">
-                        <p className="font-bold text-slate-900">{m.fullName}</p>
-                        <p className="text-[10px] font-bold uppercase text-slate-400">{m.category}</p>
-                      </td>
-                      {[1, 2, 3, 4, 5].map(week => (
-                        <td key={week} className="px-4 py-3.5 text-center">
-                          {weeks[week] ? (
-                            <span className="inline-flex items-center justify-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-black text-green-700 w-full min-w-[60px]">
-                              {cedis(weeks[week])}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400 w-full min-w-[60px]">
-                              —
-                            </span>
-                          )}
-                        </td>
-                      ))}
-                      <td className="px-4 py-3.5 text-right font-black text-slate-700">
-                        {total > 0 ? cedis(total) : "—"}
-                      </td>
-                      <td className="px-4 pr-8 py-3.5 text-right">
-                        <TitheActions memberId={m.id} memberName={m.fullName} month={listPeriod} />
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+              return (
+                <div key={month} className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-x-auto">
+                  <div className="flex items-center justify-between px-4 sm:px-8 py-3 border-b border-slate-100 bg-slate-50/50">
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-700">{label}</p>
+                    <p className="text-xs font-black text-emerald-600">
+                      {cedis(total)} · {tithers} tither{tithers === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50/50 border-b border-slate-100">
+                      <tr>
+                        <th className="px-4 pl-8 h-14 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400 min-w-[200px]">
+                          Member
+                        </th>
+                        {weekCols.map(({ week, label: sunday }) => (
+                          <th
+                            key={week}
+                            className="px-4 h-14 text-center align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400"
+                          >
+                            Week {week}
+                            {sunday && <span className="block text-[9px] font-bold opacity-70">{sunday}</span>}
+                          </th>
+                        ))}
+                        <th className="px-4 h-14 text-right align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
+                          Total
+                        </th>
+                        <th className="px-4 pr-8 h-14 text-right align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sectionRows.map((m) => {
+                        const weeks = memberWeeks(month, m.id);
+                        const memberTotal = sumWeeks(weeks);
+
+                        return (
+                          <tr
+                            key={m.id}
+                            className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors"
+                          >
+                            <td className="px-4 pl-8 py-3.5">
+                              <p className="font-bold text-slate-900">{m.fullName}</p>
+                              <p className="text-[10px] font-bold uppercase text-slate-400">{m.category}</p>
+                            </td>
+                            {weekCols.map(({ week }) => (
+                              <td key={week} className="px-4 py-3.5 text-center">
+                                {weeks[week] ? (
+                                  <span className="inline-flex items-center justify-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-black text-green-700 w-full min-w-[60px]">
+                                    {cedis(weeks[week])}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-400 w-full min-w-[60px]">
+                                    —
+                                  </span>
+                                )}
+                              </td>
+                            ))}
+                            <td className="px-4 py-3.5 text-right font-black text-slate-700">
+                              {memberTotal > 0 ? cedis(memberTotal) : "—"}
+                            </td>
+                            <td className="px-4 pr-8 py-3.5 text-right">
+                              <TitheActions
+                                memberId={m.id}
+                                memberName={m.fullName}
+                                month={month}
+                                members={memberOptions}
+                                tithes={tithesByRow.get(`${month}|${m.id}`) ?? []}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

@@ -3,20 +3,32 @@
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useFormAction } from "@/components/use-form-action";
-import { Plus, Wallet, Printer, ChevronDown, Search, X } from "lucide-react";
+import { Plus, Wallet, Printer, ChevronDown, Search, X, Pencil } from "lucide-react";
 import { Modal, SelectField, TextField, buttonStyles } from "@/components/ui";
+import { weekOptions } from "@/lib/weeks";
+import { cedis } from "@/lib/utils";
 import Link from "next/link";
-import { recordTithe } from "./actions";
+import { recordTithe, updateTithe } from "./actions";
 
 /* Header buttons ----------------------------------------------------------- */
 
-export function TithesToolbar({ members, month }: { members: { id: string; name: string }[], month: string }) {
+export function TithesToolbar({
+  members,
+  month,
+  period,
+}: {
+  members: { id: string; name: string }[];
+  /** Month the Record Tithe form pre-fills ("YYYY-MM"; a year falls back to the current month). */
+  month: string;
+  /** Card combo box period ("YYYY" or "YYYY-MM") — what "Print Tithers" prints. */
+  period: string;
+}) {
   const [adding, setAdding] = useState(false);
 
   return (
     <div className="flex items-center gap-2 w-full lg:w-auto">
       <Link
-        href={`/print/tithes?month=${month}&only=tithers`}
+        href={`/print/tithes?month=${period}&only=tithers`}
         target="_blank"
         className={buttonStyles.outline}
       >
@@ -182,8 +194,32 @@ export function TitheSearch({ q }: { q: string }) {
 
 /* Per-row actions ---------------------------------------------------------- */
 
-export function TitheActions({ memberId, memberName, month }: { memberId: string; memberName: string; month?: string }) {
+export function TitheActions({
+  memberId,
+  memberName,
+  month,
+  members,
+  tithes = [],
+}: {
+  memberId: string;
+  memberName: string;
+  month?: string;
+  /** All members — the edit form can move a tithe to the right member. */
+  members?: { id: string; name: string }[];
+  /** This member's tithes in the viewed month (oldest week first) — what the Edit button opens. */
+  tithes?: TitheEntry[];
+}) {
   const [adding, setAdding] = useState(false);
+  const [choosing, setChoosing] = useState(false);
+  const [picked, setPicked] = useState<TitheEntry | null>(null);
+
+  const memberList = members ?? [{ id: memberId, name: memberName }];
+
+  // A single tithe opens the form straight away; a row with several weeks asks which one first.
+  function beginEdit() {
+    if (tithes.length === 1) setPicked(tithes[0]);
+    else setChoosing(true);
+  }
 
   return (
     <div className="inline-flex items-center gap-1">
@@ -193,12 +229,75 @@ export function TitheActions({ memberId, memberName, month }: { memberId: string
       >
         Record Tithe
       </button>
-      <TitheModal open={adding} onClose={() => setAdding(false)} members={[{ id: memberId, name: memberName }]} preselectedMemberId={memberId} month={month} />
+      {tithes.length > 0 && (
+        <button onClick={beginEdit} className={buttonStyles.ghost} title="Edit" aria-label="Edit">
+          <Pencil />
+        </button>
+      )}
+
+      <TitheModal open={adding} onClose={() => setAdding(false)} members={memberList} preselectedMemberId={memberId} month={month} />
+      <TithePickModal
+        open={choosing}
+        onClose={() => setChoosing(false)}
+        tithes={tithes}
+        onPick={(t) => {
+          setChoosing(false);
+          setPicked(t);
+        }}
+      />
+      <TitheEditModal
+        open={picked !== null}
+        onClose={() => setPicked(null)}
+        tithe={picked ? { ...picked, memberId } : { id: "", memberId, week: 1, month: month ?? "", amount: "" }}
+        members={memberList}
+      />
     </div>
   );
 }
 
 /* Payment form modal ---------------------------------------------------------- */
+
+/**
+ * Month + week for a tithe. Every week option carries the Sunday that week falls on in the chosen month
+ * ("Week 2 · 13 Sep"), so the choice is unambiguous; editing the month updates the dates. Mounted only
+ * while the modal is open, so both fields reset to the pre-filled values each time it opens.
+ * `defaultWeek` pre-selects the week being edited and stays among the options even when the month has
+ * no such Sunday (a tithe filed as "Week 5" in a month with four Sundays).
+ */
+function WeekFields({ defaultMonth, defaultWeek }: { defaultMonth: string; defaultWeek?: number }) {
+  const [month, setMonth] = useState(defaultMonth);
+
+  const weeks = weekOptions(month);
+  const options = (
+    defaultWeek && !weeks.some((w) => w.week === defaultWeek)
+      ? [...weeks, { week: defaultWeek, label: null }]
+      : weeks
+  ).map((w) => ({
+    label: w.label ? `Week ${w.week} · ${w.label}` : `Week ${w.week}`,
+    value: String(w.week),
+  }));
+
+  return (
+    <>
+      <SelectField
+        label="Which Week?"
+        name="week"
+        required
+        options={options}
+        defaultValue={String(defaultWeek ?? 1)}
+      />
+
+      <TextField
+        label="For which month?"
+        name="month"
+        type="month"
+        required
+        value={month}
+        onChange={(e) => setMonth(e.target.value)}
+      />
+    </>
+  );
+}
 
 function TitheModal({ 
   open, 
@@ -238,27 +337,7 @@ function TitheModal({
           defaultValue={preselectedMemberId ?? ""}
         />
 
-        <SelectField 
-          label="Which Week?" 
-          name="week" 
-          required 
-          options={[
-            { label: "Week 1", value: "1" },
-            { label: "Week 2", value: "2" },
-            { label: "Week 3", value: "3" },
-            { label: "Week 4", value: "4" },
-            { label: "Week 5", value: "5" },
-          ]}
-          defaultValue="1"
-        />
-
-        <TextField 
-          label="For which month?" 
-          name="month" 
-          type="month"
-          required 
-          defaultValue={defaultMonth} 
-        />
+        <WeekFields defaultMonth={defaultMonth} />
         
         <TextField 
           label="Amount (GH₵)" 
@@ -274,6 +353,105 @@ function TitheModal({
         
         <button type="submit" disabled={pending} className={cn(buttonStyles.submit, "bg-green-600 hover:bg-green-700")}>
           {pending ? "Saving…" : "Save Tithe"}
+        </button>
+      </form>
+    </Modal>
+  );
+}
+
+/* Edit an existing tithe -------------------------------------------------- */
+
+/** A recorded tithe as it appears in the list — one per member / week / month. */
+type TitheEntry = { id: string; week: number; month: string; amount: string };
+
+/**
+ * Step between the list's Edit button and the form when a member gave in several weeks of the month:
+ * choose which tithe to edit — each option shows the Sunday that week falls on and the amount given.
+ */
+function TithePickModal({
+  open,
+  onClose,
+  tithes,
+  onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  tithes: TitheEntry[];
+  onPick: (tithe: TitheEntry) => void;
+}) {
+  const sundays = new Map(weekOptions(tithes[0]?.month ?? "").map((w) => [w.week, w.label]));
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit Tithe" subtitle="Which week's tithe?" icon={Pencil} compact>
+      <div className="space-y-2 pb-2">
+        {tithes.map((t) => {
+          const sunday = sundays.get(t.week);
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onPick(t)}
+              className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-green-500 hover:bg-green-50"
+            >
+              <span className="text-sm font-bold text-slate-700">
+                Week {t.week}
+                {sunday && <span className="ml-1 text-xs font-semibold text-slate-400">· {sunday}</span>}
+              </span>
+              <span className="text-sm font-black text-emerald-600">{cedis(t.amount)}</span>
+            </button>
+          );
+        })}
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Edit one recorded tithe — the same fields as the record modal, pre-filled from the row, plus the
+ * tithe id. Saved by `updateTithe`, which also keeps the linked ledger income in sync.
+ */
+function TitheEditModal({
+  open,
+  onClose,
+  tithe,
+  members,
+}: {
+  open: boolean;
+  onClose: () => void;
+  tithe: { id: string; memberId: string; week: number; month: string; amount: string };
+  members: { id: string; name: string }[];
+}) {
+  const [state, action, pending] = useFormAction(updateTithe, onClose);
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit Tithe" subtitle="Weekly Tracking" icon={Pencil} compact>
+      <form action={action} className="space-y-5 pb-2 text-left">
+        <input type="hidden" name="titheId" value={tithe.id} readOnly />
+
+        <SelectField
+          label="Member"
+          name="memberId"
+          required
+          options={members.map((m) => ({ label: m.name, value: m.id }))}
+          defaultValue={tithe.memberId}
+        />
+
+        <WeekFields defaultMonth={tithe.month} defaultWeek={tithe.week} />
+
+        <TextField
+          label="Amount (GH₵)"
+          name="amount"
+          type="text"
+          inputMode="decimal"
+          pattern="[0-9]*\.?[0-9]*"
+          required
+          defaultValue={tithe.amount}
+        />
+
+        {state?.error && <p className="text-sm font-semibold text-red-600">{state.error}</p>}
+
+        <button type="submit" disabled={pending} className={cn(buttonStyles.submit, "bg-green-600 hover:bg-green-700")}>
+          {pending ? "Saving…" : "Save Changes"}
         </button>
       </form>
     </Modal>

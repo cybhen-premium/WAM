@@ -140,6 +140,33 @@ export function SelectField({
   );
 }
 
+/**
+ * Combo box: a text input with the given `options` offered as suggestions — pick one, or type your own
+ * value (e.g. a particular category the list does not cover). Backed by the native `<datalist>`.
+ */
+export function ComboField({
+  label,
+  options,
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string; options: readonly string[] }) {
+  const id = props.id ?? props.name;
+  const listId = `${id ?? "combo"}-list`;
+  return (
+    <div className={className}>
+      <label className={LABEL} htmlFor={id}>
+        {label}
+      </label>
+      <input {...props} id={id} list={listId} className={CONTROL} />
+      <datalist id={listId}>
+        {options.map((o) => (
+          <option key={o} value={o} />
+        ))}
+      </datalist>
+    </div>
+  );
+}
+
 export function TextAreaField({
   label,
   className,

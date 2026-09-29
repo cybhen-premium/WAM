@@ -5,8 +5,6 @@ import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import {
-  EXPENSE_CATEGORIES,
-  INCOME_CATEGORIES,
   TITHE,
   WELFARE_DUES,
   WELFARE_SUPPORT,
@@ -53,9 +51,10 @@ function done() {
 export async function addTransaction(_prev: FormState, f: FormData): Promise<FormState> {
   const { church } = await requireChurch();
   const type = s(f, "type") === "expense" ? "expense" : "income";
+  // The category field is a combo box: the lists are suggestions, so any non-empty value — including a
+  // category typed by hand — is valid.
   const category = s(f, "category");
-  const allowed: readonly string[] = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-  if (!allowed.includes(category)) return { error: "Choose a category." };
+  if (!category) return { error: "Choose or type a category." };
   const amount = amountOf(f);
   if (!amount) return { error: "Enter an amount greater than zero." };
 

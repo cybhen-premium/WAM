@@ -14,7 +14,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { Modal, SelectField, TextAreaField, TextField, buttonStyles } from "@/components/ui";
+import { ComboField, Modal, SelectField, TextAreaField, TextField, buttonStyles } from "@/components/ui";
 import { useSetUrlParam } from "@/components/use-url-param";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -46,7 +46,6 @@ function ErrorText({ state }: { state: FormState }) {
 export function FinanceHeader(props: {
   period: string;
   years: string[];
-  members: Option[];
   vendors: Named[];
   projects: Named[];
 }) {
@@ -149,13 +148,11 @@ export function FinanceHeader(props: {
 function AddTransactionModal({
   open,
   onClose,
-  members,
   vendors,
   projects,
 }: {
   open: boolean;
   onClose: () => void;
-  members: Option[];
   vendors: Named[];
   projects: Named[];
 }) {
@@ -182,13 +179,14 @@ function AddTransactionModal({
               { value: "expense", label: "Expense" },
             ]}
           />
-          <SelectField
+          <ComboField
             label="Category"
             name="category"
             required
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            options={[{ value: "", label: "Select..." }, ...categories.map((c) => ({ value: c, label: c }))]}
+            placeholder="Select or type…"
+            options={categories}
           />
           <TextField label="Amount (GH₵)" name="amount" type="number" min="0.01" step="0.01" required placeholder="0.00" />
           <TextField label="Date" name="date" type="date" defaultValue={today()} />
@@ -208,15 +206,6 @@ function AddTransactionModal({
               options={[{ value: "", label: "No vendor" }, ...vendors.map((v) => ({ value: v.id, label: v.name }))]}
             />
           )}
-          {type === "income" && members.length > 0 && (
-            <SelectField
-              className="sm:col-span-2"
-              label="Member (optional)"
-              name="memberId"
-              options={[{ value: "", label: "Anonymous / not a member" }, ...members.map((m) => ({ value: m.id, label: m.fullName }))]}
-            />
-          )}
-          <TextAreaField className="sm:col-span-2" label="Description (Optional)" name="description" rows={2} />
         </div>
         <ErrorText state={state} />
         <button type="submit" disabled={pending} className={buttonStyles.submit}>
