@@ -1,12 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { sql, eq } from "drizzle-orm";
+import { sql, eq, and } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { TITHE } from "@/lib/constants";
 
-const { tithe, transaction } = schema;
+const { tithe, transaction, member } = schema;
+
+/** Visitors and regular attendees are still in the Akwaaba → SOB journey, so they are not members yet. */
+const NON_MEMBER_CATEGORIES = ["Visitor", "Regular Attendee"];
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -23,6 +26,17 @@ export async function recordTithe(_prev: FormState, form: FormData): Promise<For
   const week = parseInt(weekStr, 10);
   if (isNaN(amount) || amount <= 0) return { error: "Amount must be a positive number." };
   if (isNaN(week) || week < 1 || week > 5) return { error: "Week must be between 1 and 5." };
+
+  // Tithes are for members only — a visitor / regular attendee isn't a member yet.
+  const [payer] = await db
+    .select({ category: member.category })
+    .from(member)
+    .where(and(eq(member.id, memberId), eq(member.churchId, church.id)))
+    .limit(1);
+  if (!payer) return { error: "Member not found." };
+  if (NON_MEMBER_CATEGORIES.includes(payer.category)) {
+    return { error: "Visitors and regular attendees are not members yet — record their gift as an Offering instead." };
+  }
 
   try {
     await db.insert(tithe).values({
@@ -50,8 +64,8 @@ export async function recordTithe(_prev: FormState, form: FormData): Promise<For
       description: `Week ${week}, ${month}`,
       // We set occurredOn to now, which is default
     });
-  } catch (err: any) {
-    if (err?.code === "23505") { // Unique violation
+  } catch (err) {
+    if ((err as { code?: string })?.code === "23505") { // Unique violation
       return { error: "Tithe for this member, week, and month already recorded." };
     }
     return { error: "Failed to record tithe. Please try again." };

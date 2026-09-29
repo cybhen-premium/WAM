@@ -25,19 +25,23 @@ const FILTER_OPTIONS = [
   { value: "staying", label: "Staying" },
 ];
 
-export function PeriodDropdown({ currentPeriod, months }: { currentPeriod: string; months: { month: string; n: number }[] }) {
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+export function PeriodDropdown({ currentPeriod, years }: { currentPeriod: string; years: string[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [, startTransition] = useTransition();
 
+  const selYear = currentPeriod.slice(0, 4);
+  const selMonth = currentPeriod.length === 7 ? currentPeriod.slice(5, 7) : "";
+
   function updatePeriod(value: string) {
     const next = new URLSearchParams(params);
-    if (value === "all") {
-      next.delete("period");
-    } else {
-      next.set("period", value);
-    }
+    next.set("period", value);
     // Preserve search and status parameters
     const q = params.get("q");
     const status = params.get("status");
@@ -46,28 +50,32 @@ export function PeriodDropdown({ currentPeriod, months }: { currentPeriod: strin
     startTransition(() => router.replace(`${pathname}?${next}`));
   }
 
-  if (months.length === 0) return null;
-
   return (
-    <div className="flex justify-start">
+    <div className="flex flex-wrap gap-2">
       <div className="relative w-[200px]">
         <select
-          value={currentPeriod}
+          value={selYear}
           onChange={(e) => updatePeriod(e.target.value)}
-          className="w-full appearance-none rounded-xl bg-white shadow-sm pl-3 pr-8 h-10 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-blue-100"
-          aria-label="Time period"
+          className="w-full appearance-none rounded-xl bg-white shadow-sm pl-3 pr-8 h-10 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-blue-100 cursor-pointer"
+          aria-label="Filter by year"
         >
-          <option value="all">All Time</option>
-          {months.map((m) => {
-            const label = m.month
-              ? new Date(m.month + "-01").toLocaleDateString("default", { month: "long", year: "numeric" })
-              : "Unknown";
-            return (
-              <option key={m.month || "unknown"} value={m.month || ""}>
-                {label}
-              </option>
-            );
-          })}
+          {years.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+      </div>
+      <div className="relative w-[200px]">
+        <select
+          value={selMonth}
+          onChange={(e) => updatePeriod(e.target.value ? `${selYear}-${e.target.value}` : selYear)}
+          className="w-full appearance-none rounded-xl bg-white shadow-sm pl-3 pr-8 h-10 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-blue-100 cursor-pointer"
+          aria-label="Filter by month"
+        >
+          <option value="">All Months</option>
+          {MONTH_NAMES.map((m, i) => (
+            <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>
+          ))}
         </select>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
       </div>

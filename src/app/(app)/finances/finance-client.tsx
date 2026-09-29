@@ -30,6 +30,11 @@ import {
 type Option = { id: string; fullName: string };
 type Named = { id: string; name: string };
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
 const today = () => new Date().toISOString().slice(0, 10);
 
 function ErrorText({ state }: { state: FormState }) {
@@ -40,7 +45,7 @@ function ErrorText({ state }: { state: FormState }) {
 
 export function FinanceHeader(props: {
   period: string;
-  periods: { group: string; options: { value: string; label: string }[] }[];
+  years: string[];
   members: Option[];
   vendors: Named[];
   projects: Named[];
@@ -49,28 +54,68 @@ export function FinanceHeader(props: {
   const [adding, setAdding] = useState(false);
   const [advisor, setAdvisor] = useState(false);
 
+  const selYear = props.period.slice(0, 4);
+  const selSub = props.period.length > 4 ? props.period.slice(4) : "";
+
+  function setYear(y: string) {
+    // Switching year resets to the whole year
+    setParam("period", y);
+  }
+
+  function setSub(v: string) {
+    // v is "" (whole year), "-Q1..Q4" or "-MM"
+    if (!v) {
+      setParam("period", selYear);
+    } else {
+      setParam("period", `${selYear}${v}`);
+    }
+  }
+
   return (
     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
       <div className="space-y-2 w-full lg:w-auto">
         <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Financial Hub</h1>
-        <div className="relative w-full sm:w-[220px]">
-          <select
-            value={props.period}
-            onChange={(e) => setParam("period", e.target.value === "all" ? "" : e.target.value)}
-            className="h-10 w-full appearance-none rounded-xl bg-white border border-slate-200 px-3 pr-8 text-xs font-bold outline-none"
-            aria-label="Period"
-          >
-            {props.periods.map((g) => (
-              <optgroup key={g.group} label={g.group}>
-                {g.options.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
+        <div className="flex flex-wrap gap-2">
+          <div className="relative w-full sm:w-[160px]">
+            <select
+              value={selYear}
+              onChange={(e) => setYear(e.target.value)}
+              className="h-10 w-full appearance-none rounded-xl bg-white border border-slate-200 px-3 pr-8 text-xs font-bold outline-none cursor-pointer"
+              aria-label="Filter by year"
+            >
+              {props.years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+          </div>
+          <div className="relative w-full sm:w-[200px]">
+            <select
+              value={selSub}
+              onChange={(e) => setSub(e.target.value)}
+              className="h-10 w-full appearance-none rounded-xl bg-white border border-slate-200 px-3 pr-8 text-xs font-bold outline-none cursor-pointer"
+              aria-label="Filter by quarter or month"
+            >
+              <option value="">Whole Year</option>
+              <optgroup label="Quarters">
+                {[1, 2, 3, 4].map((q) => (
+                  <option key={q} value={`-Q${q}`}>
+                    Q{q} ({["Jan–Mar", "Apr–Jun", "Jul–Sep", "Oct–Dec"][q - 1]})
                   </option>
                 ))}
               </optgroup>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+              <optgroup label="Months">
+                {MONTH_NAMES.map((m, i) => (
+                  <option key={m} value={`-${String(i + 1).padStart(2, "0")}`}>
+                    {m}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+          </div>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
@@ -81,7 +126,7 @@ export function FinanceHeader(props: {
           <Sparkles className="h-3.5 w-3.5" /> AI Insights
         </button>
         <Link
-          href={`/print/report${props.period !== "all" ? `?period=${props.period}` : ""}`}
+          href={`/print/report?period=${props.period}`}
           target="_blank"
           className="inline-flex items-center justify-center gap-1.5 px-3 flex-1 sm:flex-none h-11 md:h-10 text-[10px] md:text-[11px] font-bold rounded-xl border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
         >

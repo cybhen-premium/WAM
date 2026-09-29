@@ -1,10 +1,13 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, notInArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cedis, fmtDate } from "@/lib/utils";
 import { PrintButton } from "../print-button";
 
 export const metadata = { title: "Tithes Report" };
+
+/** Visitors and regular attendees are still in the Akwaaba → SOB journey, so they are not members yet. */
+const NON_MEMBER_CATEGORIES: string[] = ["Visitor", "Regular Attendee"];
 
 export default async function TithesPrintPage({ searchParams }: PageProps<"/print/tithes">) {
   const { church } = await requireChurch();
@@ -14,13 +17,20 @@ export default async function TithesPrintPage({ searchParams }: PageProps<"/prin
   const month = typeof sp.month === "string" ? sp.month : new Date().toISOString().slice(0, 7);
   const monthLabel = new Date(month + "-01").toLocaleString("default", { month: "long", year: "numeric" });
 
+  // Tithes are for members only — visitors / regular attendees are still in the Akwaaba → SOB journey.
   const members = await db
     .select({ id: schema.member.id, fullName: schema.member.fullName, category: schema.member.category })
     .from(schema.member)
-    .where(and(eq(schema.member.churchId, church.id), eq(schema.member.active, true)))
+    .where(
+      and(
+        eq(schema.member.churchId, church.id),
+        eq(schema.member.active, true),
+        notInArray(schema.member.category, NON_MEMBER_CATEGORIES),
+      )
+    )
     .orderBy(schema.member.fullName);
 
-  // Fetch tithes for this month
+  // Fetch tithes for this month, joined to the payer so a non-member tithe is never counted
   const titheRecords = await db
     .select({
       memberId: schema.tithe.memberId,
@@ -28,9 +38,11 @@ export default async function TithesPrintPage({ searchParams }: PageProps<"/prin
       week: schema.tithe.week,
     })
     .from(schema.tithe)
+    .innerJoin(schema.member, eq(schema.tithe.memberId, schema.member.id))
     .where(
       and(
         eq(schema.tithe.churchId, church.id),
+        notInArray(schema.member.category, NON_MEMBER_CATEGORIES),
         eq(schema.tithe.month, month)
       )
     );
@@ -49,6 +61,8 @@ export default async function TithesPrintPage({ searchParams }: PageProps<"/prin
   // Filter members to ONLY those who have tithed if requested
   const onlyTithers = sp.only === "tithers";
   const displayMembers = onlyTithers ? members.filter(m => memberTithes.has(m.id)) : members;
+  // Counted against the member roster so it can never exceed the member count.
+  const activeTithers = members.filter((m) => memberTithes.has(m.id)).length;
 
   return (
     <div className="min-h-screen bg-white py-8 px-6 max-w-5xl mx-auto text-slate-900">
@@ -63,7 +77,7 @@ export default async function TithesPrintPage({ searchParams }: PageProps<"/prin
 
       <div className="grid grid-cols-2 gap-4 my-6 max-w-md">
         <Box label="Total Collected" value={cedis(totalCollected)} tone="text-green-700" />
-        <Box label="Active Tithers" value={`${memberTithes.size} members`} tone="text-[#1e3a8a]" />
+        <Box label="Active Tithers" value={`${activeTithers} members`} tone="text-[#1e3a8a]" />
       </div>
 
       <table className="w-full text-xs mb-8">

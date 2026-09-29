@@ -1,9 +1,8 @@
-import { eq, and, ilike, asc, count, sql, gte, lt } from "drizzle-orm";
-import { HandHeart, Users, UserCheck, ChevronDown } from "lucide-react";
+import { eq, and, ilike, asc, count, sql, gte, lt, inArray, type SQL } from "drizzle-orm";
+import { HandHeart, Users, UserCheck } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { parsePeriod } from "@/lib/finance";
 import { AkwaabaHeader, AkwaabaFilters, PersonRowActions, PeriodDropdown } from "./client";
 
 export const metadata = { title: "Akwaaba - Reception" };
@@ -13,17 +12,38 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const status = typeof sp.status === "string" ? sp.status : "";
-  const period = parsePeriod(sp.period);
+
+  // Year the cards fall back to when ?period is missing/invalid.
+  const currentYear = String(new Date().getFullYear());
+
+  /** "YYYY" | "YYYY-MM" — validated, defaults to the current year. */
+  function parseSelection(v: unknown): string {
+    if (typeof v === "string") {
+      if (/^\d{4}$/.test(v)) return v;
+      if (/^\d{4}-(0[1-9]|1[0-2])$/.test(v)) return v;
+    }
+    return currentYear;
+  }
+  const period = parseSelection(sp.period);
+
+  // Akwaaba only tracks reception categories — full members added via /members must never appear here.
+  const AKWAABA_CATEGORIES = ["Visitor", "Regular Attendee"];
 
   // Table filters: search + status only (no period — table always shows everyone)
-  const tableFilters: any[] = [eq(schema.member.churchId, church.id)];
+  const tableFilters: (SQL | undefined)[] = [
+    eq(schema.member.churchId, church.id),
+    inArray(schema.member.category, AKWAABA_CATEGORIES),
+  ];
   if (status === "visiting") tableFilters.push(eq(schema.member.category, "Visitor"));
   if (status === "staying") tableFilters.push(eq(schema.member.category, "Regular Attendee"));
   if (q) tableFilters.push(ilike(schema.member.fullName, `%${q}%`));
 
-  // Card filters: period only (for stat cards)
-  const cardFilters: any[] = [eq(schema.member.churchId, church.id)];
-  if (period !== "all") {
+  // Card filters: period always set (year or month)
+  const cardFilters: (SQL | undefined)[] = [
+    eq(schema.member.churchId, church.id),
+    inArray(schema.member.category, AKWAABA_CATEGORIES),
+  ];
+  {
     let start: string;
     let end: string;
     if (period.length === 4) {
@@ -38,7 +58,8 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
     cardFilters.push(and(gte(schema.member.joinedAt, start), lt(schema.member.joinedAt, end)));
   }
 
-  const [rows, counts, allMonths] = await Promise.all([
+  // Years with at least one registration (year dropdown options)
+  const [rows, counts, yearRows] = await Promise.all([
     db
       .select()
       .from(schema.member)
@@ -50,24 +71,30 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
       .from(schema.member)
       .where(and(...cardFilters))
       .groupBy(schema.member.category),
-    // Always fetch all months (unfiltered) so dropdown options are always shown
+    // Years with at least one registration (unfiltered, for dropdown options)
     db
       .select({
-        month: sql<string>`to_char(${schema.member.joinedAt}, 'YYYY-MM')`,
-        n: count(),
+        year: sql<string>`to_char(${schema.member.joinedAt}, 'YYYY')`,
       })
       .from(schema.member)
-      .where(eq(schema.member.churchId, church.id))
-      .groupBy(sql`to_char(${schema.member.joinedAt}, 'YYYY-MM')`)
-      .orderBy(sql`to_char(${schema.member.joinedAt}, 'YYYY-MM')`),
+      .where(
+        and(
+          eq(schema.member.churchId, church.id),
+          inArray(schema.member.category, AKWAABA_CATEGORIES),
+        ),
+      )
+      .groupBy(sql`to_char(${schema.member.joinedAt}, 'YYYY')`)
+      .orderBy(sql`to_char(${schema.member.joinedAt}, 'YYYY')`),
   ]);
+
+  const years = [...new Set(yearRows.map((r) => r.year).filter(Boolean))].sort().reverse();
+  if (!years.includes(currentYear)) years.unshift(currentYear);
 
   const visitingCount = counts.find((c) => c.category === "Visitor")?.n ?? 0;
   const stayingCount = counts.find((c) => c.category === "Regular Attendee")?.n ?? 0;
-  const totalCount = rows.length;
-  const periodHint = period === "all"
-    ? "All Time"
-    : period.length === 4
+  const totalCount = visitingCount + stayingCount;
+  const periodHint =
+    period.length === 4
       ? period
       : new Date(period + "-01").toLocaleDateString("default", { month: "long", year: "numeric" });
 
@@ -75,8 +102,8 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
     <div className="space-y-5 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
       <AkwaabaHeader />
 
-      {/* Period dropdown for card stats */}
-      <PeriodDropdown currentPeriod={period} months={allMonths} />
+      {/* Period dropdowns for card stats */}
+      <PeriodDropdown currentPeriod={period} years={years} />
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

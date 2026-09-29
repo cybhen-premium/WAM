@@ -3,18 +3,15 @@ import { and, eq, sql } from "drizzle-orm";
 import {
   Building2,
   ChartPie,
-  Heart,
-  HandHeart,
   Receipt,
   TrendingUp,
-  Wallet,
 } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
-import { inPeriod, parsePeriod, periodLabel, periodOptions, sumAmount } from "@/lib/finance";
+import { inPeriod, parsePeriod, periodLabel, sumAmount } from "@/lib/finance";
 import { cedis, cn } from "@/lib/utils";
 import { FinanceHeader } from "./finance-client";
-import { AnalyticsTab, ContributionTab, GeneralTab, ReceiptsTab, VendorsTab, WelfareOutTab } from "./tabs";
+import { AnalyticsTab, GeneralTab, ReceiptsTab, VendorsTab } from "./tabs";
 
 export const metadata = { title: "Financial Hub" };
 
@@ -31,12 +28,13 @@ const { transaction, member, vendor, projectFund } = schema;
 export default async function FinancesPage({ searchParams }: PageProps<"/finances">) {
   const { church } = await requireChurch();
   const sp = await searchParams;
-  const period = parsePeriod(sp.period);
+  // "All Time" is no longer offered — the picker always resolves to a year (or quarter/month within it).
+  const period = parsePeriod(sp.period, String(new Date().getFullYear()));
   const tab: TabId = TABS.some((t) => t.id === sp.tab) ? (sp.tab as TabId) : "general";
   const q = typeof sp.q === "string" ? sp.q : "";
 
   const where = inPeriod(church.id, period);
-  const [totals, breakdown, members, vendors, projects] = await Promise.all([
+  const [totals, breakdown, members, vendors, projects, yearRows] = await Promise.all([
     db
       .select({ type: transaction.type, total: sumAmount })
       .from(transaction)
@@ -59,24 +57,41 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
       .from(projectFund)
       .where(eq(projectFund.churchId, church.id))
       .orderBy(projectFund.createdAt),
+    // Years with at least one transaction (year dropdown options)
+    db
+      .select({ year: sql<string>`to_char(${transaction.occurredOn}, 'YYYY')` })
+      .from(transaction)
+      .where(eq(transaction.churchId, church.id))
+      .groupBy(sql`to_char(${transaction.occurredOn}, 'YYYY')`)
+      .orderBy(sql`to_char(${transaction.occurredOn}, 'YYYY')`),
   ]);
+  // Year dropdown: years that have transactions, plus the selected/current year so the select always matches.
+  const years = [
+    ...new Set([
+      ...yearRows.map((r) => r.year),
+      period.slice(0, 4),
+      String(new Date().getFullYear()),
+    ]),
+  ]
+    .filter(Boolean)
+    .sort()
+    .reverse();
   const income = Number(totals.find((t) => t.type === "income")?.total ?? 0);
   const expenses = Number(totals.find((t) => t.type === "expense")?.total ?? 0);
   const net = income - expenses;
 
   const href = (t: TabId) => {
     const p = new URLSearchParams();
-    if (period !== "all") p.set("period", period);
+    p.set("period", period);
     if (t !== "general") p.set("tab", t);
-    const s = p.toString();
-    return s ? `/finances?${s}` : "/finances";
+    return `/finances?${p.toString()}`;
   };
 
   return (
     <div className="space-y-6 pb-24 px-2 sm:px-4 md:px-8">
       <FinanceHeader
         period={period}
-        periods={periodOptions()}
+        years={years}
         members={members}
         vendors={vendors}
         projects={projects}
@@ -90,7 +105,7 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
           value={cedis(net)}
           border="border-l-blue-600"
           text={net < 0 ? "text-red-600" : "text-blue-700"}
-          hint={period === "all" ? "All Time" : periodLabel(period)}
+          hint={periodLabel(period)}
           className="bg-blue-50/50 sm:col-span-2 lg:col-span-1"
         />
       </div>

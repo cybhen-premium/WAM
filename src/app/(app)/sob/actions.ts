@@ -28,16 +28,33 @@ export async function completeSobLesson(_prev: FormState, form: FormData): Promi
     .values({ churchId: church.id, memberId, lesson, completedAt: date })
     .onConflictDoNothing();
 
-  // If lesson 4 (Baptised) is completed, mark as baptized
+  // If lesson 4 (Baptised) is completed, mark as baptized and graduate to full membership
   if (lesson === 4) {
+    // Graduate them only if they are still a Visitor / Regular Attendee
+    const [current] = await db
+      .select({ category: member.category })
+      .from(member)
+      .where(and(eq(member.id, memberId), eq(member.churchId, church.id)))
+      .limit(1);
+    const graduating =
+      current?.category === "Visitor" || current?.category === "Regular Attendee";
     await db
       .update(member)
-      .set({ baptized: true })
+      .set({
+        baptized: true,
+        ...(graduating
+          ? { category: "General Member", convertedAt: date }
+          : {}),
+      })
       .where(and(eq(member.id, memberId), eq(member.churchId, church.id)));
   }
 
   revalidatePath("/sob");
   revalidatePath("/members");
+  revalidatePath("/akwaaba");
+  revalidatePath("/dashboard");
+  revalidatePath("/visitor-conversion");
+  revalidatePath("/follow-up");
   return { ok: true };
 }
 
@@ -55,14 +72,38 @@ export async function undoSobLesson(memberId: string, lesson: number): Promise<v
       ),
     );
 
-  // If lesson 4 (Baptised) is undone, revoke baptism status
+  // If lesson 4 (Baptised) is undone, revoke baptism status.
+  // If they had auto-graduated to General Member on baptism, move them back to Regular Attendee.
   if (lesson === 4) {
-    await db
-      .update(member)
-      .set({ baptized: false })
-      .where(and(eq(member.id, memberId), eq(member.churchId, church.id), eq(member.baptized, true)));
+    const [current] = await db
+      .select({ id: member.id, category: member.category, convertedAt: member.convertedAt })
+      .from(member)
+      .where(and(eq(member.id, memberId), eq(member.churchId, church.id)))
+      .limit(1);
+    if (current) {
+      // lessonsLeft is queried AFTER the delete above, so lesson 4 is already gone.
+      // If lessons 1-3 are also gone, this person has no SOB history left and a
+      // full-member category could only have come from the auto-graduation.
+      const lessonsLeft = await db
+        .select({ lesson: sobProgress.lesson })
+        .from(sobProgress)
+        .where(and(eq(sobProgress.memberId, memberId), eq(sobProgress.churchId, church.id)));
+      const hadAutoGraduated =
+        current.category !== "Visitor" &&
+        current.category !== "Regular Attendee" &&
+        lessonsLeft.length === 0;
+      await db
+        .update(member)
+        .set({
+          baptized: false,
+          ...(hadAutoGraduated ? { category: "Regular Attendee", convertedAt: null } : {}),
+        })
+        .where(and(eq(member.id, memberId), eq(member.churchId, church.id)));
+    }
   }
 
   revalidatePath("/sob");
   revalidatePath("/members");
+  revalidatePath("/akwaaba");
+  revalidatePath("/dashboard");
 }

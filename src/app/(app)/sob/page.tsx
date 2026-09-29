@@ -1,5 +1,6 @@
-import { eq, and, ilike, ne } from "drizzle-orm";
-import { GraduationCap, CheckCircle2, Clock, BookOpen } from "lucide-react";
+import { eq, and, ilike, gte, lt } from "drizzle-orm";
+import Link from "next/link";
+import { GraduationCap, CheckCircle2, Clock, BookOpen, History } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
@@ -15,11 +16,12 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const filter = typeof sp.filter === "string" ? sp.filter : "all";
 
-  // Fetch all active members (with optional name search)
+  // SOB only tracks the "staying" people from Akwaaba (Regular Attendees).
+  // Full members added via /members must never appear here.
   const baseWhere = and(
     eq(schema.member.churchId, church.id),
     eq(schema.member.active, true),
-    ne(schema.member.category, "Visitor"),
+    eq(schema.member.category, "Regular Attendee"),
     q ? ilike(schema.member.fullName, `%${q}%`) : undefined,
   );
 
@@ -36,7 +38,7 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
 
   // Fetch all SOB progress for this church
   const allProgress = await db
-    .select({ memberId: schema.sobProgress.memberId, lesson: schema.sobProgress.lesson })
+    .select({ memberId: schema.sobProgress.memberId, lesson: schema.sobProgress.lesson, completedAt: schema.sobProgress.completedAt })
     .from(schema.sobProgress)
     .where(eq(schema.sobProgress.churchId, church.id));
 
@@ -70,7 +72,7 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
     .where(and(
       eq(schema.member.churchId, church.id), 
       eq(schema.member.active, true),
-      ne(schema.member.category, "Visitor")
+      eq(schema.member.category, "Regular Attendee")
     ));
 
   const totalCount = allMembers.length;
@@ -81,19 +83,43 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
   }).length;
   const notStarted = allMembers.filter((m) => (progressMap.get(m.id)?.length ?? 0) === 0).length;
 
+  // Baptised totals: lesson 4 completions grouped by year and month of completion
+  const baptismByYear = new Map<string, number>();
+  const baptismByMonth = new Map<string, number>();
+  for (const p of allProgress) {
+    if (p.lesson !== 4 || !p.completedAt) continue;
+    const y = p.completedAt.slice(0, 4);
+    const ym = p.completedAt.slice(0, 7);
+    baptismByYear.set(y, (baptismByYear.get(y) ?? 0) + 1);
+    baptismByMonth.set(ym, (baptismByMonth.get(ym) ?? 0) + 1);
+  }
+  const now = new Date();
+  const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const thisYearKey = String(now.getFullYear());
+  const baptisedThisMonth = baptismByMonth.get(thisMonthKey) ?? 0;
+  const baptisedThisYear = baptismByYear.get(thisYearKey) ?? 0;
+
   return (
     <div className="space-y-6 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-200">
-          <GraduationCap className="h-6 w-6" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-200">
+            <GraduationCap className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">School of Baptism</h1>
+            <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">
+              Track member progress through the 4 SOB lessons before baptism
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">School of Baptism</h1>
-          <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">
-            Track member progress through the 4 SOB lessons before baptism
-          </p>
-        </div>
+        <Link
+          href="/sob/history"
+          className="inline-flex items-center justify-center gap-2 whitespace-nowrap transition-all duration-200 active:scale-[0.98] px-4 h-11 md:h-9 text-xs md:text-[11px] font-black rounded-xl bg-[#1e3a8a] text-white hover:bg-blue-900 shadow-md shrink-0"
+        >
+          <History className="h-4 w-4" /> History
+        </Link>
       </div>
 
       {/* Summary cards */}
@@ -101,7 +127,7 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
         <StatCard
           label="Graduated / Baptized"
           value={graduated}
-          sub={`of ${totalCount} total members`}
+          sub={`${baptisedThisMonth} this month · ${baptisedThisYear} this year`}
           icon={CheckCircle2}
           tone="text-emerald-600 bg-emerald-50"
         />
