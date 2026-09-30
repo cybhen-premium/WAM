@@ -7,6 +7,7 @@ import { requireChurch } from "@/lib/session";
 import { TITHE } from "@/lib/constants";
 import { sendSms, withFooter } from "@/lib/sms";
 import { cedis } from "@/lib/utils";
+import { requireModule } from "@/lib/permissions";
 
 const { tithe, transaction, member } = schema;
 
@@ -16,6 +17,7 @@ const NON_MEMBER_CATEGORIES = ["Visitor", "Regular Attendee"];
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
 export async function recordTithe(_prev: FormState, form: FormData): Promise<FormState> {
+  await requireModule("tithes");
   const { church } = await requireChurch();
   const memberId = String(form.get("memberId") ?? "");
   const amountStr = String(form.get("amount") ?? "");
@@ -109,6 +111,7 @@ async function tithePayer(churchId: string, memberId: string) {
 
 /** "Edit Tithe" in the member list: corrects the member, week, month or amount of an existing tithe. */
 export async function updateTithe(_prev: FormState, form: FormData): Promise<FormState> {
+  await requireModule("tithes");
   const { church } = await requireChurch();
   const titheId = String(form.get("titheId") ?? "");
   const memberId = String(form.get("memberId") ?? "");

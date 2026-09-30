@@ -5,6 +5,7 @@ import { requireChurch } from "@/lib/session";
 import { sumAmount } from "@/lib/finance";
 import { cedis } from "@/lib/utils";
 import { TrendChart } from "@/components/trend-chart";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Giving Analytics" };
 
@@ -12,6 +13,7 @@ const { transaction } = schema;
 
 export default async function GivingAnalyticsPage() {
   const { church } = await requireChurch();
+  await requireModule("analytics");
   const income = and(eq(transaction.churchId, church.id), eq(transaction.type, "income"));
 
   const [[totals], months] = await Promise.all([

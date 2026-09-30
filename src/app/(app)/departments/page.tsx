@@ -3,11 +3,13 @@ import { Users } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { DepartmentToolbar, DepartmentRowActions } from "./client";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Departments" };
 
 export default async function DepartmentsPage() {
   const { church } = await requireChurch();
+  await requireModule("members");
 
   const rows = await db
     .select({

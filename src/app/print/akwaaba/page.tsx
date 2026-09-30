@@ -3,6 +3,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { fmtDate } from "@/lib/utils";
 import { AkwaabaPrintControls } from "./controls";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Akwaaba Report" };
 
@@ -19,6 +20,7 @@ type SectionKey = GroupKey | "members";
 
 export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/print/akwaaba">) {
   const { church } = await requireChurch();
+  await requireModule("akwaaba");
   const sp = await searchParams;
 
   // One month — "YYYY-MM", defaulting to the current month when missing or invalid.

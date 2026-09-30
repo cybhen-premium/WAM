@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { NewEventButton, DeleteEventButton } from "./events-client";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Events" };
 
@@ -24,6 +25,7 @@ const iso = (d: Date) =>
 
 export default async function EventsPage({ searchParams }: PageProps<"/events">) {
   const { church } = await requireChurch();
+  await requireModule("events");
   const sp = await searchParams;
   const todayIso = iso(new Date());
   const day = typeof sp.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) ? sp.day : todayIso;

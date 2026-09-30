@@ -14,8 +14,10 @@ import {
   savePreferences,
   saveProfile,
   setAutoWelcome,
+  setStaffModules,
   type FormState,
 } from "./actions";
+import { MODULES, MODULE_KEYS } from "@/lib/modules";
 
 type Church = typeof schema.church.$inferSelect;
 
@@ -351,8 +353,52 @@ export function PreferencesForm({ church }: { church: Church }) {
 
 const ROLES = ["admin", "pastor", "finance", "secretary", "usher"];
 
-type ActiveStaff = { id: string; name: string; email: string; role: string; joined: string; self: boolean };
-type PendingStaff = { id: string; email: string; role: string; invited: string };
+type ActiveStaff = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  joined: string;
+  self: boolean;
+  /** Modules assigned to this person (admins ignore these and keep everything). */
+  modules: string[];
+};
+type PendingStaff = { id: string; email: string; role: string; invited: string; modules: string[] };
+
+/** One toggle per module — the superadmin ticks exactly what this person may open. */
+function ModuleToggles({ staff, disabled }: { staff: { id: string; modules: string[] }; disabled: boolean }) {
+  const [busy, startTransition] = useTransition();
+  const assigned = new Set(staff.modules);
+
+  return (
+    <div className="flex flex-wrap justify-end gap-1">
+      {MODULE_KEYS.map((key) => {
+        const on = assigned.has(key);
+        return (
+          <button
+            key={key}
+            type="button"
+            disabled={disabled || busy}
+            title={`${MODULES[key].label} — ${on ? "allowed" : "blocked"}`}
+            aria-pressed={on}
+            onClick={() => {
+              const next = on ? assigned : new Set([...assigned, key]);
+              startTransition(() => setStaffModules(staff.id, [...next]));
+            }}
+            className={cn(
+              "rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-tight transition-colors disabled:opacity-50",
+              on
+                ? "bg-[#1e3a8a] text-white hover:bg-blue-900"
+                : "bg-slate-100 text-slate-400 hover:bg-slate-200",
+            )}
+          >
+            {MODULES[key].label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; active: ActiveStaff[]; pending: PendingStaff[] }) {
   const [state, action, submitting] = useFormAction(inviteStaff);
@@ -388,6 +434,7 @@ export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; act
                 <th className="py-2">Name / Email</th>
                 <th className="py-2">Role</th>
                 <th className="py-2">Joined</th>
+                <th className="py-2 text-right">Modules they can open</th>
                 <th className="py-2 text-right">Actions</th>
               </tr>
             </thead>
@@ -419,6 +466,15 @@ export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; act
                     )}
                   </td>
                   <td className="py-3 text-slate-500">{date(s.joined)}</td>
+                  <td className="py-3">
+                    {s.role === "admin" ? (
+                      <p className="text-right text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                        Full access
+                      </p>
+                    ) : (
+                      <ModuleToggles staff={s} disabled={!isAdmin || s.self} />
+                    )}
+                  </td>
                   <td className="py-3 text-right">
                     {isAdmin && !s.self && (
                       <button onClick={() => startTransition(() => removeStaff(s.id))} className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-600" aria-label={`Remove ${s.email}`}>
@@ -439,21 +495,25 @@ export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; act
         ) : (
           <ul className="divide-y divide-slate-100">
             {pending.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-3 py-3">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">{p.email}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                      {p.role} · invited {date(p.invited)}
-                    </p>
+              <li key={p.id} className="flex flex-col gap-2 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-4 w-4 text-slate-400" />
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{p.email}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        {p.role} · invited {date(p.invited)}
+                      </p>
+                    </div>
                   </div>
+                  {isAdmin && (
+                    <button onClick={() => startTransition(() => removeStaff(p.id))} className="text-xs font-bold text-red-600 hover:underline">
+                      Revoke
+                    </button>
+                  )}
                 </div>
-                {isAdmin && (
-                  <button onClick={() => startTransition(() => removeStaff(p.id))} className="text-xs font-bold text-red-600 hover:underline">
-                    Revoke
-                  </button>
-                )}
+                {/* Access can be set before they accept — it applies the moment they sign up. */}
+                {p.role !== "admin" && <ModuleToggles staff={p} disabled={!isAdmin} />}
               </li>
             ))}
           </ul>

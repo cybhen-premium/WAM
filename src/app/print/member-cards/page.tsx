@@ -4,12 +4,14 @@ import { Church } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { PrintButton } from "../print-button";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Member QR Cards" };
 
 /** Printable check-in cards. ?id=<member> prints one card, otherwise all active members. */
 export default async function MemberCardsPage({ searchParams }: PageProps<"/print/member-cards">) {
   const { church } = await requireChurch();
+  await requireModule("members");
   const sp = await searchParams;
   const id = typeof sp.id === "string" ? sp.id : "";
 

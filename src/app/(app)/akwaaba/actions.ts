@@ -6,6 +6,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { MEMBER_CATEGORIES } from "@/lib/constants";
 import { sendSms, withFooter } from "@/lib/sms";
+import { requireModule } from "@/lib/permissions";
 
 const { member, followUp } = schema;
 
@@ -33,6 +34,7 @@ function readPerson(form: FormData) {
 
 /** Register or update a person through Akwaaba (reception pathway) */
 export async function registerPerson(_prev: FormState, form: FormData): Promise<FormState> {
+  await requireModule("akwaaba");
   const { church } = await requireChurch();
   const values = readPerson(form);
   if (!values.fullName) return { error: "Full name is required." };
@@ -92,6 +94,7 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
 }
 
 export async function setPersonActive(id: string, active: boolean) {
+  await requireModule("akwaaba");
   const { church } = await requireChurch();
   await db
     .update(member)
@@ -103,6 +106,7 @@ export async function setPersonActive(id: string, active: boolean) {
 }
 
 export async function deletePerson(id: string) {
+  await requireModule("akwaaba");
   const { church } = await requireChurch();
   await db.delete(member).where(and(eq(member.id, id), eq(member.churchId, church.id)));
   revalidatePath("/akwaaba");

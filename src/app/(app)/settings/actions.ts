@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
+import { requireModule } from "@/lib/permissions";
+import { MODULE_KEYS } from "@/lib/modules";
 
-const { church, staff } = schema;
+const { church, staff, staffModule } = schema;
 
 export type FormState = { error?: string; ok?: boolean; message?: string } | undefined;
 
@@ -25,6 +27,7 @@ function done(message: string): FormState {
 }
 
 export async function saveProfile(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("settings");
   const { church: c } = await requireAdmin();
   const name = s(f, "name");
   if (!name) return { error: "Church name is required." };
@@ -50,6 +53,7 @@ export async function saveProfile(_prev: FormState, f: FormData): Promise<FormSt
 }
 
 export async function saveBranding(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("settings");
   const { church: c } = await requireAdmin();
   const color = (k: string, fallback: string) => (/^#[0-9a-f]{6}$/i.test(s(f, k)) ? s(f, k) : fallback);
   const logo = s(f, "logoUrl");
@@ -69,12 +73,14 @@ export async function saveBranding(_prev: FormState, f: FormData): Promise<FormS
 }
 
 export async function setAutoWelcome(enabled: boolean) {
+  await requireModule("settings");
   const { church: c } = await requireAdmin();
   await db.update(church).set({ autoWelcomeSms: enabled }).where(eq(church.id, c.id));
   revalidatePath("/settings");
 }
 
 export async function requestSenderId(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("settings");
   const { church: c } = await requireAdmin();
   const id = s(f, "senderId");
   // Telcos require 3-11 alphanumeric characters, starting with a letter.
@@ -84,6 +90,7 @@ export async function requestSenderId(_prev: FormState, f: FormData): Promise<Fo
 }
 
 export async function savePreferences(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("settings");
   const { church: c } = await requireAdmin();
   const weeks = Math.min(12, Math.max(1, Math.round(Number(s(f, "absenceThresholdWeeks")) || 3)));
   await db
@@ -103,6 +110,7 @@ export async function savePreferences(_prev: FormState, f: FormData): Promise<Fo
 const ROLES = ["admin", "pastor", "finance", "secretary", "usher"] as const;
 
 export async function inviteStaff(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("settings");
   const { church: c } = await requireAdmin();
   const email = s(f, "email").toLowerCase();
   const role = ROLES.find((r) => r === s(f, "role")) ?? "secretary";
@@ -120,6 +128,7 @@ export async function inviteStaff(_prev: FormState, f: FormData): Promise<FormSt
 }
 
 export async function changeRole(staffId: string, role: string) {
+  await requireModule("settings");
   const { church: c, user } = await requireAdmin();
   const r = ROLES.find((x) => x === role);
   if (!r) return;
@@ -132,11 +141,38 @@ export async function changeRole(staffId: string, role: string) {
 }
 
 export async function removeStaff(staffId: string) {
+  await requireModule("settings");
   const { church: c, user } = await requireAdmin();
   const [row] = await db.select().from(staff).where(and(eq(staff.id, staffId), eq(staff.churchId, c.id))).limit(1);
   if (!row || row.userId === user.id) return;
   await db.delete(staff).where(eq(staff.id, staffId));
   revalidatePath("/settings");
+}
+
+/**
+ * Superadmin-only: replace the modules a staff member may access. Admins are not affected — they always
+ * have everything — so this is where you scope everyone else.
+ */
+export async function setStaffModules(staffId: string, modules: string[]) {
+  await requireModule("settings");
+  const { church: c } = await requireAdmin();
+
+  const [target] = await db
+    .select({ id: staff.id, role: staff.role })
+    .from(staff)
+    .where(and(eq(staff.id, staffId), eq(staff.churchId, c.id)))
+    .limit(1);
+  if (!target || target.role === "admin") return; // admins keep full access
+
+  const wanted = MODULE_KEYS.filter((k) => modules.includes(k));
+  await db.delete(staffModule).where(and(eq(staffModule.churchId, c.id), eq(staffModule.staffId, staffId)));
+  if (wanted.length) {
+    await db
+      .insert(staffModule)
+      .values(wanted.map((module) => ({ churchId: c.id, staffId, module })));
+  }
+  revalidatePath("/settings");
+  revalidatePath("/", "layout");
 }
 
 

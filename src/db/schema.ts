@@ -93,7 +93,7 @@ export const church = pgTable("church", {
   senderIdStatus: text("sender_id_status").notNull().default("none"), // none | pending | approved | rejected
   appendFooter: boolean("append_footer").notNull().default(true),
   autoWelcomeSms: boolean("auto_welcome_sms").notNull().default(false),
-  // Welfare automation (daily birthday / anniversary SMS)
+  // Member care automation (daily birthday / anniversary SMS)
   automationEnabled: boolean("automation_enabled").notNull().default(false),
   birthdayTemplate: text("birthday_template")
     .notNull()
@@ -131,6 +131,29 @@ export const staff = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("staff_church_idx").on(t.churchId), index("staff_user_idx").on(t.userId)],
+);
+
+/**
+ * What a staff member may access, one row per module. A superadmin (staff.role = "admin") implicitly
+ * has every module, so this table only holds the assignments made for everyone else.
+ */
+export const staffModule = pgTable(
+  "staff_module",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    staffId: uuid("staff_id")
+      .notNull()
+      .references(() => staff.id, { onDelete: "cascade" }),
+    // A key from MODULES in src/lib/permissions.ts (text, so modules can be added without a migration).
+    module: text("module").notNull(),
+  },
+  (t) => [
+    uniqueIndex("staff_module_uq").on(t.staffId, t.module),
+    index("staff_module_church_idx").on(t.churchId),
+  ],
 );
 
 /* ------------------------------------------------------------- members ---- */

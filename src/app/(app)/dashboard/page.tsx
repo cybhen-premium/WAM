@@ -17,6 +17,7 @@ import {
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { atRiskWhere } from "@/lib/pastoral";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Dashboard" };
 
@@ -24,6 +25,7 @@ const { member, staff } = schema;
 
 export default async function DashboardPage() {
   const { church } = await requireChurch();
+  await requireModule("dashboard");
 
   // Month/day of a date column compared against today, and against the next 7 days.
   const md = (col: AnyColumn) => sql`to_char(${col}, 'MM-DD')`;

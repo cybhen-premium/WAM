@@ -6,11 +6,13 @@ import { requireChurch } from "@/lib/session";
 import { cedis, fmtDate } from "@/lib/utils";
 import { receiptLabel } from "@/lib/finance";
 import { PrintButton } from "../../print-button";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Receipt" };
 
 export default async function ReceiptPage({ params }: PageProps<"/print/receipt/[id]">) {
   const { church } = await requireChurch();
+  await requireModule("finances");
   const { id } = await params;
   const [row] = await db
     .select({ t: schema.transaction, memberName: schema.member.fullName, memberPhone: schema.member.phone })

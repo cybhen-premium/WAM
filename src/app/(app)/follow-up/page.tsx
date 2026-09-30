@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { AddToPipelineButton, FollowUpCard } from "./follow-up-client";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Follow-up Pipeline" };
 
@@ -21,6 +22,7 @@ const COLUMNS = [
 
 export default async function FollowUpPage() {
   const { church } = await requireChurch();
+  await requireModule("care");
 
   const entries = await db
     .select({ f: followUp, fullName: member.fullName, phone: member.phone, category: member.category })

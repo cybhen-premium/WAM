@@ -3,6 +3,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { atRiskWhere } from "@/lib/pastoral";
 import { Composer } from "./composer";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Announcements" };
 
@@ -10,6 +11,7 @@ const { member } = schema;
 
 export default async function AnnouncementsPage() {
   const { church } = await requireChurch();
+  await requireModule("messaging");
 
   const [[all], categories, [atRisk]] = await Promise.all([
     db.select({ n: count() }).from(member).where(and(eq(member.churchId, church.id), eq(member.active, true))),

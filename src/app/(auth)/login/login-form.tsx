@@ -10,7 +10,8 @@ import { toast } from "sonner";
 
 export function LoginForm() {
   const router = useRouter();
-  const next = useSearchParams().get("next") ?? "/dashboard";
+  // "/" routes to the dashboard, or to the first module this user was given access to.
+  const next = useSearchParams().get("next") ?? "/";
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -28,7 +29,7 @@ export function LoginForm() {
     
     toast.success("Signed in successfully!");
     
-    router.push(next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard");
+    router.push(next.startsWith("/") && !next.startsWith("//") ? next : "/");
     router.refresh();
   }
 

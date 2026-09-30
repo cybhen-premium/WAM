@@ -5,12 +5,14 @@ import { sql, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { WELFARE_DUES } from "@/lib/constants";
+import { requireModule } from "@/lib/permissions";
 
 const { welfareDues, transaction } = schema;
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
 export async function recordDuesPayment(_prev: FormState, form: FormData): Promise<FormState> {
+  await requireModule("care");
   const { church } = await requireChurch();
   const memberId = String(form.get("memberId") ?? "");
   const amountStr = String(form.get("amount") ?? "");

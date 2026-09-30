@@ -4,6 +4,7 @@ import { requireChurch } from "@/lib/session";
 import { inPeriod, parsePeriod, periodLabel, sumAmount } from "@/lib/finance";
 import { cedis, fmtDate } from "@/lib/utils";
 import { PrintButton } from "../print-button";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Financial Report" };
 
@@ -11,6 +12,7 @@ const { transaction, member } = schema;
 
 export default async function ReportPage({ searchParams }: PageProps<"/print/report">) {
   const { church } = await requireChurch();
+  await requireModule("finances");
   const sp = await searchParams;
   const period = parsePeriod(sp.period);
   const category = typeof sp.category === "string" ? sp.category : "";

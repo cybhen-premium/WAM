@@ -4,6 +4,7 @@ import { requireChurch } from "@/lib/session";
 import { cedis, fmtDate } from "@/lib/utils";
 import { weekColumns } from "@/lib/weeks";
 import { PrintButton } from "../print-button";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Tithes Report" };
 
@@ -12,6 +13,7 @@ const NON_MEMBER_CATEGORIES: string[] = ["Visitor", "Regular Attendee"];
 
 export default async function TithesPrintPage({ searchParams }: PageProps<"/print/tithes">) {
   const { church } = await requireChurch();
+  await requireModule("tithes");
   const sp = await searchParams;
 
   // Period from the tracker's card combo box — "YYYY-MM" (one month) or "YYYY" (the whole year),

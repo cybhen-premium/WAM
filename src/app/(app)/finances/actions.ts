@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
+import { requireModule } from "@/lib/permissions";
 import {
   TITHE,
   WELFARE_DUES,
@@ -49,6 +50,7 @@ function done() {
 
 /** "Add Transaction" dialog: general income or expense. */
 export async function addTransaction(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("finances");
   const { church } = await requireChurch();
   const type = s(f, "type") === "expense" ? "expense" : "income";
   // The category field is a combo box: the lists are suggestions, so any non-empty value — including a
@@ -74,6 +76,7 @@ export async function addTransaction(_prev: FormState, f: FormData): Promise<For
 
 /** Tithes and Welfare Dues tabs: an income tied to a member, with a receipt number. */
 export async function recordContribution(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("finances");
   const { church } = await requireChurch();
   const category = s(f, "kind") === "dues" ? WELFARE_DUES : TITHE;
   const memberId = await owned(member, s(f, "memberId"), church.id);
@@ -95,6 +98,7 @@ export async function recordContribution(_prev: FormState, f: FormData): Promise
 
 /** Welfare Out tab: support paid to a member. */
 export async function recordWelfareOut(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("finances");
   const { church } = await requireChurch();
   const memberId = await owned(member, s(f, "memberId"), church.id);
   if (!memberId) return { error: "Select the beneficiary." };
@@ -114,12 +118,14 @@ export async function recordWelfareOut(_prev: FormState, f: FormData): Promise<F
 }
 
 export async function deleteTransaction(id: string) {
+  await requireModule("finances");
   const { church } = await requireChurch();
   await db.delete(transaction).where(and(eq(transaction.id, id), eq(transaction.churchId, church.id)));
   done();
 }
 
 export async function saveProject(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("finances");
   const { church } = await requireChurch();
   const name = s(f, "name");
   const target = Number(s(f, "target"));
@@ -135,6 +141,7 @@ export async function saveProject(_prev: FormState, f: FormData): Promise<FormSt
 }
 
 export async function deleteProject(id: string) {
+  await requireModule("finances");
   const { church } = await requireChurch();
   await db.delete(projectFund).where(and(eq(projectFund.id, id), eq(projectFund.churchId, church.id)));
   done();

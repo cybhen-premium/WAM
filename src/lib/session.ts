@@ -6,8 +6,31 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db, schema } from "@/db";
 
+/**
+ * Neon occasionally drops a pooled connection mid-query. One quick retry keeps a blip from being read as
+ * "signed out" — otherwise a single failed session lookup logs the person out for no reason.
+ * `retryWhen` lets a caller also treat a "too good to be true" result (e.g. a missing session) as worth
+ * one more try.
+ */
+async function retry<T>(run: () => Promise<T>, retryWhen?: (value: T) => boolean): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const value = await run();
+      if (attempt < 2 && retryWhen?.(value)) {
+        await new Promise((r) => setTimeout(r, 150));
+        continue;
+      }
+      return value;
+    } catch (err) {
+      if (attempt >= 2) throw err;
+      await new Promise((r) => setTimeout(r, 150));
+    }
+  }
+}
+
 export const getUser = cache(async () => {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  const session = await retry(() => auth.api.getSession({ headers: requestHeaders }), (s) => !s);
   return session?.user ?? null;
 });
 
@@ -19,12 +42,14 @@ export async function requireUser() {
 
 /** The church the signed-in user works in, or null if they haven't set one up. */
 export const getChurchForUser = cache(async (userId: string) => {
-  const [row] = await db
-    .select({ church: schema.church, role: schema.staff.role })
-    .from(schema.staff)
-    .innerJoin(schema.church, eq(schema.staff.churchId, schema.church.id))
-    .where(and(eq(schema.staff.userId, userId), eq(schema.staff.status, "active")))
-    .limit(1);
+  const [row] = await retry(() =>
+    db
+      .select({ church: schema.church, role: schema.staff.role })
+      .from(schema.staff)
+      .innerJoin(schema.church, eq(schema.staff.churchId, schema.church.id))
+      .where(and(eq(schema.staff.userId, userId), eq(schema.staff.status, "active")))
+      .limit(1),
+  );
   return row ?? null;
 });
 

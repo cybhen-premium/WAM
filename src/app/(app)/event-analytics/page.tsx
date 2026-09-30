@@ -4,6 +4,7 @@ import { ArrowLeft, ChartColumn, Calendar, TrendingUp, Users } from "lucide-reac
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { PeriodSelect } from "./period-select";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Event Momentum" };
 
@@ -19,6 +20,7 @@ type Range = keyof typeof RANGES;
 
 export default async function EventMomentumPage({ searchParams }: PageProps<"/event-analytics">) {
   const { church } = await requireChurch();
+  await requireModule("events");
   const sp = await searchParams;
   const range: Range = typeof sp.range === "string" && sp.range in RANGES ? (sp.range as Range) : "all";
 

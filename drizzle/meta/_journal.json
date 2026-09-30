@@ -78,6 +78,13 @@
       "when": 1790704356816,
       "tag": "0010_akwaaba_intake",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790725914985,
+      "tag": "0012_staff_module",
+      "breakpoints": true
     }
   ]
 }

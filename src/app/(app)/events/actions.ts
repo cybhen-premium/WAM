@@ -5,10 +5,12 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { EVENT_TYPES } from "@/lib/constants";
+import { requireModule } from "@/lib/permissions";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
 export async function createEvent(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("events");
   const { church } = await requireChurch();
   const s = (k: string) => String(f.get(k) ?? "").trim();
   const title = s("title");
@@ -37,6 +39,7 @@ export async function createEvent(_prev: FormState, f: FormData): Promise<FormSt
 }
 
 export async function deleteEvent(id: string) {
+  await requireModule("events");
   const { church } = await requireChurch();
   await db.delete(schema.event).where(and(eq(schema.event.id, id), eq(schema.event.churchId, church.id)));
   revalidatePath("/events");

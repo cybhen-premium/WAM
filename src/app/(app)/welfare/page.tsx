@@ -8,6 +8,7 @@ import { smsProviderConfigured } from "@/lib/sms";
 import { cn, fmtDate } from "@/lib/utils";
 import { AutomationForm, LostSheepActions, ReachOutAllButton } from "./welfare-client";
 import { WelfareOutTab } from "@/app/(app)/finances/tabs";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Member Care" };
 
@@ -21,6 +22,7 @@ const TABS = [
 
 export default async function WelfarePage({ searchParams }: PageProps<"/welfare">) {
   const { church } = await requireChurch();
+  await requireModule("care");
   const sp = await searchParams;
   const tab = TABS.find((t) => t.id === sp.tab)?.id ?? "overview";
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
+import { requireModule } from "@/lib/permissions";
 
 const { attendance, event, member } = schema;
 
@@ -13,6 +14,7 @@ export type CheckInResult =
 
 /** Checks a member into an event. `memberRef` is a member id, or a scanned QR payload "ES:<id>". */
 export async function checkIn(eventId: string, memberRef: string): Promise<CheckInResult> {
+  await requireModule("events");
   const { church } = await requireChurch();
   const memberId = memberRef.replace(/^ES:/, "").trim();
   if (!/^[0-9a-f-]{36}$/i.test(memberId)) return { ok: false, error: "Unrecognised code." };
@@ -50,6 +52,7 @@ export async function checkIn(eventId: string, memberRef: string): Promise<Check
 }
 
 export async function undoCheckIn(eventId: string, memberId: string) {
+  await requireModule("events");
   const { church } = await requireChurch();
   await db
     .delete(attendance)

@@ -5,6 +5,7 @@ import { requireChurch } from "@/lib/session";
 import { cedis } from "@/lib/utils";
 import { weekColumns } from "@/lib/weeks";
 import { TithesToolbar, TithePeriodDropdown, TitheActions, TitheSearch } from "./client";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Tithes Tracker" };
 
@@ -48,6 +49,7 @@ function titheRecordsFor(churchId: string, period: string) {
 
 export default async function TithesPage({ searchParams }: PageProps<"/tithes">) {
   const { church } = await requireChurch();
+  await requireModule("tithes");
   const sp = await searchParams;
 
   // Period — "YYYY" (whole year) or "YYYY-MM" (single month), defaulting to the current year.

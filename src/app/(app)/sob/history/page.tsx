@@ -4,6 +4,7 @@ import { ArrowLeft, Droplets } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { HistoryFilters, HistoryTable } from "./history-client";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Baptism History" };
 
@@ -25,6 +26,7 @@ function parseSelection(v: unknown, years: string[]): string {
 
 export default async function SobHistoryPage({ searchParams }: PageProps<"/sob/history">) {
   const { church } = await requireChurch();
+  await requireModule("sob");
   const sp = await searchParams;
 
   // Years with at least one baptism (year dropdown options)

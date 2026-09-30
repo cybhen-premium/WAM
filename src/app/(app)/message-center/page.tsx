@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { SearchBox } from "@/components/controls";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Message Center" };
 
@@ -18,6 +19,7 @@ const STATUS: Record<string, string> = {
 
 export default async function MessageCenterPage({ searchParams }: PageProps<"/message-center">) {
   const { church } = await requireChurch();
+  await requireModule("messaging");
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const like = `%${q}%`;

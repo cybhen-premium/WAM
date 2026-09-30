@@ -11,6 +11,7 @@ import { inPeriod, parsePeriod, periodLabel, sumAmount } from "@/lib/finance";
 import { cedis, cn } from "@/lib/utils";
 import { FinanceHeader } from "./finance-client";
 import { AnalyticsTab, GeneralTab, ReceiptsTab } from "./tabs";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Financial Hub" };
 
@@ -25,6 +26,7 @@ const { transaction, projectFund } = schema;
 
 export default async function FinancesPage({ searchParams }: PageProps<"/finances">) {
   const { church } = await requireChurch();
+  await requireModule("finances");
   const sp = await searchParams;
   // "All Time" is no longer offered — the picker always resolves to a year (or quarter/month within it).
   const period = parsePeriod(sp.period, String(new Date().getFullYear()));

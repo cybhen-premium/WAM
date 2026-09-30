@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
+import { requireModule } from "@/lib/permissions";
 
 const { followUp, member } = schema;
 const STAGES = ["new", "contacted", "visited", "integrated"] as const;
@@ -17,6 +18,7 @@ function refresh() {
 }
 
 export async function addToPipeline(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("care");
   const { church } = await requireChurch();
   const memberId = String(f.get("memberId") ?? "");
   const [m] = await db
@@ -40,6 +42,7 @@ export async function addToPipeline(_prev: FormState, f: FormData): Promise<Form
 }
 
 export async function moveStage(id: string, stage: Stage) {
+  await requireModule("care");
   const { church } = await requireChurch();
   if (!STAGES.includes(stage)) return;
   await db
@@ -50,6 +53,7 @@ export async function moveStage(id: string, stage: Stage) {
 }
 
 export async function updateNotes(id: string, notes: string, assignedTo: string) {
+  await requireModule("care");
   const { church } = await requireChurch();
   await db
     .update(followUp)
@@ -59,6 +63,7 @@ export async function updateNotes(id: string, notes: string, assignedTo: string)
 }
 
 export async function removeFromPipeline(id: string) {
+  await requireModule("care");
   const { church } = await requireChurch();
   await db.delete(followUp).where(and(eq(followUp.id, id), eq(followUp.churchId, church.id)));
   refresh();

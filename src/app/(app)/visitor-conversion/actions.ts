@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
+import { requireModule } from "@/lib/permissions";
 
 /**
  * A visitor decides to stay: move them into the School of Baptism journey. They become a
@@ -11,6 +12,7 @@ import { requireChurch } from "@/lib/session";
  * The final member category is decided later, when SOB lesson 4 (Baptised) graduates them.
  */
 export async function moveToSob(memberId: string) {
+  await requireModule("analytics");
   const { church } = await requireChurch();
 
   const updated = await db

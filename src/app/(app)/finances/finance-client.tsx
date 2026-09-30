@@ -323,9 +323,9 @@ export function RecordWelfareButton({ members }: { members: Option[] }) {
   return (
     <>
       <button onClick={() => setOpen(true)} className={cn(buttonStyles.primary, "bg-pink-600 hover:bg-pink-700")}>
-        <Heart /> Record Welfare
+        <Heart /> Record Member Care
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Record Welfare" subtitle="Support Disbursement" icon={Heart}>
+      <Modal open={open} onClose={() => setOpen(false)} title="Record Member Care" subtitle="Support Disbursement" icon={Heart}>
         <form action={action} className="space-y-5 text-left">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SelectField
@@ -341,7 +341,7 @@ export function RecordWelfareButton({ members }: { members: Option[] }) {
           </div>
           <ErrorText state={state} />
           <button type="submit" disabled={pending} className={buttonStyles.submit}>
-            {pending ? "Saving…" : "Record Welfare"}
+            {pending ? "Saving…" : "Record Member Care"}
           </button>
         </form>
       </Modal>

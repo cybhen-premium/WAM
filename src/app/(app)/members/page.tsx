@@ -3,6 +3,7 @@ import { UserCheck } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { MembersToolbar, MemberFilters, MemberRowActions } from "./members-client";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Members Directory" };
 
@@ -10,6 +11,7 @@ const { member } = schema;
 
 export default async function MembersPage({ searchParams }: PageProps<"/members">) {
   const { church } = await requireChurch();
+  await requireModule("members");
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const group = typeof sp.group === "string" ? sp.group : "";

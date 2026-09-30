@@ -501,7 +501,7 @@ export async function WelfareOutTab({ churchId, period, members }: { churchId: s
     <div className="p-4 md:p-6 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-black text-slate-900">Welfare Disbursements</h3>
+          <h3 className="text-lg font-black text-slate-900">Member Care Disbursements</h3>
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Track and manage welfare support</p>
         </div>
         <RecordWelfareButton members={members} />
@@ -517,7 +517,7 @@ export async function WelfareOutTab({ churchId, period, members }: { churchId: s
           <div className="text-center py-12">
             <p className="text-sm font-bold text-slate-700">No welfare records yet</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
-              Click &ldquo;Record Welfare&rdquo; to add an entry
+              Click &ldquo;Record Member Care&rdquo; to add an entry
             </p>
           </div>
         ) : (

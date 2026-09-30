@@ -6,6 +6,7 @@ import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { WelfareDuesToolbar, DuesActions, PeriodSelector, StatusBadge } from "./client";
 import { WelfareOutTab } from "@/app/(app)/finances/tabs";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Welfare Dues" };
 
@@ -18,10 +19,11 @@ const TABS = [
 
 export default async function WelfareDuesPage({ searchParams }: PageProps<"/welfare-dues">) {
   const { church } = await requireChurch();
+  await requireModule("care");
   const sp = await searchParams;
   const tab = TABS.find((t) => t.id === sp.tab)?.id ?? "contributions";
 
-  // Determine period — e.g. "2026-09" (month) or "2026" (year)
+  // Determine period — e.g. "2026-09" (month) or "2026" (All Months = the whole year)
   const rawPeriod = typeof sp.period === "string" ? sp.period : new Date().toISOString().slice(0, 7);
   const isYear = /^\d{4}$/.test(rawPeriod);
   const periodFilter = rawPeriod + "%";
@@ -47,7 +49,7 @@ export default async function WelfareDuesPage({ searchParams }: PageProps<"/welf
         {TABS.map(({ id, label, icon: Icon }) => (
           <Link
             key={id}
-            href={id === "contributions" ? `/welfare-dues?period=${rawPeriod}` : `/welfare-dues?tab=${id}`}
+            href={id === "contributions" ? `/welfare-dues?period=${rawPeriod}` : `/welfare-dues?tab=${id}&period=${rawPeriod}`}
             scroll={false}
             className={cn(
               "flex items-center justify-center gap-2 rounded-xl h-10 text-xs font-bold transition-all",
@@ -68,7 +70,8 @@ export default async function WelfareDuesPage({ searchParams }: PageProps<"/welf
           isYear={isYear}
         />
       )}
-      {tab === "disbursements" && <WelfareOutTab churchId={church.id} period="all" members={members as any} />}
+      {/* Welfare Out follows the same year/month selection as Contributions In. */}
+      {tab === "disbursements" && <WelfareOutTab churchId={church.id} period={rawPeriod} members={members as any} />}
     </div>
   );
 }

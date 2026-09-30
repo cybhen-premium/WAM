@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Church, Menu, RotateCcw, X } from "lucide-react";
 import { NAV } from "@/lib/nav";
+import { hasModule, type ModuleKey } from "@/lib/modules";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -14,10 +15,12 @@ type Props = {
   churchName: string;
   logoUrl?: string;
   smsCredits: number;
+  /** Modules this user may access — the sidebar only shows these (superadmins get all of them). */
+  modules: ModuleKey[];
   children: React.ReactNode;
 };
 
-export function AppShell({ churchName, logoUrl, smsCredits, children }: Props) {
+export function AppShell({ churchName, logoUrl, smsCredits, modules, children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -64,7 +67,7 @@ export function AppShell({ churchName, logoUrl, smsCredits, children }: Props) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {NAV.map(({ href, label, icon: Icon }) => {
+          {NAV.filter((item) => hasModule(modules, item.module)).map(({ href, label, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link

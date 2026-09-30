@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq, and } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
+import { requireModule } from "@/lib/permissions";
 
 const { sobProgress, member } = schema;
 
@@ -13,6 +14,7 @@ const SOB_LESSONS = 4;
 
 /** Mark a lesson as complete for a member. Auto-baptises when lesson 4 (Baptised) is done. */
 export async function completeSobLesson(_prev: FormState, form: FormData): Promise<FormState> {
+  await requireModule("sob");
   const { church } = await requireChurch();
   const memberId = String(form.get("memberId") ?? "");
   const lesson = Number(form.get("lesson") ?? 0);
@@ -60,6 +62,7 @@ export async function completeSobLesson(_prev: FormState, form: FormData): Promi
 
 /** Undo a completed lesson */
 export async function undoSobLesson(memberId: string, lesson: number): Promise<void> {
+  await requireModule("sob");
   const { church } = await requireChurch();
 
   await db

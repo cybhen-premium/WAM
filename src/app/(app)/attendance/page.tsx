@@ -2,6 +2,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { AttendanceGate } from "./gate";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Attendance Gate" };
 
@@ -9,6 +10,7 @@ const { event, member, attendance } = schema;
 
 export default async function AttendancePage({ searchParams }: PageProps<"/attendance">) {
   const { church } = await requireChurch();
+  await requireModule("events");
   const sp = await searchParams;
 
   // Events from the last 30 days and the next 7, newest first.

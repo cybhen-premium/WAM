@@ -1,3 +1,4 @@
+import type { ModuleKey } from "@/lib/modules";
 import {
   LayoutDashboard,
   Users,
@@ -17,25 +18,25 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon };
+export type NavItem = { href: string; label: string; icon: LucideIcon; module: ModuleKey };
 
 export const NAV: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/members", label: "Members", icon: Users },
-  { href: "/departments", label: "Departments", icon: Users },
-  { href: "/akwaaba", label: "Akwaaba", icon: HandHeart },
-  { href: "/sob", label: "SOB", icon: GraduationCap },
-  { href: "/tithes", label: "Tithes Tracker", icon: CreditCard },
-  { href: "/finances", label: "Finances", icon: DollarSign },
-  { href: "/giving-analytics", label: "Giving Analytics", icon: ChartColumn },
-  { href: "/growth", label: "Growth", icon: TrendingUp },
-  { href: "/events", label: "Events", icon: Calendar },
-  { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
-  { href: "/follow-up", label: "Follow-up", icon: UserCheck },
-  { href: "/welfare", label: "Member Care", icon: HeartHandshake },
-  { href: "/welfare-dues", label: "Welfare Dues", icon: HeartHandshake },
-  { href: "/announcements", label: "Announce", icon: Megaphone },
-  { href: "/message-center", label: "Messages", icon: MessageSquare },
-  { href: "/visitor-conversion", label: "Visitors", icon: TrendingUp },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", module: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/members", module: "members", label: "Members", icon: Users },
+  { href: "/departments", module: "members", label: "Departments", icon: Users },
+  { href: "/akwaaba", module: "akwaaba", label: "Akwaaba", icon: HandHeart },
+  { href: "/sob", module: "sob", label: "SOB", icon: GraduationCap },
+  { href: "/tithes", module: "tithes", label: "Tithes Tracker", icon: CreditCard },
+  { href: "/finances", module: "finances", label: "Finances", icon: DollarSign },
+  { href: "/giving-analytics", module: "analytics", label: "Giving Analytics", icon: ChartColumn },
+  { href: "/growth", module: "analytics", label: "Growth", icon: TrendingUp },
+  { href: "/events", module: "events", label: "Events", icon: Calendar },
+  { href: "/attendance", module: "events", label: "Attendance", icon: ClipboardCheck },
+  { href: "/follow-up", module: "care", label: "Follow-up", icon: UserCheck },
+  { href: "/welfare", module: "care", label: "Member Care", icon: HeartHandshake },
+  { href: "/welfare-dues", module: "care", label: "Welfare Dues", icon: HeartHandshake },
+  { href: "/announcements", module: "messaging", label: "Announce", icon: Megaphone },
+  { href: "/message-center", module: "messaging", label: "Messages", icon: MessageSquare },
+  { href: "/visitor-conversion", module: "analytics", label: "Visitors", icon: TrendingUp },
+  { href: "/settings", module: "settings", label: "Settings", icon: Settings },
 ];

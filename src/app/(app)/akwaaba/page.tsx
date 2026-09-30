@@ -4,11 +4,13 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { AkwaabaHeader, AkwaabaFilters, PersonRowActions } from "./client";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Akwaaba - Reception" };
 
 export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba">) {
   const { church } = await requireChurch();
+  await requireModule("akwaaba");
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const status = typeof sp.status === "string" ? sp.status : "";

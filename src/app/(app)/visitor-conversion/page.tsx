@@ -3,6 +3,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { fmtDate } from "@/lib/utils";
 import { ConvertButton } from "./convert-button";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Visitor Command Center" };
 
@@ -10,6 +11,7 @@ const { member, followUp } = schema;
 
 export default async function VisitorConversionPage() {
   const { church } = await requireChurch();
+  await requireModule("analytics");
   // A "tracked" visitor is anyone currently a Visitor or who was converted from one.
   const tracked = and(eq(member.churchId, church.id), sql`(${member.category} = 'Visitor' or ${member.convertedAt} is not null)`);
 

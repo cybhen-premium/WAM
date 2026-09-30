@@ -3,6 +3,7 @@ import { Activity, DollarSign, TrendingUp, Users } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { GrowthCharts } from "./growth-charts";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Growth Analytics" };
 
@@ -12,6 +13,7 @@ const shortCedis = (n: number) => `₵${new Intl.NumberFormat("en-GH", { maximum
 
 export default async function GrowthPage() {
   const { church } = await requireChurch();
+  await requireModule("analytics");
 
   const [[{ total }], months] = await Promise.all([
     db.select({ total: count() }).from(member).where(and(eq(member.churchId, church.id), sql`${member.category} not in ('Visitor', 'Regular Attendee')`)),

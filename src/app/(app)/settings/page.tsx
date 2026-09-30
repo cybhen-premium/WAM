@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { getIntegrationForAdmin, isPlatformAdmin } from "@/lib/platform";
 import { IntegrationForm } from "./integration-form";
 import { BrandingForm, PreferencesForm, ProfileForm, SenderIdForm, StaffPanel, WelcomeToggle } from "./settings-client";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Settings & Management" };
 
@@ -20,6 +21,7 @@ const TABS = [
 
 export default async function SettingsPage({ searchParams }: PageProps<"/settings">) {
   const { church, role, user } = await requireChurch();
+  await requireModule("settings");
   const sp = await searchParams;
   const platformAdmin = isPlatformAdmin(user.email);
   const tabs = TABS.filter((t) => t.id !== "integrations" || platformAdmin);
@@ -76,22 +78,41 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
 }
 
 async function StaffTab({ churchId, userId, isAdmin }: { churchId: string; userId: string; isAdmin: boolean }) {
-  const rows = await db
-    .select({ s: schema.staff, name: schema.user.name })
-    .from(schema.staff)
-    .leftJoin(schema.user, eq(schema.user.id, schema.staff.userId))
-    .where(eq(schema.staff.churchId, churchId))
-    .orderBy(desc(schema.staff.createdAt));
+  const [rows, assignments] = await Promise.all([
+    db
+      .select({ s: schema.staff, name: schema.user.name })
+      .from(schema.staff)
+      .leftJoin(schema.user, eq(schema.user.id, schema.staff.userId))
+      .where(eq(schema.staff.churchId, churchId))
+      .orderBy(desc(schema.staff.createdAt)),
+    db
+      .select({ staffId: schema.staffModule.staffId, module: schema.staffModule.module })
+      .from(schema.staffModule)
+      .where(eq(schema.staffModule.churchId, churchId)),
+  ]);
+  // Group the assignments so each row gets its own module list.
+  const byStaff = new Map<string, string[]>();
+  for (const a of assignments) {
+    byStaff.set(a.staffId, [...(byStaff.get(a.staffId) ?? []), a.module]);
+  }
 
   return (
     <StaffPanel
       isAdmin={isAdmin}
       active={rows
         .filter((r) => r.s.status === "active")
-        .map((r) => ({ id: r.s.id, name: r.name ?? "Staff Member", email: r.s.email, role: r.s.role, joined: r.s.createdAt.toISOString(), self: r.s.userId === userId }))}
+        .map((r) => ({
+          id: r.s.id,
+          name: r.name ?? "Staff Member",
+          email: r.s.email,
+          role: r.s.role,
+          joined: r.s.createdAt.toISOString(),
+          self: r.s.userId === userId,
+          modules: byStaff.get(r.s.id) ?? [],
+        }))}
       pending={rows
         .filter((r) => r.s.status === "pending")
-        .map((r) => ({ id: r.s.id, email: r.s.email, role: r.s.role, invited: r.s.createdAt.toISOString() }))}
+        .map((r) => ({ id: r.s.id, email: r.s.email, role: r.s.role, invited: r.s.createdAt.toISOString(), modules: byStaff.get(r.s.id) ?? [] }))}
     />
   );
 }

@@ -8,6 +8,7 @@ import { INTEGRATIONS, type IntegrationKey } from "@/lib/integrations";
 import { normalizePhone } from "@/lib/sms";
 import { sendWithProvider } from "@/lib/sms-providers";
 import { modelFor } from "@/lib/ai";
+import { requireModule } from "@/lib/permissions";
 
 export type IntegrationState = { error?: string; ok?: boolean; message?: string } | undefined;
 
@@ -39,6 +40,7 @@ function validate(key: IntegrationKey, provider: string, common: Record<string, 
 }
 
 export async function saveIntegrationSettings(key: IntegrationKey, _prev: IntegrationState, f: FormData): Promise<IntegrationState> {
+  await requireModule("settings");
   const user = await requirePlatformAdmin();
   const integration = INTEGRATIONS[key];
   const provider = String(f.get("provider") ?? "");
@@ -61,6 +63,7 @@ export async function saveIntegrationSettings(key: IntegrationKey, _prev: Integr
 
 /** Exercises the saved configuration without touching church credits. */
 export async function testIntegration(key: IntegrationKey, _prev: IntegrationState, f: FormData): Promise<IntegrationState> {
+  await requireModule("settings");
   await requirePlatformAdmin();
   const cfg = await getIntegration(key);
   if (!cfg) return { error: "Save and enable a provider first." };

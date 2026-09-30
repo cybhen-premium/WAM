@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useFormAction } from "@/components/use-form-action";
-import { Plus, HeartHandshake, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, ChevronDown, HeartHandshake, CheckCircle2, AlertCircle } from "lucide-react";
 import { Modal, SelectField, TextField, buttonStyles } from "@/components/ui";
 import { recordDuesPayment } from "./actions";
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 /* Header buttons ----------------------------------------------------------- */
 
@@ -23,36 +28,63 @@ export function WelfareDuesToolbar({ members }: { members: { id: string; name: s
   );
 }
 
+/**
+ * The same year + month combo box used on the Akwaaba, Tithes and SOB pages: the year select plus
+ * "All Months" (which means the whole year). Drives ?period= on this page.
+ */
 export function PeriodSelector({ current }: { current: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [, startTransition] = useTransition();
 
-  const options = [];
-  const now = new Date();
-  options.push({ value: now.getFullYear().toString(), label: `Full Year ${now.getFullYear()}` });
-  options.push({ value: (now.getFullYear() - 1).toString(), label: `Full Year ${now.getFullYear() - 1}` });
-  
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const val = d.toISOString().slice(0, 7);
-    const label = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-    options.push({ value: val, label });
+  const selYear = current.slice(0, 4);
+  const selMonth = current.length === 7 ? current.slice(5, 7) : "";
+
+  const thisYear = new Date().getFullYear();
+  const years = [String(thisYear), String(thisYear - 1), String(thisYear - 2)];
+  const yearOptions = years.includes(selYear) ? years : [...years, selYear].sort().reverse();
+
+  function setPeriod(value: string) {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set("period", value);
+    startTransition(() => router.replace(`${pathname}?${p.toString()}`, { scroll: false }));
   }
 
+  const select =
+    "h-9 sm:h-10 appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-xs sm:text-sm font-bold text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer";
+
   return (
-    <select 
-      value={current} 
-      onChange={(e) => {
-         const p = new URLSearchParams(searchParams.toString());
-         p.set("period", e.target.value);
-         router.push(`${pathname}?${p.toString()}`);
-      }}
-      className="h-9 sm:h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs sm:text-sm font-bold text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
-    >
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
-  )
+    <div className="flex flex-wrap gap-2">
+      <div className="relative">
+        <select
+          value={selYear}
+          onChange={(e) => setPeriod(e.target.value)}
+          className={select}
+          aria-label="Filter by year"
+        >
+          {yearOptions.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+      </div>
+      <div className="relative">
+        <select
+          value={selMonth}
+          onChange={(e) => setPeriod(e.target.value ? `${selYear}-${e.target.value}` : selYear)}
+          className={select}
+          aria-label="Filter by month"
+        >
+          <option value="">All Months</option>
+          {MONTH_NAMES.map((m, i) => (
+            <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+      </div>
+    </div>
+  );
 }
 
 export function StatusBadge({ paid, target }: { paid: number, target: number }) {

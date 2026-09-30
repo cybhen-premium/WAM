@@ -6,10 +6,12 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { atRiskWhere } from "@/lib/pastoral";
 import { sendSms, withFooter } from "@/lib/sms";
+import { requireModule } from "@/lib/permissions";
 
 export type FormState = { error?: string; ok?: boolean; message?: string } | undefined;
 
 export async function saveAutomation(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("care");
   const { church } = await requireChurch();
   const birthday = String(f.get("birthdayTemplate") ?? "").trim();
   const anniversary = String(f.get("anniversaryTemplate") ?? "").trim();
@@ -25,6 +27,7 @@ export async function saveAutomation(_prev: FormState, f: FormData): Promise<For
 
 /** Lost Sheep → "Schedule Visit": adds a pastoral-visit entry to the follow-up pipeline. */
 export async function scheduleVisit(memberId: string) {
+  await requireModule("care");
   const { church } = await requireChurch();
   const [m] = await db
     .select({ id: schema.member.id })
@@ -39,6 +42,7 @@ export async function scheduleVisit(memberId: string) {
 
 /** Sends a "we miss you" SMS to the given at-risk members (or all of them when ids is empty). */
 export async function reachOut(ids: string[]): Promise<FormState> {
+  await requireModule("care");
   const { church } = await requireChurch();
   const rows = await db
     .select({ fullName: schema.member.fullName, phone: schema.member.phone })

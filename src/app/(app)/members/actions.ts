@@ -6,6 +6,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { MEMBER_CATEGORIES } from "@/lib/constants";
 import { sendSms, withFooter } from "@/lib/sms";
+import { requireModule } from "@/lib/permissions";
 
 const VISITOR = "Visitor";
 const REGULAR_ATTENDEE = "Regular Attendee";
@@ -41,6 +42,7 @@ function readMember(form: FormData) {
 }
 
 export async function saveMember(_prev: FormState, form: FormData): Promise<FormState> {
+  await requireModule("members");
   const { church } = await requireChurch();
   const values = readMember(form);
   if (!values.fullName) return { error: "Full name is required." };
@@ -102,6 +104,7 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
 }
 
 export async function setMemberActive(id: string, active: boolean) {
+  await requireModule("members");
   const { church } = await requireChurch();
   await db
     .update(member)
@@ -112,6 +115,7 @@ export async function setMemberActive(id: string, active: boolean) {
 }
 
 export async function deleteMember(id: string) {
+  await requireModule("members");
   const { church } = await requireChurch();
   await db.delete(member).where(and(eq(member.id, id), eq(member.churchId, church.id)));
   revalidatePath("/members");
@@ -120,6 +124,7 @@ export async function deleteMember(id: string) {
 
 /** Import members from a CSV with a header row (same columns as the export). */
 export async function importMembers(_prev: FormState, form: FormData): Promise<FormState> {
+  await requireModule("members");
   const { church } = await requireChurch();
   const file = form.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a CSV file." };

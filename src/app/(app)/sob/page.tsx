@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { SobMemberRow, SobToolbar } from "./client";
+import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "School of Baptism" };
 
@@ -12,6 +13,7 @@ const TOTAL_LESSONS = 4;
 
 export default async function SobPage({ searchParams }: PageProps<"/sob">) {
   const { church } = await requireChurch();
+  await requireModule("sob");
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const filter = typeof sp.filter === "string" ? sp.filter : "all";
