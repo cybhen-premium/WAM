@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
+import { logActivity } from "@/lib/activity";
 
 const COLUMNS = [
   ["Full Name", "fullName"],
@@ -36,6 +37,13 @@ export async function GET() {
     COLUMNS.map(([h]) => h).join(","),
     ...rows.map((r) => COLUMNS.map(([, k]) => esc(r[k])).join(",")),
   ].join("\n");
+
+  logActivity({
+    module: "members",
+    actionCode: "members.export",
+    action: `Exported ${rows.length} members to CSV`,
+    metadata: { count: rows.length },
+  });
 
   return new Response(csv, {
     headers: {

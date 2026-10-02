@@ -71,6 +71,8 @@ export function AppShell({ churchName, logoUrl, smsCredits, modules, children }:
   async function logout() {
     setLoggingOut(true);
     try {
+      const { recordLogoutAction } = await import("@/app/(app)/analytics/actions");
+      await recordLogoutAction().catch(() => {});
       await authClient.signOut();
       toast.success("Logged out successfully!");
       router.push("/login");

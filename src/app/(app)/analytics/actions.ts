@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 export async function clearActivityLogs() {
   await requireModule("analytics");
@@ -49,3 +50,17 @@ export async function resetDemoAnalytics() {
   revalidatePath("/analytics");
   return { ok: true };
 }
+
+export async function recordLogoutAction() {
+  try {
+    await logActivity({
+      module: "auth",
+      actionCode: "auth.logout",
+      action: "User logged out of the system",
+    });
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
+}
+

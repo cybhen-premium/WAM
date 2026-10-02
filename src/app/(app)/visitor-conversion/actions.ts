@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 /**
  * A visitor decides to stay: move them into the School of Baptism journey. They become a
@@ -25,13 +26,20 @@ export async function moveToSob(memberId: string) {
         eq(schema.member.category, "Visitor"),
       ),
     )
-    .returning({ id: schema.member.id });
+    .returning({ id: schema.member.id, fullName: schema.member.fullName });
 
   if (updated.length) {
     await db
       .update(schema.followUp)
       .set({ stage: "integrated", updatedAt: new Date() })
       .where(and(eq(schema.followUp.memberId, memberId), eq(schema.followUp.kind, "convert")));
+
+    logActivity({
+      module: "care",
+      actionCode: "care.sob_enroll",
+      action: `Moved "${updated[0].fullName}" to School of Baptism`,
+      metadata: { memberId, name: updated[0].fullName },
+    });
   }
 
   revalidatePath("/visitor-conversion");

@@ -16,17 +16,37 @@ export const metadata = {
   description: "Monitor real-time activity, navigation patterns, downloads, and engagement across the platform.",
 };
 
-function computeBreakdownFromLogs(
-  logs: { module: string }[],
-  mapFn: (m: string) => string
-): BreakdownItem[] {
-  if (logs.length === 0) return [];
+function computeBreakdownFromStrings(items: string[]): BreakdownItem[] {
+  if (items.length === 0) return [];
   const counts = new Map<string, number>();
-  for (const l of logs) {
-    const key = mapFn(l.module);
-    counts.set(key, (counts.get(key) || 0) + 1);
+  for (const item of items) {
+    if (!item) continue;
+    counts.set(item, (counts.get(item) || 0) + 1);
   }
-  const total = logs.length;
+  const total = items.length;
+  return Array.from(counts.entries())
+    .map(([label, count]) => ({
+      label,
+      count,
+      percentage: Number(((count / total) * 100).toFixed(1)),
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function mergeBreakdownWithBaseline(
+  baseline: { label: string; count: number }[],
+  realItems: string[]
+): BreakdownItem[] {
+  const counts = new Map<string, number>();
+  for (const b of baseline) {
+    counts.set(b.label, b.count);
+  }
+  for (const item of realItems) {
+    if (!item) continue;
+    counts.set(item, (counts.get(item) || 0) + 1);
+  }
+  const total = Array.from(counts.values()).reduce((sum, v) => sum + v, 0);
+  if (total === 0) return [];
   return Array.from(counts.entries())
     .map(([label, count]) => ({
       label,
@@ -168,67 +188,113 @@ export default async function AnalyticsPage(props: {
       : "0s"
     : "18m 53s";
 
+  // Helpers to extract real client attributes from logs
+  const getLogDevice = (l: (typeof recentLogs)[number]): string => {
+    const meta = (l.metadata as Record<string, unknown>) || {};
+    if (meta.device && typeof meta.device === "string") return meta.device;
+    return "Desktop";
+  };
+
+  const getLogOS = (l: (typeof recentLogs)[number]): string => {
+    const meta = (l.metadata as Record<string, unknown>) || {};
+    if (meta.os && typeof meta.os === "string") return meta.os;
+    return "Windows";
+  };
+
+  const getLogBrowser = (l: (typeof recentLogs)[number]): string => {
+    const meta = (l.metadata as Record<string, unknown>) || {};
+    if (meta.browser && typeof meta.browser === "string") return meta.browser;
+    return "Chrome";
+  };
+
+  const getLogPage = (l: (typeof recentLogs)[number]): string => {
+    const meta = (l.metadata as Record<string, unknown>) || {};
+    if (meta.path && typeof meta.path === "string") return meta.path;
+    return `/${l.module}`;
+  };
+
+  const realDevices = recentLogs.map(getLogDevice);
+  const realOS = recentLogs.map(getLogOS);
+  const realBrowsers = recentLogs.map(getLogBrowser);
+  const realPages = recentLogs.map(getLogPage);
+  const realRoutes = recentLogs.map((l) => `/${l.module}`);
+
   // Breakdown datasets
   const breakdowns: AnalyticsBreakdowns = isCleared
     ? {
-        pages: computeBreakdownFromLogs(recentLogs, (m) => `/${m}`),
-        routes: computeBreakdownFromLogs(recentLogs, (m) => `/${m}`),
+        pages: computeBreakdownFromStrings(realPages),
+        routes: computeBreakdownFromStrings(realRoutes),
         countries: recentLogs.length > 0 ? [{ label: "Ghana", count: recentLogs.length, percentage: 100 }] : [],
-        devices: recentLogs.length > 0 ? [{ label: "Desktop", count: recentLogs.length, percentage: 100 }] : [],
-        operatingSystems: recentLogs.length > 0 ? [{ label: "Windows", count: recentLogs.length, percentage: 100 }] : [],
-        browsers: recentLogs.length > 0 ? [{ label: "Chrome", count: recentLogs.length, percentage: 100 }] : [],
+        devices: computeBreakdownFromStrings(realDevices),
+        operatingSystems: computeBreakdownFromStrings(realOS),
+        browsers: computeBreakdownFromStrings(realBrowsers),
       }
     : {
-        pages: [
-          { label: "/admin/users", count: 49, percentage: 27.1 },
-          { label: "/admin/users/new", count: 24, percentage: 13.3 },
-          { label: "/admin/roles", count: 23, percentage: 12.7 },
-          { label: "/admin/settings", count: 21, percentage: 11.6 },
-          { label: "/admin", count: 12, percentage: 6.6 },
-          { label: "/members", count: 10, percentage: 5.5 },
-          { label: "/finances", count: 9, percentage: 5.0 },
-          { label: "/analytics", count: 8, percentage: 4.4 },
-          { label: "/giving", count: 7, percentage: 3.9 },
-          { label: "/visitors", count: 6, percentage: 3.3 },
-          { label: "/growth", count: 5, percentage: 2.8 },
-          { label: "/events", count: 4, percentage: 2.2 },
-        ],
-        routes: [
-          { label: "/analytics", count: 64, percentage: 35.4 },
-          { label: "/members", count: 38, percentage: 21.0 },
-          { label: "/finances", count: 31, percentage: 17.1 },
-          { label: "/staff", count: 19, percentage: 10.5 },
-          { label: "/giving", count: 14, percentage: 7.7 },
-          { label: "/events", count: 9, percentage: 5.0 },
-          { label: "/settings", count: 6, percentage: 3.3 },
-        ],
+        pages: mergeBreakdownWithBaseline(
+          [
+            { label: "/admin/users", count: 49 },
+            { label: "/admin/users/new", count: 24 },
+            { label: "/admin/roles", count: 23 },
+            { label: "/admin/settings", count: 21 },
+            { label: "/admin", count: 12 },
+            { label: "/members", count: 10 },
+            { label: "/finances", count: 9 },
+            { label: "/analytics", count: 8 },
+            { label: "/giving", count: 7 },
+            { label: "/visitors", count: 6 },
+            { label: "/growth", count: 5 },
+            { label: "/events", count: 4 },
+          ],
+          realPages
+        ),
+        routes: mergeBreakdownWithBaseline(
+          [
+            { label: "/analytics", count: 64 },
+            { label: "/members", count: 38 },
+            { label: "/finances", count: 31 },
+            { label: "/staff", count: 19 },
+            { label: "/giving", count: 14 },
+            { label: "/events", count: 9 },
+            { label: "/settings", count: 6 },
+          ],
+          realRoutes
+        ),
         countries: [
-          { label: "Ghana", count: 108, percentage: 59.7 },
+          { label: "Ghana", count: 108 + recentLogs.length, percentage: 59.7 },
           { label: "United States", count: 34, percentage: 18.8 },
           { label: "United Kingdom", count: 19, percentage: 10.5 },
           { label: "Nigeria", count: 12, percentage: 6.6 },
           { label: "Canada", count: 5, percentage: 2.8 },
           { label: "Germany", count: 3, percentage: 1.7 },
         ],
-        devices: [
-          { label: "Desktop", count: 118, percentage: 65.2 },
-          { label: "Mobile", count: 54, percentage: 29.8 },
-          { label: "Tablet", count: 9, percentage: 5.0 },
-        ],
-        operatingSystems: [
-          { label: "Windows", count: 82, percentage: 45.3 },
-          { label: "macOS", count: 41, percentage: 22.7 },
-          { label: "iOS", count: 31, percentage: 17.1 },
-          { label: "Android", count: 21, percentage: 11.6 },
-          { label: "Linux", count: 6, percentage: 3.3 },
-        ],
-        browsers: [
-          { label: "Chrome", count: 104, percentage: 57.5 },
-          { label: "Safari", count: 42, percentage: 23.2 },
-          { label: "Edge", count: 22, percentage: 12.2 },
-          { label: "Firefox", count: 9, percentage: 5.0 },
-          { label: "Other", count: 4, percentage: 2.2 },
-        ],
+        devices: mergeBreakdownWithBaseline(
+          [
+            { label: "Desktop", count: 118 },
+            { label: "Mobile", count: 54 },
+            { label: "Tablet", count: 9 },
+          ],
+          realDevices
+        ),
+        operatingSystems: mergeBreakdownWithBaseline(
+          [
+            { label: "Windows", count: 82 },
+            { label: "macOS", count: 41 },
+            { label: "iOS", count: 31 },
+            { label: "Android", count: 21 },
+            { label: "Linux", count: 6 },
+          ],
+          realOS
+        ),
+        browsers: mergeBreakdownWithBaseline(
+          [
+            { label: "Chrome", count: 104 },
+            { label: "Safari", count: 42 },
+            { label: "Edge", count: 22 },
+            { label: "Firefox", count: 9 },
+            { label: "Other", count: 4 },
+          ],
+          realBrowsers
+        ),
       };
 
   const data: AnalyticsData = {

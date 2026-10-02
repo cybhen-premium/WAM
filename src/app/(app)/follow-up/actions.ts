@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 const { followUp, member } = schema;
 const STAGES = ["new", "contacted", "visited", "integrated"] as const;
@@ -22,7 +23,7 @@ export async function addToPipeline(_prev: FormState, f: FormData): Promise<Form
   const { church } = await requireChurch();
   const memberId = String(f.get("memberId") ?? "");
   const [m] = await db
-    .select({ id: member.id, category: member.category })
+    .select({ id: member.id, fullName: member.fullName, category: member.category })
     .from(member)
     .where(and(eq(member.id, memberId), eq(member.churchId, church.id)))
     .limit(1);
@@ -37,6 +38,12 @@ export async function addToPipeline(_prev: FormState, f: FormData): Promise<Form
     assignedTo: String(f.get("assignedTo") ?? "").trim() || null,
     notes: String(f.get("notes") ?? "").trim() || null,
   });
+  logActivity({
+    module: "care",
+    actionCode: "care.follow_up",
+    action: `Added "${m.fullName}" to follow-up pipeline`,
+    metadata: { memberId: m.id, memberName: m.fullName },
+  });
   refresh();
   return { ok: true };
 }
@@ -49,6 +56,12 @@ export async function moveStage(id: string, stage: Stage) {
     .update(followUp)
     .set({ stage, updatedAt: new Date() })
     .where(and(eq(followUp.id, id), eq(followUp.churchId, church.id)));
+  logActivity({
+    module: "care",
+    actionCode: "care.stage",
+    action: `Moved follow-up stage to "${stage}"`,
+    metadata: { followUpId: id, stage },
+  });
   refresh();
 }
 
@@ -59,6 +72,12 @@ export async function updateNotes(id: string, notes: string, assignedTo: string)
     .update(followUp)
     .set({ notes: notes.trim() || null, assignedTo: assignedTo.trim() || null, updatedAt: new Date() })
     .where(and(eq(followUp.id, id), eq(followUp.churchId, church.id)));
+  logActivity({
+    module: "care",
+    actionCode: "care.notes",
+    action: "Updated follow-up notes & assignment",
+    metadata: { followUpId: id, assignedTo },
+  });
   refresh();
 }
 
@@ -66,5 +85,11 @@ export async function removeFromPipeline(id: string) {
   await requireModule("care");
   const { church } = await requireChurch();
   await db.delete(followUp).where(and(eq(followUp.id, id), eq(followUp.churchId, church.id)));
+  logActivity({
+    module: "care",
+    actionCode: "care.remove",
+    action: "Removed visitor from follow-up pipeline",
+    metadata: { followUpId: id },
+  });
   refresh();
 }

@@ -7,6 +7,7 @@ import { requireChurch } from "@/lib/session";
 import { MEMBER_CATEGORIES } from "@/lib/constants";
 import { sendSms, withFooter } from "@/lib/sms";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 const { member, followUp } = schema;
 
@@ -55,6 +56,12 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
         joinedAt: values.joinedAt,
       })
       .where(and(eq(member.id, values.id), eq(member.churchId, church.id)));
+    logActivity({
+      module: "akwaaba",
+      actionCode: "akwaaba.update",
+      action: `Updated visitor "${values.fullName}"`,
+      metadata: { memberId: values.id, name: values.fullName, category: values.category },
+    });
   } else {
     // Create new person
     const [created] = await db
@@ -76,6 +83,12 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
 
     // New people enter the follow-up pipeline and optionally get a welcome SMS
     await db.insert(followUp).values({ churchId: church.id, memberId: created.id, kind: "convert", stage: "new" });
+    logActivity({
+      module: "akwaaba",
+      actionCode: "akwaaba.create",
+      action: `Registered new visitor "${values.fullName}" via Akwaaba`,
+      metadata: { memberId: created.id, name: values.fullName, category: values.category },
+    });
 
     if (church.autoWelcomeSms && values.phone) {
       const first = values.fullName.split(/\s+/)[0];
@@ -100,6 +113,12 @@ export async function setPersonActive(id: string, active: boolean) {
     .update(member)
     .set({ active })
     .where(and(eq(member.id, id), eq(member.churchId, church.id)));
+  logActivity({
+    module: "akwaaba",
+    actionCode: active ? "akwaaba.activate" : "akwaaba.deactivate",
+    action: `${active ? "Activated" : "Deactivated"} visitor status`,
+    metadata: { memberId: id, active },
+  });
   revalidatePath("/akwaaba");
   revalidatePath("/members");
   revalidatePath("/dashboard");
@@ -109,6 +128,12 @@ export async function deletePerson(id: string) {
   await requireModule("akwaaba");
   const { church } = await requireChurch();
   await db.delete(member).where(and(eq(member.id, id), eq(member.churchId, church.id)));
+  logActivity({
+    module: "akwaaba",
+    actionCode: "akwaaba.delete",
+    action: "Deleted visitor from Akwaaba",
+    metadata: { memberId: id },
+  });
   revalidatePath("/akwaaba");
   revalidatePath("/members");
   revalidatePath("/dashboard");

@@ -6,8 +6,9 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { WELFARE_DUES } from "@/lib/constants";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
-const { welfareDues, transaction } = schema;
+const { welfareDues, transaction, member } = schema;
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -45,6 +46,19 @@ export async function recordDuesPayment(_prev: FormState, form: FormData): Promi
     memberId,
     receiptNo: Number(n),
     occurredOn: dateStr,
+  });
+
+  const [m] = await db
+    .select({ fullName: member.fullName })
+    .from(member)
+    .where(eq(member.id, memberId))
+    .limit(1);
+
+  logActivity({
+    module: "welfare",
+    actionCode: "welfare.dues",
+    action: `Recorded welfare dues payment of ₵${amount.toFixed(2)} for ${m?.fullName || "member"}`,
+    metadata: { memberId, memberName: m?.fullName, amount, date: dateStr, receiptNo: Number(n) },
   });
 
   revalidatePath("/welfare-dues");

@@ -25,6 +25,20 @@ export async function checkLoginStatus() {
 
     if (staffRow) {
       status = staffRow.status;
+      if (status === "active") {
+        const row = await getChurchForUser(user.id);
+        if (row) {
+          logActivity({
+            churchId: row.church.id,
+            userId: user.id,
+            actorName: user.name || "Staff Member",
+            actorEmail: user.email,
+            module: "auth",
+            actionCode: "auth.login",
+            action: "Staff member logged in successfully",
+          });
+        }
+      }
     } else {
       const row = await getChurchForUser(user.id);
       if (row) {
@@ -70,6 +84,19 @@ export async function forcePasswordChange(password: string) {
       passwordChangeRequired: false
     }
   });
+
+  const row = await getChurchForUser(user.id);
+  if (row) {
+    logActivity({
+      churchId: row.church.id,
+      userId: user.id,
+      actorName: user.name || "User",
+      actorEmail: user.email,
+      module: "auth",
+      actionCode: "auth.password",
+      action: "Changed user password",
+    });
+  }
 }
 
 export async function getTwoFactorMethodByEmail(email: string) {

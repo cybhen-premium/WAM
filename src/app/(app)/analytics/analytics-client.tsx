@@ -13,6 +13,8 @@ import {
   Link2,
   Globe,
   Laptop,
+  Smartphone,
+  Tablet,
   HardDrive,
   Compass,
   Download,
@@ -216,12 +218,19 @@ export function AnalyticsClient({
       const email = (item.actorEmail || "").toLowerCase();
       const desc = item.action.toLowerCase();
       const ip = (item.ipAddress || "").toLowerCase();
+      const meta = (item.metadata as Record<string, unknown>) || {};
+      const dev = String(meta.device || "").toLowerCase();
+      const os = String(meta.os || "").toLowerCase();
+      const browser = String(meta.browser || "").toLowerCase();
       return (
         code.includes(q) ||
         user.includes(q) ||
         email.includes(q) ||
         desc.includes(q) ||
-        ip.includes(q)
+        ip.includes(q) ||
+        dev.includes(q) ||
+        os.includes(q) ||
+        browser.includes(q)
       );
     });
   }, [activitiesList, searchQuery]);
@@ -750,11 +759,12 @@ export function AnalyticsClient({
 
           {/* Activity Logs Table */}
           <div className="overflow-x-auto -mx-6 sm:-mx-7 px-6 sm:px-7">
-            <table className="w-full text-left border-collapse min-w-[700px]">
+            <table className="w-full text-left border-collapse min-w-[780px]">
               <thead>
                 <tr className="border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   <th className="py-3 px-4 font-bold">ACTION</th>
                   <th className="py-3 px-4 font-bold">USER</th>
+                  <th className="py-3 px-4 font-bold">DEVICE</th>
                   <th className="py-3 px-4 font-bold">DESCRIPTION</th>
                   <th className="py-3 px-4 font-bold">IP ADDRESS</th>
                   <th className="py-3 px-4 font-bold">DATE</th>
@@ -763,7 +773,7 @@ export function AnalyticsClient({
               <tbody className="divide-y divide-slate-100">
                 {filteredActivities.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-16 text-center text-slate-400">
+                    <td colSpan={6} className="py-16 text-center text-slate-400">
                       <div className="mx-auto w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 mb-2">
                         <Activity className="h-5 w-5" />
                       </div>
@@ -776,6 +786,11 @@ export function AnalyticsClient({
                 ) : (
                   filteredActivities.map((log) => {
                     const actionCode = log.actionCode || getDisplayActionCode(log);
+                    const meta = (log.metadata as Record<string, unknown>) || {};
+                    const device = (typeof meta.device === "string" ? meta.device : null) || "Desktop";
+                    const os = (typeof meta.os === "string" ? meta.os : null) || "Windows";
+                    const browser = (typeof meta.browser === "string" ? meta.browser : null) || "Chrome";
+
                     return (
                       <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
                         {/* ACTION */}
@@ -791,6 +806,62 @@ export function AnalyticsClient({
                           <div className="text-xs text-slate-400 font-normal leading-snug mt-0.5">
                             {log.actorEmail || "—"}
                           </div>
+                        </td>
+
+                        {/* DEVICE */}
+                        <td className="py-4 px-4 whitespace-nowrap">
+                          {device === "Mobile" ? (
+                            <div className="inline-flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100/80 shadow-2xs">
+                                <Smartphone className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-slate-800 text-xs">Mobile</span>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100/70 text-emerald-700 leading-none">
+                                    {os}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-slate-400 font-medium leading-none mt-1">
+                                  {browser}
+                                </span>
+                              </div>
+                            </div>
+                          ) : device === "Tablet" ? (
+                            <div className="inline-flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100/80 shadow-2xs">
+                                <Tablet className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-slate-800 text-xs">Tablet</span>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100/70 text-purple-700 leading-none">
+                                    {os}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-slate-400 font-medium leading-none mt-1">
+                                  {browser}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/80 shadow-2xs">
+                                <Laptop className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-slate-800 text-xs">Desktop</span>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100/70 text-blue-700 leading-none">
+                                    {os}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-slate-400 font-medium leading-none mt-1">
+                                  {browser}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </td>
 
                         {/* DESCRIPTION */}

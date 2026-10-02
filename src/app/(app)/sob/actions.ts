@@ -5,12 +5,19 @@ import { eq, and } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 const { sobProgress, member } = schema;
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
 const SOB_LESSONS = 4;
+const LESSON_NAMES: Record<number, string> = {
+  1: "Salvation",
+  2: "The Holy Spirit",
+  3: "Christian Living",
+  4: "Water Baptism",
+};
 
 /** Mark a lesson as complete for a member. Auto-baptises when lesson 4 (Baptised) is done. */
 export async function completeSobLesson(_prev: FormState, form: FormData): Promise<FormState> {
@@ -30,16 +37,16 @@ export async function completeSobLesson(_prev: FormState, form: FormData): Promi
     .values({ churchId: church.id, memberId, lesson, completedAt: date })
     .onConflictDoNothing();
 
+  const [m] = await db
+    .select({ fullName: member.fullName, category: member.category })
+    .from(member)
+    .where(and(eq(member.id, memberId), eq(member.churchId, church.id)))
+    .limit(1);
+
   // If lesson 4 (Baptised) is completed, mark as baptized and graduate to full membership
   if (lesson === 4) {
-    // Graduate them only if they are still a Visitor / Regular Attendee
-    const [current] = await db
-      .select({ category: member.category })
-      .from(member)
-      .where(and(eq(member.id, memberId), eq(member.churchId, church.id)))
-      .limit(1);
     const graduating =
-      current?.category === "Visitor" || current?.category === "Regular Attendee";
+      m?.category === "Visitor" || m?.category === "Regular Attendee";
     await db
       .update(member)
       .set({
@@ -50,6 +57,13 @@ export async function completeSobLesson(_prev: FormState, form: FormData): Promi
       })
       .where(and(eq(member.id, memberId), eq(member.churchId, church.id)));
   }
+
+  logActivity({
+    module: "sob",
+    actionCode: "sob.complete",
+    action: `Completed SOB Lesson ${lesson} (${LESSON_NAMES[lesson] || "Lesson"}) for ${m?.fullName || "member"}`,
+    metadata: { memberId, memberName: m?.fullName, lesson, date },
+  });
 
   revalidatePath("/sob");
   revalidatePath("/members");
@@ -76,17 +90,13 @@ export async function undoSobLesson(memberId: string, lesson: number): Promise<v
     );
 
   // If lesson 4 (Baptised) is undone, revoke baptism status.
-  // If they had auto-graduated to General Member on baptism, move them back to Regular Attendee.
   if (lesson === 4) {
     const [current] = await db
-      .select({ id: member.id, category: member.category, convertedAt: member.convertedAt })
+      .select({ id: member.id, category: member.category, convertedAt: member.convertedAt, fullName: member.fullName })
       .from(member)
       .where(and(eq(member.id, memberId), eq(member.churchId, church.id)))
       .limit(1);
     if (current) {
-      // lessonsLeft is queried AFTER the delete above, so lesson 4 is already gone.
-      // If lessons 1-3 are also gone, this person has no SOB history left and a
-      // full-member category could only have come from the auto-graduation.
       const lessonsLeft = await db
         .select({ lesson: sobProgress.lesson })
         .from(sobProgress)
@@ -104,6 +114,13 @@ export async function undoSobLesson(memberId: string, lesson: number): Promise<v
         .where(and(eq(member.id, memberId), eq(member.churchId, church.id)));
     }
   }
+
+  logActivity({
+    module: "sob",
+    actionCode: "sob.undo",
+    action: `Undid SOB Lesson ${lesson} completion`,
+    metadata: { memberId, lesson },
+  });
 
   revalidatePath("/sob");
   revalidatePath("/sob/history");

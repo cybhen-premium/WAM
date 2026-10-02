@@ -101,6 +101,12 @@ export async function requestSenderId(_prev: FormState, f: FormData): Promise<Fo
   // Telcos require 3-11 alphanumeric characters, starting with a letter.
   if (!/^[A-Za-z][A-Za-z0-9 ]{2,10}$/.test(id)) return { error: "Use 3–11 letters or numbers, starting with a letter." };
   await db.update(church).set({ senderId: id, senderIdStatus: "approved" }).where(eq(church.id, c.id));
+  logActivity({
+    module: "settings",
+    actionCode: "settings.sender_id",
+    action: `Updated SMS Sender ID to "${id}"`,
+    metadata: { senderId: id },
+  });
   return done("Sender ID successfully set and approved.");
 }
 
@@ -117,6 +123,11 @@ export async function savePreferences(_prev: FormState, f: FormData): Promise<Fo
       aiTone: s(f, "aiTone") || "Warm & Pastoral",
     })
     .where(eq(church.id, c.id));
+  logActivity({
+    module: "settings",
+    actionCode: "settings.preferences",
+    action: "Updated general church preferences",
+  });
   return done("Preferences saved.");
 }
 
@@ -139,6 +150,12 @@ export async function inviteStaff(_prev: FormState, f: FormData): Promise<FormSt
   if (existing) return { error: "That email already has access or a pending invite." };
 
   await db.insert(staff).values({ churchId: c.id, email, role, status: "pending" });
+  logActivity({
+    module: "settings",
+    actionCode: "settings.invite",
+    action: `Invited "${email}" with role "${role}"`,
+    metadata: { email, role },
+  });
   return done(`Invitation created. Ask ${email} to sign up. They'll be offered to join ${c.name}.`);
 }
 
@@ -152,6 +169,12 @@ export async function changeRole(staffId: string, role: string) {
     .update(staff)
     .set({ role: r })
     .where(and(eq(staff.id, staffId), eq(staff.churchId, c.id), ne(staff.userId, user.id)));
+  logActivity({
+    module: "settings",
+    actionCode: "settings.role",
+    action: `Changed staff role to "${r}"`,
+    metadata: { staffId, role: r },
+  });
   revalidatePath("/settings");
 }
 
@@ -161,6 +184,12 @@ export async function removeStaff(staffId: string) {
   const [row] = await db.select().from(staff).where(and(eq(staff.id, staffId), eq(staff.churchId, c.id))).limit(1);
   if (!row || row.userId === user.id) return;
   await db.delete(staff).where(eq(staff.id, staffId));
+  logActivity({
+    module: "settings",
+    actionCode: "settings.remove_staff",
+    action: `Removed staff access for "${row.email}"`,
+    metadata: { staffId, email: row.email },
+  });
   revalidatePath("/settings");
 }
 
@@ -173,7 +202,7 @@ export async function setStaffModules(staffId: string, modules: string[]) {
   const { church: c } = await requireAdmin();
 
   const [target] = await db
-    .select({ id: staff.id, role: staff.role })
+    .select({ id: staff.id, role: staff.role, email: staff.email })
     .from(staff)
     .where(and(eq(staff.id, staffId), eq(staff.churchId, c.id)))
     .limit(1);
@@ -186,6 +215,12 @@ export async function setStaffModules(staffId: string, modules: string[]) {
       .insert(staffModule)
       .values(wanted.map((module) => ({ churchId: c.id, staffId, module })));
   }
+  logActivity({
+    module: "settings",
+    actionCode: "settings.permissions",
+    action: `Updated module access for "${target.email}"`,
+    metadata: { staffId, modules: wanted },
+  });
   revalidatePath("/settings");
   revalidatePath("/", "layout");
 }
@@ -198,5 +233,11 @@ export async function setSuperAdminTwoFactor(method: string) {
   const allowed = ["none", "email", "totp"];
   if (!allowed.includes(method)) throw new Error("Invalid method.");
   await db.update(church).set({ ownerTwoFactorMethod: method }).where(eq(church.id, c.id));
+  logActivity({
+    module: "settings",
+    actionCode: "settings.security",
+    action: `Updated superadmin 2FA requirement to "${method}"`,
+    metadata: { method },
+  });
   revalidatePath("/settings");
 }
