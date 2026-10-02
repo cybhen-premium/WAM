@@ -11,7 +11,7 @@ export const MODULES = {
   sob: { label: "SOB", routes: ["/sob"] },
   tithes: { label: "Tithes Tracker", routes: ["/tithes"] },
   finances: { label: "Finances", routes: ["/finances"] },
-  analytics: { label: "Analytics & Visitors", routes: ["/giving-analytics", "/growth", "/visitor-conversion"] },
+  analytics: { label: "Analytics & Visitors", routes: ["/analytics", "/giving-analytics", "/growth", "/visitor-conversion"] },
   events: { label: "Events & Attendance", routes: ["/events", "/attendance"] },
   care: { label: "Follow-up & Member Care", routes: ["/follow-up", "/welfare", "/welfare-dues"] },
   messaging: { label: "Messages & Announcements", routes: ["/message-center", "/announcements"] },

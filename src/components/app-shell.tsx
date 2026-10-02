@@ -1,15 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Church, ChevronDown, Menu, RotateCcw, X } from "lucide-react";
-import { NAV, NAV_GROUPS } from "@/lib/nav";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Church, ChevronDown, LogOut, Menu, RotateCcw, X } from "lucide-react";
+import { NAV, NAV_ENTRIES } from "@/lib/nav";
 import { hasModule, type ModuleKey } from "@/lib/modules";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Modal, buttonStyles } from "@/components/ui";
 
 type Props = {
   churchName: string;
@@ -22,31 +21,72 @@ type Props = {
 
 export function AppShell({ churchName, logoUrl, smsCredits, modules, children }: Props) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    if (!confirmLogout) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !loggingOut) setConfirmLogout(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [confirmLogout, loggingOut]);
 
   // Track which nav groups are open (by module key); auto-open if current path is inside
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    const init: Record<string, boolean> = {};
-    for (const g of NAV_GROUPS) {
-      if (g.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"))) {
-        init[g.module] = true;
+    const init: Record<string, boolean> = { Analytics: true };
+    for (const entry of NAV_ENTRIES) {
+      if (
+        entry.type === "group" &&
+        entry.group.children.some((c) => {
+          const basePath = c.href.split("?")[0];
+          return pathname === basePath || pathname.startsWith(basePath + "/");
+        })
+      ) {
+        init[entry.group.label] = true;
       }
     }
     return init;
   });
 
+  // Automatically keep group open when navigating to one of its children
+  useEffect(() => {
+    for (const entry of NAV_ENTRIES) {
+      if (
+        entry.type === "group" &&
+        entry.group.children.some((c) => {
+          const basePath = c.href.split("?")[0];
+          return pathname === basePath || pathname.startsWith(basePath + "/");
+        })
+      ) {
+        setOpenGroups((prev) => ({ ...prev, [entry.group.label]: true }));
+      }
+    }
+  }, [pathname]);
+
   async function logout() {
-    await authClient.signOut();
-    toast.success("Logged out successfully!");
-    router.push("/login");
-    router.refresh();
+    setLoggingOut(true);
+    try {
+      await authClient.signOut();
+      toast.success("Logged out successfully!");
+      router.push("/login");
+      router.refresh();
+    } catch {
+      toast.error("Failed to sign out. Please try again.");
+      setLoggingOut(false);
+    }
   }
 
   // Separate Settings so it always renders last
   const settingsItem = NAV.find((n) => n.module === "settings");
-  const mainNav = NAV.filter((n) => n.module !== "settings");
+  const visibleEntries = NAV_ENTRIES.filter((e) => {
+    if (e.type === "item" && e.item.module === "settings") return false;
+    return hasModule(modules, e.type === "item" ? e.item.module : e.group.module);
+  });
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -84,43 +124,45 @@ export function AppShell({ churchName, logoUrl, smsCredits, modules, children }:
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {/* Flat nav items (all except Settings) */}
-          {mainNav.filter((item) => hasModule(modules, item.module)).map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(href + "/");
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-bold transition-all duration-200",
-                  active
-                    ? "bg-amber-500/10 text-amber-500 border-l-2 border-amber-500"
-                    : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-100",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </Link>
-            );
-          })}
+          {visibleEntries.map((entry) => {
+            if (entry.type === "item") {
+              const { href, label, icon: Icon } = entry.item;
+              const active = pathname === href || pathname.startsWith(href + "/");
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-bold transition-all duration-200",
+                    active
+                      ? "bg-amber-500/10 text-amber-500 border-l-2 border-amber-500"
+                      : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-100",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </Link>
+              );
+            }
 
-          {/* Collapsible group items (Staffs, etc.) */}
-          {NAV_GROUPS.filter((g) => hasModule(modules, g.module)).map((group) => {
+            const group = entry.group;
             const GroupIcon = group.icon;
-            const isGroupOpen = !!openGroups[group.module];
-            const groupActive = group.children.some(
-              (c) => pathname === c.href || pathname.startsWith(c.href + "/"),
-            );
+            const isGroupOpen = !!openGroups[group.label];
+            const groupActive = group.children.some((c) => {
+              const basePath = c.href.split("?")[0];
+              return pathname === basePath || pathname.startsWith(basePath + "/");
+            });
+
             return (
-              <div key={group.module}>
+              <div key={group.label}>
                 <button
                   type="button"
                   onClick={() =>
-                    setOpenGroups((prev) => ({ ...prev, [group.module]: !prev[group.module] }))
+                    setOpenGroups((prev) => ({ ...prev, [group.label]: !prev[group.label] }))
                   }
                   className={cn(
-                    "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-bold transition-all duration-200",
+                    "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-bold transition-all duration-200 cursor-pointer",
                     groupActive
                       ? "bg-amber-500/10 text-amber-500 border-l-2 border-amber-500"
                       : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-100",
@@ -139,7 +181,20 @@ export function AppShell({ churchName, logoUrl, smsCredits, modules, children }:
                 {isGroupOpen && (
                   <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-700/60 pl-3">
                     {group.children.map((child) => {
-                      const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                      const isAnalytics = child.href.startsWith("/analytics");
+                      let childActive = false;
+
+                      if (isAnalytics) {
+                        const viewParam = searchParams.get("view");
+                        if (child.href === "/analytics") {
+                          childActive = pathname === "/analytics" && viewParam !== "activity";
+                        } else {
+                          childActive = (pathname === "/analytics" && viewParam === "activity") || pathname === "/analytics/activity";
+                        }
+                      } else {
+                        childActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                      }
+
                       return (
                         <Link
                           key={child.href}
@@ -148,11 +203,16 @@ export function AppShell({ churchName, logoUrl, smsCredits, modules, children }:
                           className={cn(
                             "flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-semibold transition-all duration-200",
                             childActive
-                              ? "text-amber-500 bg-amber-500/10"
+                              ? "text-amber-500 bg-amber-500/10 font-bold"
                               : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/50",
                           )}
                         >
-                          <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full transition-all",
+                              childActive ? "bg-amber-500 opacity-100 scale-125" : "bg-current opacity-60"
+                            )}
+                          />
                           {child.label}
                         </Link>
                       );
@@ -182,35 +242,88 @@ export function AppShell({ churchName, logoUrl, smsCredits, modules, children }:
         </nav>
 
         {/* Logout */}
-        <div className="p-4 mt-auto bg-slate-900/50 border-t border-slate-800/50 space-y-3">
-          <div className="grid grid-cols-1 gap-2">
-            <button
-              onClick={() => setConfirmLogout(true)}
-              className="inline-flex items-center justify-center rounded-md px-3 text-slate-400 hover:text-white hover:bg-slate-800 font-black text-[10px] h-8 transition-all"
-            >
-              LOGOUT
-            </button>
-          </div>
+        <div className="p-3 mt-auto bg-slate-900/60 border-t border-slate-800/60">
+          <button
+            onClick={() => setConfirmLogout(true)}
+            className="w-full flex items-center justify-center gap-2 rounded-xl py-2 px-3 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 font-bold text-xs transition-all cursor-pointer group"
+          >
+            <LogOut className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+            <span>LOGOUT</span>
+          </button>
         </div>
       </aside>
 
-      {/* Logout confirm */}
-      <Modal compact open={confirmLogout} onClose={() => setConfirmLogout(false)} title="Sign out">
-        <p className="text-[13px] font-semibold text-slate-600 mb-5 text-center">
-          Are you sure you want to log out of your account?
-        </p>
-        <div className="flex items-center justify-center gap-3">
-          <button onClick={() => setConfirmLogout(false)} className={cn(buttonStyles.outline, "w-full sm:w-auto")}>
-            Cancel
-          </button>
-          <button
-            onClick={logout}
-            className="inline-flex w-full sm:w-auto items-center justify-center whitespace-nowrap transition-all duration-200 active:scale-[0.98] px-6 h-10 md:h-9 text-xs md:text-[11px] font-black rounded-xl bg-red-600 text-white hover:bg-red-700 shadow-md"
+      {/* Modern, Premium Logout Confirmation Dialog */}
+      {confirmLogout && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
+            onClick={() => !loggingOut && setConfirmLogout(false)}
+          />
+
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="relative w-full max-w-[380px] overflow-hidden rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-slate-100 z-10 animate-in fade-in zoom-in-95 duration-200"
           >
-            Yes, log out
-          </button>
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={() => setConfirmLogout(false)}
+              disabled={loggingOut}
+              className="absolute right-4 top-4 rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer disabled:pointer-events-none"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            {/* Glowing Icon Badge */}
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 shadow-inner mb-4">
+              <LogOut className="h-6 w-6 stroke-[2.2] translate-x-0.5" />
+            </div>
+
+            {/* Title & Exact Prompt Message */}
+            <div className="text-center">
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                Sign Out
+              </h3>
+              <p className="text-[13px] font-semibold text-slate-600 mt-2 leading-relaxed">
+                Are you sure you want to log out of your account?
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmLogout(false)}
+                disabled={loggingOut}
+                className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-4 text-xs font-bold text-slate-700 hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={logout}
+                disabled={loggingOut}
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 py-2.5 px-4 text-xs font-black text-white shadow-md shadow-rose-600/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loggingOut ? (
+                  <>
+                    <RotateCcw className="h-3.5 w-3.5 animate-spin" />
+                    <span>Signing out...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="h-3.5 w-3.5 stroke-[2.4]" />
+                    <span>Yes, log out</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
-      </Modal>
+      )}
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">

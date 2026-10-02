@@ -6,6 +6,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
 import { MODULE_KEYS } from "@/lib/modules";
+import { logActivity } from "@/lib/activity";
 
 const { church, staff, staffModule } = schema;
 
@@ -49,6 +50,11 @@ export async function saveProfile(_prev: FormState, f: FormData): Promise<FormSt
       longitude: coord("longitude", 180),
     })
     .where(eq(church.id, c.id));
+  logActivity({
+    module: "settings",
+    action: `Updated church profile (${name})`,
+    metadata: { name },
+  });
   return done("Profile saved.");
 }
 
@@ -69,6 +75,10 @@ export async function saveBranding(_prev: FormState, f: FormData): Promise<FormS
       receiptWatermark: f.get("receiptWatermark") === "on",
     })
     .where(eq(church.id, c.id));
+  logActivity({
+    module: "settings",
+    action: "Updated branding settings",
+  });
   return done("Branding saved.");
 }
 
@@ -76,6 +86,11 @@ export async function setAutoWelcome(enabled: boolean) {
   await requireModule("settings");
   const { church: c } = await requireAdmin();
   await db.update(church).set({ autoWelcomeSms: enabled }).where(eq(church.id, c.id));
+  logActivity({
+    module: "settings",
+    action: `${enabled ? "Enabled" : "Disabled"} auto-welcome SMS`,
+    metadata: { enabled },
+  });
   revalidatePath("/settings");
 }
 

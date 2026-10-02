@@ -29,33 +29,107 @@ export type NavGroup = {
   children: { href: string; label: string }[];
 };
 
-export const NAV: NavItem[] = [
-  { href: "/dashboard", module: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/members", module: "members", label: "Members", icon: Users },
-  { href: "/departments", module: "members", label: "Departments", icon: Users },
-  { href: "/akwaaba", module: "akwaaba", label: "Akwaaba", icon: HandHeart },
-  { href: "/sob", module: "sob", label: "SOB", icon: GraduationCap },
-  { href: "/tithes", module: "tithes", label: "Tithes Tracker", icon: CreditCard },
-  { href: "/finances", module: "finances", label: "Finances", icon: DollarSign },
-  { href: "/giving-analytics", module: "analytics", label: "Giving Analytics", icon: ChartColumn },
-  { href: "/growth", module: "analytics", label: "Growth", icon: TrendingUp },
-  { href: "/events", module: "events", label: "Events", icon: Calendar },
-  { href: "/attendance", module: "events", label: "Attendance", icon: ClipboardCheck },
-  { href: "/follow-up", module: "care", label: "Follow-up", icon: UserCheck },
-  { href: "/welfare", module: "care", label: "Member Care", icon: HeartHandshake },
-  { href: "/welfare-dues", module: "care", label: "Welfare Dues", icon: HeartHandshake },
-  { href: "/announcements", module: "messaging", label: "Announce", icon: Megaphone },
-  { href: "/message-center", module: "messaging", label: "Messages", icon: MessageSquare },
-  { href: "/visitor-conversion", module: "analytics", label: "Visitors", icon: TrendingUp },
-  { href: "/settings", module: "settings", label: "Settings", icon: Settings },
-];
+export type NavEntry =
+  | { type: "item"; item: NavItem }
+  | { type: "group"; group: NavGroup };
 
-/** Groups that render as collapsible dropdowns in the sidebar. */
-export const NAV_GROUPS: NavGroup[] = [
+/** Unified ordered sidebar navigation entries */
+export const NAV_ENTRIES: NavEntry[] = [
   {
-    label: "Staffs",
-    icon: UserCog,
-    module: "staffs",
-    children: [{ href: "/staffs", label: "Manage Staffs" }],
+    type: "item",
+    item: { href: "/dashboard", module: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  },
+  {
+    type: "group",
+    group: {
+      label: "Analytics",
+      icon: ChartColumn,
+      module: "analytics",
+      children: [
+        { href: "/analytics", label: "Overview" },
+        { href: "/analytics?view=activity", label: "Activity Tracker" },
+      ],
+    },
+  },
+  {
+    type: "item",
+    item: { href: "/members", module: "members", label: "Members", icon: Users },
+  },
+  {
+    type: "item",
+    item: { href: "/departments", module: "members", label: "Departments", icon: Users },
+  },
+  {
+    type: "item",
+    item: { href: "/akwaaba", module: "akwaaba", label: "Akwaaba", icon: HandHeart },
+  },
+  {
+    type: "item",
+    item: { href: "/sob", module: "sob", label: "SOB", icon: GraduationCap },
+  },
+  {
+    type: "item",
+    item: { href: "/tithes", module: "tithes", label: "Tithes Tracker", icon: CreditCard },
+  },
+  {
+    type: "item",
+    item: { href: "/finances", module: "finances", label: "Finances", icon: DollarSign },
+  },
+  {
+    type: "item",
+    item: { href: "/giving-analytics", module: "analytics", label: "Giving Analytics", icon: ChartColumn },
+  },
+  {
+    type: "item",
+    item: { href: "/growth", module: "analytics", label: "Growth", icon: TrendingUp },
+  },
+  {
+    type: "item",
+    item: { href: "/events", module: "events", label: "Events", icon: Calendar },
+  },
+  {
+    type: "item",
+    item: { href: "/attendance", module: "events", label: "Attendance", icon: ClipboardCheck },
+  },
+  {
+    type: "item",
+    item: { href: "/follow-up", module: "care", label: "Follow-up", icon: UserCheck },
+  },
+  {
+    type: "item",
+    item: { href: "/welfare", module: "care", label: "Member Care", icon: HeartHandshake },
+  },
+  {
+    type: "item",
+    item: { href: "/welfare-dues", module: "care", label: "Welfare Dues", icon: HeartHandshake },
+  },
+  {
+    type: "item",
+    item: { href: "/announcements", module: "messaging", label: "Announce", icon: Megaphone },
+  },
+  {
+    type: "item",
+    item: { href: "/message-center", module: "messaging", label: "Messages", icon: MessageSquare },
+  },
+  {
+    type: "item",
+    item: { href: "/visitor-conversion", module: "analytics", label: "Visitors", icon: TrendingUp },
+  },
+  {
+    type: "group",
+    group: {
+      label: "Staffs",
+      icon: UserCog,
+      module: "staffs",
+      children: [{ href: "/staffs", label: "Manage Staffs" }],
+    },
+  },
+  {
+    type: "item",
+    item: { href: "/settings", module: "settings", label: "Settings", icon: Settings },
   },
 ];
+
+// Backwards-compatible exports
+export const NAV: NavItem[] = NAV_ENTRIES.filter((e) => e.type === "item").map((e) => e.item);
+export const NAV_GROUPS: NavGroup[] = NAV_ENTRIES.filter((e) => e.type === "group").map((e) => e.group);

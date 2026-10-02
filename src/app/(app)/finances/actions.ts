@@ -5,6 +5,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 import {
   TITHE,
   WELFARE_DUES,
@@ -71,6 +72,11 @@ export async function addTransaction(_prev: FormState, f: FormData): Promise<For
     projectId: category === "Project Fund" ? await owned(projectFund, s(f, "projectId"), church.id) : null,
     receiptNo: type === "income" ? await nextReceiptNo(church.id) : null,
   });
+  logActivity({
+    module: "finances",
+    action: `Recorded ${type} of ₵${amount} (${category})`,
+    metadata: { type, category, amount, description: s(f, "description") || null },
+  });
   return done();
 }
 
@@ -93,6 +99,11 @@ export async function recordContribution(_prev: FormState, f: FormData): Promise
     occurredOn: isDate(s(f, "date")) ? s(f, "date") : undefined,
     receiptNo: await nextReceiptNo(church.id),
   });
+  logActivity({
+    module: "finances",
+    action: `Recorded ${category} of ₵${amount}`,
+    metadata: { category, amount, memberId },
+  });
   return done();
 }
 
@@ -114,6 +125,11 @@ export async function recordWelfareOut(_prev: FormState, f: FormData): Promise<F
     description: s(f, "description") || null,
     occurredOn: isDate(s(f, "date")) ? s(f, "date") : undefined,
   });
+  logActivity({
+    module: "finances",
+    action: `Recorded welfare support of ₵${amount}`,
+    metadata: { amount, memberId },
+  });
   return done();
 }
 
@@ -121,6 +137,11 @@ export async function deleteTransaction(id: string) {
   await requireModule("finances");
   const { church } = await requireChurch();
   await db.delete(transaction).where(and(eq(transaction.id, id), eq(transaction.churchId, church.id)));
+  logActivity({
+    module: "finances",
+    action: "Deleted transaction",
+    metadata: { transactionId: id },
+  });
   done();
 }
 
@@ -137,6 +158,11 @@ export async function saveProject(_prev: FormState, f: FormData): Promise<FormSt
     target: target.toFixed(2),
     dueOn: isDate(s(f, "dueOn")) ? s(f, "dueOn") : null,
   });
+  logActivity({
+    module: "finances",
+    action: `Created project fund "${name}"`,
+    metadata: { name, target },
+  });
   return done();
 }
 
@@ -144,5 +170,10 @@ export async function deleteProject(id: string) {
   await requireModule("finances");
   const { church } = await requireChurch();
   await db.delete(projectFund).where(and(eq(projectFund.id, id), eq(projectFund.churchId, church.id)));
+  logActivity({
+    module: "finances",
+    action: "Deleted project fund",
+    metadata: { projectId: id },
+  });
   done();
 }

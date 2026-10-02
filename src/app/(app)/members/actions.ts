@@ -7,6 +7,7 @@ import { requireChurch } from "@/lib/session";
 import { MEMBER_CATEGORIES } from "@/lib/constants";
 import { sendSms, withFooter } from "@/lib/sms";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 const VISITOR = "Visitor";
 const REGULAR_ATTENDEE = "Regular Attendee";
@@ -78,6 +79,11 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
       .update(member)
       .set({ ...values, ...(converted ? { convertedAt: new Date().toISOString().slice(0, 10) } : {}) })
       .where(and(eq(member.id, id), eq(member.churchId, church.id)));
+    logActivity({
+      module: "members",
+      action: `Updated member "${values.fullName}"`,
+      metadata: { memberId: id, fullName: values.fullName, category: values.category },
+    });
   } else {
     const [created] = await db
       .insert(member)
@@ -94,6 +100,11 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
         });
       }
     }
+    logActivity({
+      module: "members",
+      action: `Added member "${values.fullName}"`,
+      metadata: { memberId: created.id, fullName: values.fullName, category: values.category },
+    });
   }
   revalidatePath("/members");
   revalidatePath("/dashboard");
@@ -110,6 +121,11 @@ export async function setMemberActive(id: string, active: boolean) {
     .update(member)
     .set({ active })
     .where(and(eq(member.id, id), eq(member.churchId, church.id)));
+  logActivity({
+    module: "members",
+    action: `${active ? "Activated" : "Deactivated"} member`,
+    metadata: { memberId: id, active },
+  });
   revalidatePath("/members");
   revalidatePath("/dashboard");
 }
@@ -118,6 +134,11 @@ export async function deleteMember(id: string) {
   await requireModule("members");
   const { church } = await requireChurch();
   await db.delete(member).where(and(eq(member.id, id), eq(member.churchId, church.id)));
+  logActivity({
+    module: "members",
+    action: "Deleted member",
+    metadata: { memberId: id },
+  });
   revalidatePath("/members");
   revalidatePath("/dashboard");
 }
@@ -157,6 +178,11 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
 
   if (values.length === 0) return { error: "No rows with a name were found in that file." };
   await db.insert(member).values(values);
+  logActivity({
+    module: "members",
+    action: `Imported ${values.length} members from CSV`,
+    metadata: { count: values.length },
+  });
   revalidatePath("/members");
   revalidatePath("/dashboard");
   return { ok: true };

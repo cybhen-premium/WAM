@@ -6,6 +6,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { EVENT_TYPES } from "@/lib/constants";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -32,6 +33,11 @@ export async function createEvent(_prev: FormState, f: FormData): Promise<FormSt
     startsAt: `${date} ${start}:00`,
     endsAt: end ? `${date} ${end}:00` : null,
   });
+  logActivity({
+    module: "events",
+    action: `Created event "${title}" on ${date}`,
+    metadata: { title, type, date, location: s("location") || null },
+  });
   revalidatePath("/events");
   revalidatePath("/event-analytics");
   revalidatePath("/attendance");
@@ -42,6 +48,11 @@ export async function deleteEvent(id: string) {
   await requireModule("events");
   const { church } = await requireChurch();
   await db.delete(schema.event).where(and(eq(schema.event.id, id), eq(schema.event.churchId, church.id)));
+  logActivity({
+    module: "events",
+    action: "Deleted event",
+    metadata: { eventId: id },
+  });
   revalidatePath("/events");
   revalidatePath("/event-analytics");
 }

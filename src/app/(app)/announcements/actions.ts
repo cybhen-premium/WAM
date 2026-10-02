@@ -8,6 +8,7 @@ import { AiError, runAi } from "@/lib/ai";
 import { atRiskWhere } from "@/lib/pastoral";
 import { sendSms, withFooter } from "@/lib/sms";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 const { member } = schema;
 
@@ -65,6 +66,11 @@ export async function sendAnnouncement(topic: string, body: string, audience: st
   });
   revalidatePath("/message-center");
   revalidatePath("/", "layout");
+  logActivity({
+    module: "messaging",
+    action: `Sent announcement "${topic.trim() || "Broadcast"}" to ${audienceLabel}`,
+    metadata: { topic, audience: audienceLabel, recipients: r.recipients, status: r.status },
+  });
   if (r.status === "failed") return { error: r.error ?? "Send failed." };
   return {
     ok: true,

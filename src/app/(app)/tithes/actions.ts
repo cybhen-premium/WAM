@@ -8,6 +8,7 @@ import { TITHE } from "@/lib/constants";
 import { sendSms, withFooter } from "@/lib/sms";
 import { cedis } from "@/lib/utils";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 const { tithe, transaction, member } = schema;
 
@@ -71,6 +72,11 @@ export async function recordTithe(_prev: FormState, form: FormData): Promise<For
 
   revalidatePath("/tithes");
   revalidatePath("/dashboard");
+  logActivity({
+    module: "tithes",
+    action: `Recorded tithe of ₵${amount} for ${payer.fullName} (Week ${week}, ${month})`,
+    metadata: { memberId, amount, week, month, memberName: payer.fullName },
+  });
 
   // Automatic thank-you to the payer — same pattern as the welcome SMS: logged in the message log and
   // queued (not sent) when no SMS gateway is configured. Never allowed to fail the tithe itself.
@@ -178,5 +184,10 @@ export async function updateTithe(_prev: FormState, form: FormData): Promise<For
   revalidatePath("/tithes");
   revalidatePath("/dashboard");
   revalidatePath("/finances");
+  logActivity({
+    module: "tithes",
+    action: `Updated tithe of ₵${amount} for Week ${week}, ${month}`,
+    metadata: { titheId, memberId, amount, week, month },
+  });
   return { ok: true };
 }

@@ -7,6 +7,7 @@ import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
 import { MODULE_KEYS } from "@/lib/modules";
 import { hashPassword } from "better-auth/crypto";
+import { logActivity } from "@/lib/activity";
 
 const { staff, staffModule, user, account } = schema;
 
@@ -93,6 +94,12 @@ export async function createStaff(
       );
     }
   }
+  logActivity({
+    module: "staffs",
+    actionCode: "user.create",
+    action: `Created new user ${username || name}`,
+    metadata: { staffId: newStaff.id, email: emailRaw, role, status: activateNow ? "active" : "pending" },
+  });
 
   revalidatePath("/staffs");
   revalidatePath("/", "layout");
@@ -140,6 +147,11 @@ export async function updateStaff(
       );
     }
   }
+  logActivity({
+    module: "staffs",
+    action: `Updated staff profile for "${name}"`,
+    metadata: { staffId, email: emailRaw, role },
+  });
 
   revalidatePath("/staffs");
   revalidatePath("/", "layout");
@@ -155,6 +167,11 @@ export async function changeTwoFactorMethod(staffId: string, method: string) {
   
   await db.update(staff).set({ twoFactorMethod: method })
     .where(and(eq(staff.id, staffId), eq(staff.churchId, c.id)));
+  logActivity({
+    module: "staffs",
+    action: `Changed 2FA method to ${method}`,
+    metadata: { staffId, method },
+  });
     
   revalidatePath("/staffs");
 }
@@ -174,6 +191,12 @@ export async function removeStaff(staffId: string) {
     await db.delete(account).where(eq(account.userId, row.userId));
     await db.delete(user).where(eq(user.id, row.userId));
   }
+  logActivity({
+    module: "staffs",
+    actionCode: "user.delete.permanent",
+    action: `Permanently deleted user ${row.email}`,
+    metadata: { staffId, email: row.email, role: row.role },
+  });
 
   revalidatePath("/staffs");
 }
@@ -211,6 +234,12 @@ export async function updateStaffStatus(staffId: string, status: "active" | "pen
       <p>Best regards,<br />${c.name}</p>`,
     });
   }
+  logActivity({
+    module: "staffs",
+    actionCode: status === "suspended" ? "user.suspend" : status === "active" ? "user.unsuspend" : "user.status",
+    action: status === "suspended" ? `Suspended user ${row.email}` : status === "active" ? `Unsuspended user ${row.email}` : `Changed status to ${status} for ${row.email}`,
+    metadata: { staffId, email: row.email, status },
+  });
 
   revalidatePath("/staffs");
 }
@@ -230,6 +259,11 @@ export async function setStaffModules(staffId: string, modules: string[]) {
       wanted.map((module) => ({ churchId: c.id, staffId, module })),
     );
   }
+  logActivity({
+    module: "staffs",
+    action: "Updated staff module permissions",
+    metadata: { staffId, modules: wanted },
+  });
   revalidatePath("/staffs");
   revalidatePath("/", "layout");
 }

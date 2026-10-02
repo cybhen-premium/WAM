@@ -7,6 +7,7 @@ import { hashPassword } from "better-auth/crypto";
 
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 
 export async function checkLoginStatus() {
   try {
@@ -30,6 +31,15 @@ export async function checkLoginStatus() {
         status = "active";
         // For the super admin (church owner), check the church-level 2FA setting
         ownerTwoFactorMethod = row.church.ownerTwoFactorMethod ?? "none";
+        logActivity({
+          churchId: row.church.id,
+          userId: user.id,
+          actorName: user.name || "Super Administrator",
+          actorEmail: user.email,
+          module: "auth",
+          actionCode: "auth.login",
+          action: "User logged in successfully",
+        });
       } else {
         status = "deleted";
       }

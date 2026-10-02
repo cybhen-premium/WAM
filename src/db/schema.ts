@@ -444,3 +444,32 @@ export const platformSetting = pgTable("platform_setting", {
   updatedBy: text("updated_by"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+/* --------------------------------------------------------- activity log ---- */
+
+/**
+ * Audit trail: one row per meaningful action any staff member or church owner performs.
+ * `module`   — which section of the app (matches ModuleKey or "auth")
+ * `action`   — short human-readable verb phrase, e.g. "Added member", "Deleted transaction"
+ * `metadata` — optional JSON with extra context (ids, names, amounts, …)
+ */
+export const activityLog = pgTable(
+  "activity_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    actorName: text("actor_name").notNull().default("Unknown"),
+    actorEmail: text("actor_email"),
+    module: text("module").notNull(),
+    actionCode: text("action_code"),
+    action: text("action").notNull(),
+    ipAddress: text("ip_address"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("activity_log_church_idx").on(t.churchId), index("activity_log_created_idx").on(t.createdAt)],
+);
+

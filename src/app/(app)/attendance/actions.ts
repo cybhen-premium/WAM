@@ -5,6 +5,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 const { attendance, event, member } = schema;
 
@@ -48,6 +49,13 @@ export async function checkIn(eventId: string, memberRef: string): Promise<Check
 
   revalidatePath("/attendance");
   revalidatePath("/dashboard");
+  if (inserted.length > 0) {
+    logActivity({
+      module: "events",
+      action: `Checked in "${m.fullName}" for service`,
+      metadata: { eventId, memberId: m.id, memberName: m.fullName, serviceDate },
+    });
+  }
   return { ok: true, name: m.fullName, already: inserted.length === 0 };
 }
 
@@ -57,5 +65,10 @@ export async function undoCheckIn(eventId: string, memberId: string) {
   await db
     .delete(attendance)
     .where(and(eq(attendance.churchId, church.id), eq(attendance.eventId, eventId), eq(attendance.memberId, memberId)));
+  logActivity({
+    module: "events",
+    action: "Undid attendance check-in",
+    metadata: { eventId, memberId },
+  });
   revalidatePath("/attendance");
 }

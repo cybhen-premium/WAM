@@ -7,6 +7,7 @@ import { requireChurch } from "@/lib/session";
 import { atRiskWhere } from "@/lib/pastoral";
 import { sendSms, withFooter } from "@/lib/sms";
 import { requireModule } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 export type FormState = { error?: string; ok?: boolean; message?: string } | undefined;
 
@@ -22,6 +23,10 @@ export async function saveAutomation(_prev: FormState, f: FormData): Promise<For
     .set({ automationEnabled: f.get("enabled") === "on", birthdayTemplate: birthday, anniversaryTemplate: anniversary })
     .where(eq(schema.church.id, church.id));
   revalidatePath("/welfare");
+  logActivity({
+    module: "care",
+    action: "Updated member care automation templates",
+  });
   return { ok: true, message: "Configuration saved." };
 }
 
@@ -38,6 +43,11 @@ export async function scheduleVisit(memberId: string) {
   await db.insert(schema.followUp).values({ churchId: church.id, memberId: m.id, kind: "lost_sheep", stage: "new" });
   revalidatePath("/welfare");
   revalidatePath("/follow-up");
+  logActivity({
+    module: "care",
+    action: "Scheduled pastoral visit for member",
+    metadata: { memberId },
+  });
 }
 
 /** Sends a "we miss you" SMS to the given at-risk members (or all of them when ids is empty). */
@@ -57,6 +67,11 @@ export async function reachOut(ids: string[]): Promise<FormState> {
   const r = await sendSms(church, rows.map((m) => m.phone), body, { kind: "reach_out", audience: "At-risk members" });
   revalidatePath("/message-center");
   revalidatePath("/", "layout");
+  logActivity({
+    module: "care",
+    action: `Sent reach-out SMS to ${rows.length} at-risk members`,
+    metadata: { count: rows.length, recipients: r.recipients, status: r.status },
+  });
   if (r.status === "failed") return { error: r.error };
   return {
     ok: true,
