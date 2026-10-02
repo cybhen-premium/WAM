@@ -29,7 +29,7 @@ export const config = {
     "/message-center/:path*",
     "/visitor-conversion/:path*",
     "/settings/:path*",
-    "/setup-church",
+
     "/print/:path*",
   ],
 };

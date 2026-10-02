@@ -22,7 +22,7 @@ export const getMyPermissions = cache(async (): Promise<Permissions> => {
   const rows = await db
     .select({ module: schema.staffModule.module })
     .from(schema.staffModule)
-    .where(eq(schema.staffModule.churchId, row.church.id));
+    .where(eq(schema.staffModule.staffId, row.staffId));
   return new Set(rows.map((r) => r.module).filter((m): m is ModuleKey => m in MODULES));
 });
 

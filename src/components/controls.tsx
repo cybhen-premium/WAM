@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { Search, Trash2 } from "lucide-react";
 import { useSetUrlParam } from "@/components/use-url-param";
-import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 /** Debounced search input bound to the ?q= URL param. */
 export function SearchBox({ placeholder, initial }: { placeholder: string; initial: string }) {
@@ -30,38 +30,45 @@ export function SearchBox({ placeholder, initial }: { placeholder: string; initi
   );
 }
 
-/** Trash icon that turns into a "Confirm" button on first click. */
-export function DeleteButton({ action }: { action: () => Promise<void> }) {
-  const [confirm, setConfirm] = useState(false);
-  const [pending, startTransition] = useTransition();
+/** Trash icon that opens a confirmation dialog before executing the action. */
+export function DeleteButton({
+  action,
+  title = "Permanently Delete?",
+  description = "This action cannot be undone.",
+  confirmLabel = "Permanently Delete",
+  successMessage = "Deleted successfully!",
+  errorMessage = "Failed to delete.",
+}: {
+  action: () => Promise<void>;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
+  successMessage?: string;
+  errorMessage?: string;
+}) {
+  const [open, setOpen] = useState(false);
 
-  return confirm ? (
-    <button
-      autoFocus
-      disabled={pending}
-      onBlur={() => setConfirm(false)}
-      onClick={() => {
-        startTransition(async () => {
-          try {
-            await action();
-            toast.success("Deleted successfully!");
-          } catch (e) {
-            toast.error("Failed to delete.");
-          }
-        });
-      }}
-      className="h-8 rounded-lg bg-red-600 px-2 text-[10px] font-black uppercase text-white"
-    >
-      Confirm
-    </button>
-  ) : (
-    <button
-      onClick={() => setConfirm(true)}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
-      title="Delete"
-      aria-label="Delete"
-    >
-      <Trash2 className="h-4 w-4" />
-    </button>
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
+        title="Delete"
+        aria-label="Delete"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+
+      <ConfirmDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title={title}
+        description={description}
+        confirmLabel={confirmLabel}
+        onConfirm={action}
+        successMessage={successMessage}
+        errorMessage={errorMessage}
+      />
+    </>
   );
 }

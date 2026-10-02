@@ -6,6 +6,7 @@ import { Mail, Lock, CheckCircle } from "lucide-react";
 import { AuthCard, Field, SubmitButton } from "@/components/auth-card";
 import { authClient } from "@/lib/auth-client";
 import { sendPasswordResetConfirmation } from "./actions";
+import { checkStatusByEmail } from "../login/actions";
 
 export function ForgotPasswordWrapper({ logoUrl }: { logoUrl?: string | null }) {
   const [step, setStep] = useState<"request" | "verify-otp" | "otp-success" | "new-password" | "done">("request");
@@ -20,6 +21,16 @@ export function ForgotPasswordWrapper({ logoUrl }: { logoUrl?: string | null }) 
     const inputEmail = String(form.get("email"));
     setPending(true);
     setError(null);
+
+    // Block deleted, suspended, and pending accounts — show a generic message
+    // so we don't reveal which accounts exist.
+    const status = await checkStatusByEmail(inputEmail);
+    if (status === "deleted" || status === "suspended" || status === "pending") {
+      setPending(false);
+      setError("No account found with that email address.");
+      return;
+    }
+
     const { error } = await authClient.emailOtp.sendVerificationOtp({
       email: inputEmail,
       type: "forget-password",

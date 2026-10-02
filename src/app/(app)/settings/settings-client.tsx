@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { LocateFixed, Mail, Palette, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { KeyRound, LocateFixed, Mail, Palette, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { useFormAction } from "@/components/use-form-action";
 import { cn } from "@/lib/utils";
 import type { schema } from "@/db";
@@ -15,9 +15,11 @@ import {
   saveProfile,
   setAutoWelcome,
   setStaffModules,
+  setSuperAdminTwoFactor,
   type FormState,
 } from "./actions";
 import { MODULES, MODULE_KEYS } from "@/lib/modules";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 type Church = typeof schema.church.$inferSelect;
 
@@ -243,6 +245,66 @@ export function WelcomeToggle({ enabled }: { enabled: boolean }) {
   );
 }
 
+export function SuperAdmin2FAForm({ currentMethod }: { currentMethod: string }) {
+  const [method, setMethod] = useState(currentMethod);
+  const [pending, startTransition] = useTransition();
+  const [saved, setSaved] = useState(false);
+
+  const methods = [
+    { value: "none", label: "None", desc: "No two-factor authentication required." },
+    { value: "email", label: "Email OTP", desc: "A one-time code will be emailed to you on each login." },
+    { value: "totp", label: "Authenticator App (TOTP)", desc: "Use Google Authenticator, Authy, or similar." },
+  ];
+
+  function handleChange(next: string) {
+    setMethod(next);
+    setSaved(false);
+    startTransition(async () => {
+      await setSuperAdminTwoFactor(next);
+      setSaved(true);
+    });
+  }
+
+  return (
+    <Section
+      title="Super Admin Two-Factor Authentication"
+      subtitle="Require 2FA on your owner account for extra security. Takes effect on your next login."
+    >
+      <div className="space-y-3">
+        {methods.map((m) => (
+          <label
+            key={m.value}
+            className={cn(
+              "flex cursor-pointer items-start gap-4 rounded-2xl border-2 p-4 transition-colors",
+              method === m.value ? "border-[#1e3a8a] bg-blue-50" : "border-slate-100 bg-slate-50 hover:border-slate-200",
+            )}
+          >
+            <input
+              type="radio"
+              name="ownerTwoFactorMethod"
+              value={m.value}
+              checked={method === m.value}
+              disabled={pending}
+              onChange={() => handleChange(m.value)}
+              className="mt-0.5 accent-[#1e3a8a]"
+            />
+            <span>
+              <span className="flex items-center gap-2">
+                <KeyRound className="h-3.5 w-3.5 text-[#1e3a8a]" />
+                <span className="text-sm font-bold text-slate-900">{m.label}</span>
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-500">{m.desc}</span>
+            </span>
+          </label>
+        ))}
+        {saved && (
+          <p className="text-sm font-bold text-emerald-600">✓ Saved! This will be enforced on your next login.</p>
+        )}
+      </div>
+    </Section>
+  );
+}
+
 export function SenderIdForm({ status, current, requested }: { status: string; current: string | null; requested: string | null }) {
   const [state, action, pending] = useFormAction(requestSenderId);
   const [value, setValue] = useState(requested ?? "");
@@ -403,6 +465,7 @@ function ModuleToggles({ staff, disabled }: { staff: { id: string; modules: stri
 export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; active: ActiveStaff[]; pending: PendingStaff[] }) {
   const [state, action, submitting] = useFormAction(inviteStaff);
   const [busy, startTransition] = useTransition();
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const date = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   return (
@@ -477,7 +540,7 @@ export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; act
                   </td>
                   <td className="py-3 text-right">
                     {isAdmin && !s.self && (
-                      <button onClick={() => startTransition(() => removeStaff(s.id))} className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-600" aria-label={`Remove ${s.email}`}>
+                      <button onClick={() => setPendingDeleteId(s.id)} className="rounded-lg p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-600" aria-label={`Remove ${s.email}`}>
                         <Trash2 className="h-4 w-4" />
                       </button>
                     )}
@@ -507,7 +570,7 @@ export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; act
                     </div>
                   </div>
                   {isAdmin && (
-                    <button onClick={() => startTransition(() => removeStaff(p.id))} className="text-xs font-bold text-red-600 hover:underline">
+                    <button onClick={() => setPendingDeleteId(p.id)} className="text-xs font-bold text-red-600 hover:underline">
                       Revoke
                     </button>
                   )}
@@ -519,6 +582,17 @@ export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; act
           </ul>
         )}
       </Section>
+
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onClose={() => setPendingDeleteId(null)}
+        title="Permanently Remove Staff?"
+        description="This will permanently remove this staff member and revoke their access to the system. This action cannot be undone."
+        confirmLabel="Permanently Remove"
+        onConfirm={async () => { await removeStaff(pendingDeleteId!); }}
+        successMessage="Staff member removed successfully."
+        errorMessage="Failed to remove staff member."
+      />
     </div>
   );
 }

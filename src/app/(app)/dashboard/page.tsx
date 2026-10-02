@@ -31,7 +31,7 @@ export default async function DashboardPage() {
   const md = (col: AnyColumn) => sql`to_char(${col}, 'MM-DD')`;
   const today = sql`to_char(current_date, 'MM-DD')`;
   const inNextWeek = (col: AnyColumn) =>
-    sql`${md(col)} in (select to_char(current_date + g, 'MM-DD') from generate_series(0, 6) g)`;
+    sql`${md(col)} in (select to_char(current_date + i, 'MM-DD') from generate_series(0, 6) as g(i))`;
 
   const [
     [{ total }],

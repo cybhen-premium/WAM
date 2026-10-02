@@ -24,7 +24,7 @@ export function SignupForm() {
     if (error) return setError(error.message ?? "Could not create account");
     // Full navigation so the new session cookie is used (see login page).
     const ref = new URLSearchParams(window.location.search).get("ref");
-    window.location.assign(ref ? `/setup-church?ref=${encodeURIComponent(ref)}` : "/setup-church");
+    window.location.assign("/login?suspended=true");
   }
 
   return (

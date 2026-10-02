@@ -175,4 +175,13 @@ export async function setStaffModules(staffId: string, modules: string[]) {
   revalidatePath("/", "layout");
 }
 
-
+/** Sets the 2FA method required for the super admin (church owner). */
+export async function setSuperAdminTwoFactor(method: string) {
+  await requireModule("settings");
+  const { church: c, role } = await requireChurch();
+  if (role !== "admin") throw new Error("Only the church owner can change this setting.");
+  const allowed = ["none", "email", "totp"];
+  if (!allowed.includes(method)) throw new Error("Invalid method.");
+  await db.update(church).set({ ownerTwoFactorMethod: method }).where(eq(church.id, c.id));
+  revalidatePath("/settings");
+}

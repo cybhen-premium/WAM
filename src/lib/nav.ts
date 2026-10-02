@@ -15,10 +15,19 @@ import {
   GraduationCap,
   Settings,
   HandHeart,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; module: ModuleKey };
+
+/** A collapsible nav group rendered as a dropdown in the sidebar. */
+export type NavGroup = {
+  label: string;
+  icon: LucideIcon;
+  module: ModuleKey;
+  children: { href: string; label: string }[];
+};
 
 export const NAV: NavItem[] = [
   { href: "/dashboard", module: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -39,4 +48,14 @@ export const NAV: NavItem[] = [
   { href: "/message-center", module: "messaging", label: "Messages", icon: MessageSquare },
   { href: "/visitor-conversion", module: "analytics", label: "Visitors", icon: TrendingUp },
   { href: "/settings", module: "settings", label: "Settings", icon: Settings },
+];
+
+/** Groups that render as collapsible dropdowns in the sidebar. */
+export const NAV_GROUPS: NavGroup[] = [
+  {
+    label: "Staffs",
+    icon: UserCog,
+    module: "staffs",
+    children: [{ href: "/staffs", label: "Manage Staffs" }],
+  },
 ];

@@ -1,4 +1,7 @@
-import { Church } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { Church, Eye, EyeOff } from "lucide-react";
 
 export function AuthCard({ title, subtitle, logoUrl, children }: { title: string; subtitle: string; logoUrl?: string | null; children: React.ReactNode }) {
   return (
@@ -26,8 +29,12 @@ export function Field({
   label,
   icon,
   className,
+  type,
   ...input
 }: React.InputHTMLAttributes<HTMLInputElement> & { label: string; icon?: React.ReactNode }) {
+  const isPassword = type === "password";
+  const [show, setShow] = useState(false);
+
   return (
     <label className={`block ${className ?? ""}`}>
       <span className="mb-2 block px-1 text-[10px] font-extrabold uppercase tracking-tight text-slate-400">{label}</span>
@@ -35,8 +42,20 @@ export function Field({
         {icon && <span className="text-slate-400 [&_svg]:h-4 [&_svg]:w-4">{icon}</span>}
         <input
           {...input}
+          type={isPassword ? (show ? "text" : "password") : type}
           className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none"
         />
+        {isPassword && (
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => setShow((v) => !v)}
+            className="shrink-0 text-slate-400 hover:text-slate-600 transition-colors [&_svg]:h-4 [&_svg]:w-4"
+            aria-label={show ? "Hide password" : "Show password"}
+          >
+            {show ? <EyeOff /> : <Eye />}
+          </button>
+        )}
       </span>
     </label>
   );

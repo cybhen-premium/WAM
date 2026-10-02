@@ -22,6 +22,8 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  passwordChangeRequired: boolean("password_change_required").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -64,6 +66,18 @@ export const verification = pgTable("verification", {
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const twoFactor = pgTable("two_factor", {
+  id: text("id").primaryKey(),
+  secret: text("secret").notNull(),
+  backupCodes: text("backup_codes").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  verified: boolean("verified").default(true),
+  failedVerificationCount: integer("failed_verification_count").default(0),
+  lockedUntil: timestamp("locked_until"),
 });
 
 /* -------------------------------------------------------------- tenant ---- */
@@ -110,11 +124,12 @@ export const church = pgTable("church", {
   ownerId: text("owner_id")
     .notNull()
     .references(() => user.id),
+  // 2FA method required for the church owner (super admin). none | email | totp
+  ownerTwoFactorMethod: text("owner_two_factor_method").notNull().default("none"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const staffRoleEnum = pgEnum("staff_role", ["admin", "pastor", "finance", "secretary", "usher"]);
-export const staffStatusEnum = pgEnum("staff_status", ["active", "pending"]);
+export const staffStatusEnum = pgEnum("staff_status", ["active", "pending", "suspended"]);
 
 // Links a login (user) to a church. The church owner gets an "admin" row on setup.
 export const staff = pgTable(
@@ -126,7 +141,8 @@ export const staff = pgTable(
       .references(() => church.id, { onDelete: "cascade" }),
     userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
     email: text("email").notNull(),
-    role: staffRoleEnum("role").notNull().default("admin"),
+    role: text("role").notNull().default("admin"),
+    twoFactorMethod: text("two_factor_method").notNull().default("none"), // none | email | sms
     status: staffStatusEnum("status").notNull().default("pending"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
