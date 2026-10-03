@@ -190,7 +190,14 @@ export default async function AnalyticsPage(props: {
     ? totalUniqueVisitorsSet.size
     : Math.max(12, totalUniqueVisitorsSet.size);
   const activeNow = isCleared
-    ? recentLogs.filter((l) => Date.now() - new Date(l.createdAt).getTime() < 5 * 60 * 1000).length
+    ? new Set(
+        recentLogs
+          .filter((l) => Date.now() - new Date(l.createdAt).getTime() < 5 * 60 * 1000)
+          .map((l) => {
+            const meta = (l.metadata as Record<string, unknown>) || {};
+            return `${meta.device || "Desktop"}_${meta.os || ""}_${l.actorEmail || l.actorName || l.ipAddress || ""}`;
+          })
+      ).size
     : 1;
   const avgSession = isCleared
     ? totalViews > 0
