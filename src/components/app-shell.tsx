@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Church, ChevronDown, LogOut, Menu, RotateCcw, X } from "lucide-react";
-import { NAV, NAV_ENTRIES } from "@/lib/nav";
+import { NAV, NAV_ENTRIES, NAV_CATEGORIES } from "@/lib/nav";
 import { hasModule, type ModuleKey } from "@/lib/modules";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { SessionIdleTimeout } from "./session-idle-timeout";
 
 type Props = {
   churchName: string;
@@ -114,7 +115,7 @@ export function AppShell({ churchName, logoUrl, smsCredits, modules, children }:
     setLoggingOut(true);
     try {
       const { recordLogoutAction } = await import("@/app/(app)/analytics/actions");
-      await recordLogoutAction().catch(() => {});
+      await recordLogoutAction().catch(() => { });
       await authClient.signOut();
       toast.success("Logged out successfully!");
       router.push("/login");
@@ -125,15 +126,18 @@ export function AppShell({ churchName, logoUrl, smsCredits, modules, children }:
     }
   }
 
-  // Separate Settings so it always renders last
-  const settingsItem = NAV.find((n) => n.module === "settings");
-  const visibleEntries = NAV_ENTRIES.filter((e) => {
-    if (e.type === "item" && e.item.module === "settings") return false;
-    return hasModule(modules, e.type === "item" ? e.item.module : e.group.module);
-  });
+  // Filter categories and entries by assigned modules for this user
+  const visibleCategories = NAV_CATEGORIES.map((cat) => ({
+    ...cat,
+    entries: cat.entries.filter((e) => {
+      const mod = e.type === "item" ? e.item.module : e.group.module;
+      return hasModule(modules, mod);
+    }),
+  })).filter((cat) => cat.entries.length > 0);
 
   return (
     <div className="flex h-screen overflow-hidden">
+      <SessionIdleTimeout />
       {open && (
         <div className="fixed inset-0 z-40 bg-slate-900/50 lg:hidden" onClick={() => setOpen(false)} />
       )}
@@ -167,122 +171,121 @@ export function AppShell({ churchName, logoUrl, smsCredits, modules, children }:
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {visibleEntries.map((entry) => {
-            if (entry.type === "item") {
-              const { href, label, icon: Icon } = entry.item;
-              const active = pathname === href || pathname.startsWith(href + "/");
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-bold transition-all duration-200",
-                    active
-                      ? "bg-amber-500/10 text-amber-500 border-l-2 border-amber-500"
-                      : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-100",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Link>
-              );
-            }
-
-            const group = entry.group;
-            const GroupIcon = group.icon;
-            const isGroupOpen = !!openGroups[group.label];
-            const groupActive = group.children.some((c) => {
-              const basePath = c.href.split("?")[0];
-              return pathname === basePath || pathname.startsWith(basePath + "/");
-            });
-
-            return (
-              <div key={group.label}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setOpenGroups((prev) => ({ ...prev, [group.label]: !prev[group.label] }))
-                  }
-                  className={cn(
-                    "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-bold transition-all duration-200 cursor-pointer",
-                    groupActive
-                      ? "bg-amber-500/10 text-amber-500 border-l-2 border-amber-500"
-                      : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-100",
-                  )}
-                >
-                  <GroupIcon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1 text-left">{group.label}</span>
-                  <ChevronDown
-                    className={cn(
-                      "h-3.5 w-3.5 transition-transform duration-200",
-                      isGroupOpen ? "rotate-180" : "",
-                    )}
-                  />
-                </button>
-
-                {isGroupOpen && (
-                  <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-700/60 pl-3">
-                    {group.children.map((child) => {
-                      const isAnalytics = child.href.startsWith("/analytics");
-                      let childActive = false;
-
-                      if (isAnalytics) {
-                        const viewParam = searchParams.get("view");
-                        if (child.href === "/analytics") {
-                          childActive = pathname === "/analytics" && viewParam !== "activity";
-                        } else {
-                          childActive = (pathname === "/analytics" && viewParam === "activity") || pathname === "/analytics/activity";
-                        }
-                      } else {
-                        childActive = pathname === child.href || pathname.startsWith(child.href + "/");
-                      }
-
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          onClick={() => setOpen(false)}
-                          className={cn(
-                            "flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-semibold transition-all duration-200",
-                            childActive
-                              ? "text-amber-500 bg-amber-500/10 font-bold"
-                              : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/50",
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              "h-1.5 w-1.5 rounded-full transition-all",
-                              childActive ? "bg-amber-500 opacity-100 scale-125" : "bg-current opacity-60"
-                            )}
-                          />
-                          {child.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
+        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4 sidebar-scroll">
+          {visibleCategories.map((cat) => (
+            <div key={cat.title} className="space-y-1">
+              {/* Category Section Header */}
+              <div className="px-3 pt-1 pb-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                  {cat.title}
+                </span>
               </div>
-            );
-          })}
 
-          {/* Settings — always last */}
-          {settingsItem && hasModule(modules, settingsItem.module) && (
-            <Link
-              href={settingsItem.href}
-              onClick={() => setOpen(false)}
-              className={cn(
-                "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-bold transition-all duration-200",
-                pathname === settingsItem.href || pathname.startsWith(settingsItem.href + "/")
-                  ? "bg-amber-500/10 text-amber-500 border-l-2 border-amber-500"
-                  : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-100",
-              )}
-            >
-              <settingsItem.icon className="h-4 w-4" />
-              {settingsItem.label}
-            </Link>
-          )}
+              {/* Category Entries */}
+              {cat.entries.map((entry) => {
+                if (entry.type === "item") {
+                  const { href, label, icon: Icon } = entry.item;
+                  const active = pathname === href || pathname.startsWith(href + "/");
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setOpen(false)}
+                      className={cn(
+                        "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-bold transition-all duration-200",
+                        active
+                          ? "bg-amber-500/10 text-amber-500 border-l-2 border-amber-500 shadow-xs"
+                          : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-100",
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{label}</span>
+                    </Link>
+                  );
+                }
+
+                const group = entry.group;
+                const GroupIcon = group.icon;
+                const isGroupOpen = !!openGroups[group.label];
+                const groupActive = group.children.some((c) => {
+                  const basePath = c.href.split("?")[0];
+                  return pathname === basePath || pathname.startsWith(basePath + "/");
+                });
+
+                return (
+                  <div key={group.label}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenGroups((prev) => ({ ...prev, [group.label]: !prev[group.label] }))
+                      }
+                      className={cn(
+                        "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-bold transition-all duration-200 cursor-pointer",
+                        groupActive
+                          ? "bg-amber-500/10 text-amber-500 border-l-2 border-amber-500 shadow-xs"
+                          : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-100",
+                      )}
+                    >
+                      <GroupIcon className="h-4 w-4 shrink-0" />
+                      <span className="flex-1 text-left">{group.label}</span>
+                      <ChevronDown
+                        className={cn(
+                          "h-3.5 w-3.5 transition-transform duration-200",
+                          isGroupOpen ? "rotate-180" : "",
+                        )}
+                      />
+                    </button>
+
+                    {isGroupOpen && (
+                      <div className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-700/60 pl-3">
+                        {group.children.map((child) => {
+                          const isAnalytics = child.href.startsWith("/analytics");
+                          let childActive = false;
+
+                          if (isAnalytics) {
+                            const viewParam = searchParams.get("view");
+                            if (child.href === "/analytics") {
+                              childActive = pathname === "/analytics" && viewParam !== "activity";
+                            } else {
+                              childActive =
+                                (pathname === "/analytics" && viewParam === "activity") ||
+                                pathname === "/analytics/activity";
+                            }
+                          } else {
+                            childActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                          }
+
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              onClick={() => setOpen(false)}
+                              className={cn(
+                                "flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-semibold transition-all duration-200",
+                                childActive
+                                  ? "text-amber-500 bg-amber-500/10 font-bold"
+                                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/50",
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  "h-1.5 w-1.5 rounded-full transition-all",
+                                  childActive
+                                    ? "bg-amber-500 opacity-100 scale-125"
+                                    : "bg-current opacity-60"
+                                )}
+                              />
+                              {child.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* Logout */}

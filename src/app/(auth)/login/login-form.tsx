@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, Mail, AlertTriangle } from "lucide-react";
+import { Lock, Mail, AlertTriangle, Clock } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Field, SubmitButton } from "@/components/auth-card";
 import Link from "next/link";
@@ -15,6 +15,7 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/";
   const suspended = searchParams.get("suspended") === "true";
+  const isExpired = searchParams.get("reason") === "expired" || searchParams.get("expired") === "true";
   
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -97,6 +98,22 @@ export function LoginForm() {
   return (
     <>
       <form onSubmit={onSubmit} className="space-y-5">
+        {isExpired && (
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-200/90 bg-amber-50/90 p-4 text-amber-950 shadow-xs animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-700 shrink-0 mt-0.5">
+              <Clock className="h-4 w-4 stroke-[2.2]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                Session Expired
+              </p>
+              <p className="text-xs font-medium text-amber-800 mt-0.5 leading-relaxed">
+                Your session has expired. Please sign in again.
+              </p>
+            </div>
+          </div>
+        )}
+
         <Field label="Email" name="email" type="email" required placeholder="you@church.org" icon={<Mail />} autoComplete="email" />
         <div>
           <Field label="Password" name="password" type="password" required placeholder="••••••••" icon={<Lock />} autoComplete="current-password" />
