@@ -60,7 +60,7 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
       module: "akwaaba",
       actionCode: "akwaaba.update",
       action: `Updated visitor "${values.fullName}"`,
-      metadata: { memberId: values.id, name: values.fullName, category: values.category },
+      metadata: { memberId: values.id, fullName: values.fullName, category: values.category },
     });
   } else {
     // Create new person
@@ -87,7 +87,7 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
       module: "akwaaba",
       actionCode: "akwaaba.create",
       action: `Registered new visitor "${values.fullName}" via Akwaaba`,
-      metadata: { memberId: created.id, name: values.fullName, category: values.category },
+      metadata: { memberId: created.id, fullName: values.fullName, category: values.category },
     });
 
     if (church.autoWelcomeSms && values.phone) {
@@ -109,15 +109,16 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
 export async function setPersonActive(id: string, active: boolean) {
   await requireModule("akwaaba");
   const { church } = await requireChurch();
-  await db
+  const [updated] = await db
     .update(member)
     .set({ active })
-    .where(and(eq(member.id, id), eq(member.churchId, church.id)));
+    .where(and(eq(member.id, id), eq(member.churchId, church.id)))
+    .returning({ fullName: member.fullName });
   logActivity({
     module: "akwaaba",
     actionCode: active ? "akwaaba.activate" : "akwaaba.deactivate",
-    action: `${active ? "Activated" : "Deactivated"} visitor status`,
-    metadata: { memberId: id, active },
+    action: `${active ? "Activated" : "Deactivated"} visitor "${updated?.fullName || "Visitor"}"`,
+    metadata: { memberId: id, fullName: updated?.fullName, active },
   });
   revalidatePath("/akwaaba");
   revalidatePath("/members");
@@ -127,12 +128,15 @@ export async function setPersonActive(id: string, active: boolean) {
 export async function deletePerson(id: string) {
   await requireModule("akwaaba");
   const { church } = await requireChurch();
-  await db.delete(member).where(and(eq(member.id, id), eq(member.churchId, church.id)));
+  const [deleted] = await db
+    .delete(member)
+    .where(and(eq(member.id, id), eq(member.churchId, church.id)))
+    .returning({ fullName: member.fullName });
   logActivity({
     module: "akwaaba",
     actionCode: "akwaaba.delete",
-    action: "Deleted visitor from Akwaaba",
-    metadata: { memberId: id },
+    action: `Deleted visitor "${deleted?.fullName || "Visitor"}" from Akwaaba`,
+    metadata: { memberId: id, fullName: deleted?.fullName },
   });
   revalidatePath("/akwaaba");
   revalidatePath("/members");

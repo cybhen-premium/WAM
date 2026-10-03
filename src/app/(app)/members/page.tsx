@@ -2,7 +2,7 @@ import { and, asc, count, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { UserCheck } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
-import { MembersToolbar, MemberFilters, MemberRowActions } from "./members-client";
+import { MembersToolbar, MemberFilters, MemberRowActions, MemberProfileCell } from "./members-client";
 import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Members Directory" };
@@ -108,18 +108,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
               rows.map(({ member: m, department: d }) => (
                 <tr key={m.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
                   <td className="px-4 pl-8 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#1e3a8a] text-xs font-black">
-                        {initials(m.fullName)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-slate-900 truncate">{m.fullName}</p>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          {m.baptized ? "Baptized" : "Not Baptized"}
-                          {m.occupation ? ` · ${m.occupation}` : ""}
-                        </p>
-                      </div>
-                    </div>
+                    <MemberProfileCell member={m} department={d} departments={departments} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1 items-start">
@@ -144,7 +133,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
                     {!m.dateOfBirth && !m.weddingAnniversary && "—"}
                   </td>
                   <td className="px-4 pr-8 py-3 text-right">
-                    <MemberRowActions member={m} departments={departments} />
+                    <MemberRowActions member={m} department={d} departments={departments} />
                   </td>
                 </tr>
               ))
@@ -154,15 +143,6 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
       </div>
     </div>
   );
-}
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]!.toUpperCase())
-    .join("");
 }
 
 function fmtDay(iso: string) {

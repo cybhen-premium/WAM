@@ -16,7 +16,12 @@ export default async function MemberCardsPage({ searchParams }: PageProps<"/prin
   const id = typeof sp.id === "string" ? sp.id : "";
 
   const members = await db
-    .select({ id: schema.member.id, fullName: schema.member.fullName, category: schema.member.category })
+    .select({
+      id: schema.member.id,
+      fullName: schema.member.fullName,
+      category: schema.member.category,
+      photoUrl: schema.member.photoUrl,
+    })
     .from(schema.member)
     .where(
       and(
@@ -47,8 +52,18 @@ export default async function MemberCardsPage({ searchParams }: PageProps<"/prin
                 <Church className="h-3.5 w-3.5" />
                 <span className="truncate text-[10px] font-black uppercase tracking-tight">{church.name}</span>
               </div>
+              {c.photoUrl && (
+                <div className="mt-3 flex justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={c.photoUrl}
+                    alt={c.fullName}
+                    className="h-14 w-14 rounded-full object-cover border-2 border-slate-100 shadow-sm"
+                  />
+                </div>
+              )}
               {/* eslint-disable-next-line @next/next/no-img-element -- inline data URL */}
-              <img src={c.qr} alt={`QR code for ${c.fullName}`} className="mx-auto mt-3 h-32 w-32" />
+              <img src={c.qr} alt={`QR code for ${c.fullName}`} className={`mx-auto ${c.photoUrl ? "mt-2 h-24 w-24" : "mt-3 h-32 w-32"}`} />
               <p className="mt-2 px-2 text-sm font-black text-slate-900 truncate">{c.fullName}</p>
               <p className="mb-3 text-[9px] font-bold uppercase tracking-widest text-slate-400">{c.category}</p>
             </div>

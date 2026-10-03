@@ -187,9 +187,18 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
                 <tr key={person.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
                   <td className="px-4 pl-8 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 text-xs font-black">
-                        {initials(person.fullName)}
-                      </div>
+                      {person.photoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={person.photoUrl}
+                          alt={person.fullName}
+                          className="h-10 w-10 shrink-0 rounded-2xl object-cover border border-slate-200 shadow-sm"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600 text-xs font-black">
+                          {initials(person.fullName)}
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="font-bold text-slate-900 truncate">{person.fullName}</p>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">

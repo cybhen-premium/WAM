@@ -25,6 +25,7 @@ function readMember(form: FormData) {
 
   return {
     fullName: s("fullName"),
+    photoUrl: opt("photoUrl"),
     phone: opt("phone"),
     email: opt("email"),
     gender: gender === "male" || gender === "female" ? gender : null,
@@ -81,6 +82,7 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
       .where(and(eq(member.id, id), eq(member.churchId, church.id)));
     logActivity({
       module: "members",
+      actionCode: "members.update",
       action: `Updated member "${values.fullName}"`,
       metadata: { memberId: id, fullName: values.fullName, category: values.category },
     });
@@ -102,6 +104,7 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
     }
     logActivity({
       module: "members",
+      actionCode: "members.create",
       action: `Added member "${values.fullName}"`,
       metadata: { memberId: created.id, fullName: values.fullName, category: values.category },
     });
@@ -117,14 +120,16 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
 export async function setMemberActive(id: string, active: boolean) {
   await requireModule("members");
   const { church } = await requireChurch();
-  await db
+  const [updated] = await db
     .update(member)
     .set({ active })
-    .where(and(eq(member.id, id), eq(member.churchId, church.id)));
+    .where(and(eq(member.id, id), eq(member.churchId, church.id)))
+    .returning({ fullName: member.fullName });
   logActivity({
     module: "members",
-    action: `${active ? "Activated" : "Deactivated"} member`,
-    metadata: { memberId: id, active },
+    actionCode: active ? "members.activate" : "members.deactivate",
+    action: `${active ? "Activated" : "Deactivated"} member "${updated?.fullName || "Member"}"`,
+    metadata: { memberId: id, fullName: updated?.fullName, active },
   });
   revalidatePath("/members");
   revalidatePath("/dashboard");
@@ -133,11 +138,15 @@ export async function setMemberActive(id: string, active: boolean) {
 export async function deleteMember(id: string) {
   await requireModule("members");
   const { church } = await requireChurch();
-  await db.delete(member).where(and(eq(member.id, id), eq(member.churchId, church.id)));
+  const [deleted] = await db
+    .delete(member)
+    .where(and(eq(member.id, id), eq(member.churchId, church.id)))
+    .returning({ fullName: member.fullName, category: member.category });
   logActivity({
     module: "members",
-    action: "Deleted member",
-    metadata: { memberId: id },
+    actionCode: "members.delete",
+    action: `Deleted member "${deleted?.fullName || "Member"}"`,
+    metadata: { memberId: id, fullName: deleted?.fullName, category: deleted?.category },
   });
   revalidatePath("/members");
   revalidatePath("/dashboard");
@@ -161,6 +170,7 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
     .map((row) => {
       const f = new FormData();
       f.set("fullName", col(row, "fullname", "name"));
+      f.set("photoUrl", col(row, "photourl", "photo", "image", "picture"));
       f.set("phone", col(row, "phone", "phonenumber"));
       f.set("email", col(row, "email"));
       f.set("gender", col(row, "gender"));
@@ -180,6 +190,7 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
   await db.insert(member).values(values);
   logActivity({
     module: "members",
+    actionCode: "members.import",
     action: `Imported ${values.length} members from CSV`,
     metadata: { count: values.length },
   });

@@ -19,6 +19,7 @@ const COLUMNS = [
   ["Date Of Birth", "dateOfBirth"],
   ["Wedding Anniversary", "weddingAnniversary"],
   ["Active", "active"],
+  ["Photo URL", "photoUrl"],
 ] as const;
 
 export async function GET() {

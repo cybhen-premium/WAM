@@ -194,6 +194,7 @@ export const member = pgTable(
       .references(() => church.id, { onDelete: "cascade" }),
     departmentId: uuid("department_id").references(() => department.id, { onDelete: "set null" }),
     fullName: text("full_name").notNull(),
+    photoUrl: text("photo_url"),
     phone: text("phone"),
     email: text("email"),
     gender: genderEnum("gender"),
