@@ -36,6 +36,48 @@ export function AppShell({ churchName, logoUrl, smsCredits, modules, children }:
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmLogout, loggingOut]);
 
+  // Hardware-accurate device and OS detection (resolves mobile phones even in "Desktop site" mode)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const isCoarse = window.matchMedia("(pointer: coarse)").matches;
+      const touchPoints = navigator.maxTouchPoints || 0;
+      const isTouch = touchPoints > 0 || isCoarse || "ontouchstart" in window;
+      const minDim = Math.min(window.screen.width, window.screen.height);
+      const maxDim = Math.max(window.screen.width, window.screen.height);
+
+      let realDevice = "Desktop";
+      if (isTouch && (minDim < 600 || (minDim < 850 && maxDim < 1000 && isCoarse))) {
+        realDevice = "Mobile";
+      } else if (isTouch && minDim >= 600 && minDim <= 1024) {
+        realDevice = "Tablet";
+      }
+
+      const ua = navigator.userAgent || "";
+      const isAndroid =
+        /android/i.test(ua) ||
+        (navigator as any).userAgentData?.platform === "Android" ||
+        (/linux/i.test(ua) && isTouch);
+      const isIOS =
+        /iphone|ipad|ipod/i.test(ua) ||
+        (/macintosh/i.test(ua) && touchPoints > 1);
+
+      let realOs = "";
+      if (isAndroid) realOs = "Android";
+      else if (isIOS) realOs = /ipad/i.test(ua) || (touchPoints > 1 && minDim >= 600) ? "iPadOS" : "iOS";
+      else if (/windows/i.test(ua)) realOs = "Windows";
+      else if (/macintosh|mac os/i.test(ua)) realOs = "macOS";
+      else if (/linux/i.test(ua)) realOs = isTouch ? "Android" : "Linux";
+
+      document.cookie = `wam_device=${realDevice}; path=/; max-age=31536000; SameSite=Lax`;
+      if (realOs) {
+        document.cookie = `wam_os=${realOs}; path=/; max-age=31536000; SameSite=Lax`;
+      }
+    } catch {
+      // Best effort
+    }
+  }, []);
+
   // Track which nav groups are open (by module key); auto-open if current path is inside
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = { Analytics: true };

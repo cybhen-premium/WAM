@@ -48,6 +48,11 @@ export function parseClientInfo(
   const secMobile = headerList?.get("sec-ch-ua-mobile");
   const secPlatform = headerList?.get("sec-ch-ua-platform")?.replace(/"/g, "");
 
+  // Extract hardware-verified device & OS from client cookies if available
+  const cookieHeader = headerList?.get("cookie") || "";
+  const cookieDevice = cookieHeader.match(/wam_device=([^;]+)/)?.[1]?.trim();
+  const cookieOs = cookieHeader.match(/wam_os=([^;]+)/)?.[1]?.trim();
+
   // 1. Device detection
   let device: "Mobile" | "Tablet" | "Desktop" = "Desktop";
   const isTablet =
@@ -56,9 +61,11 @@ export function parseClientInfo(
     /mobi|iphone|ipod|phone|blackberry|opera mini|fennec|minimo|symbian|psp|nintendo/i.test(ua) ||
     (/android/i.test(ua) && /mobile/i.test(ua));
 
-  if (isTablet) {
+  if (cookieDevice === "Mobile" || cookieDevice === "Tablet" || cookieDevice === "Desktop") {
+    device = cookieDevice;
+  } else if (isTablet) {
     device = "Tablet";
-  } else if (isMobile || secMobile === "?1") {
+  } else if (isMobile || secMobile === "?1" || secPlatform?.toLowerCase() === "android") {
     device = "Mobile";
   } else if (secMobile === "?0") {
     device = "Desktop";
@@ -66,7 +73,9 @@ export function parseClientInfo(
 
   // 2. OS detection
   let os: "iOS" | "Android" | "Windows" | "macOS" | "Linux" | "Other" = "Other";
-  if (/iphone|ipad|ipod/i.test(ua)) {
+  if (cookieOs && ["iOS", "Android", "Windows", "macOS", "Linux"].includes(cookieOs)) {
+    os = cookieOs as "iOS" | "Android" | "Windows" | "macOS" | "Linux";
+  } else if (/iphone|ipad|ipod/i.test(ua)) {
     os = "iOS";
   } else if (/android/i.test(ua) || secPlatform?.toLowerCase() === "android") {
     os = "Android";
@@ -75,7 +84,13 @@ export function parseClientInfo(
   } else if (/macintosh|mac os x/i.test(ua) || secPlatform?.toLowerCase() === "macos") {
     os = "macOS";
   } else if (/linux/i.test(ua) || secPlatform?.toLowerCase() === "linux") {
-    os = "Linux";
+    // Note: Android phones in 'Desktop site' mode report 'X11; Linux x86_64'.
+    // If device is Mobile or client hints indicate mobile, map to Android.
+    if (device === "Mobile") {
+      os = "Android";
+    } else {
+      os = "Linux";
+    }
   }
 
   // 3. Browser detection
@@ -134,7 +149,13 @@ export async function logActivity(opts: LogOptions): Promise<void> {
     try {
       const h = await headers();
       if (!ipAddress) {
-        ipAddress = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null;
+        ipAddress =
+          h.get("cf-connecting-ip")?.trim() ||
+          h.get("x-real-ip")?.trim() ||
+          h.get("x-client-ip")?.trim() ||
+          h.get("true-client-ip")?.trim() ||
+          h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          null;
       }
       userAgent = h.get("user-agent") || null;
       clientInfo = parseClientInfo(h, userAgent);
