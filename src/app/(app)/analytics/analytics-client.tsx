@@ -475,7 +475,7 @@ export function AnalyticsClient({
                 {data.uniqueVisitors.toLocaleString()}
               </div>
               <p className="mt-2 text-xs text-slate-400 font-normal">
-                IP-based visitors
+                Unique devices & users
               </p>
             </div>
 

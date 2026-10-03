@@ -128,17 +128,27 @@ export default async function AnalyticsPage(props: {
       };
 
   // Group real DB logs by day
-  const dbLogsByDate = new Map<string, { count: number; ips: Set<string> }>();
+  const dbLogsByDate = new Map<string, { count: number; visitors: Set<string> }>();
+  const totalUniqueVisitorsSet = new Set<string>();
+
   for (const log of recentLogs) {
     const dStr = log.createdAt.toISOString().slice(0, 10);
     if (!dbLogsByDate.has(dStr)) {
-      dbLogsByDate.set(dStr, { count: 0, ips: new Set<string>() });
+      dbLogsByDate.set(dStr, { count: 0, visitors: new Set<string>() });
     }
     const entry = dbLogsByDate.get(dStr)!;
     entry.count += 1;
-    if (log.ipAddress && log.ipAddress !== "-") {
-      entry.ips.add(log.ipAddress);
-    }
+
+    // Distinguish visitor by device + OS + user account / IP
+    const meta = (log.metadata as Record<string, unknown>) || {};
+    const device = (meta.device as string) || "Desktop";
+    const os = (meta.os as string) || "Unknown";
+    const user = log.actorEmail || log.actorName || "";
+    const ip = log.ipAddress && log.ipAddress !== "-" ? log.ipAddress : "";
+    const visitorKey = `${device}_${os}_${user || ip || "visitor"}`;
+
+    entry.visitors.add(visitorKey);
+    totalUniqueVisitorsSet.add(visitorKey);
   }
 
   // Construct 30 days starting from 29 days ago up to current date
@@ -162,7 +172,7 @@ export default async function AnalyticsPage(props: {
 
     // Merge baseline with any real database operations
     const views = baseItem.views + (dbItem ? dbItem.count : 0);
-    const visitors = Math.max(baseItem.visitors, dbItem ? dbItem.ips.size : 0);
+    const visitors = Math.max(baseItem.visitors, dbItem ? dbItem.visitors.size : 0);
 
     trafficDays.push({
       date: dateStr,
@@ -177,8 +187,8 @@ export default async function AnalyticsPage(props: {
   const totalViews = trafficDays.reduce((acc, cur) => acc + cur.views, 0);
   const avgPerDay = Math.round(totalViews / 30);
   const uniqueVisitors = isCleared
-    ? Array.from(dbLogsByDate.values()).reduce((sum, item) => sum + item.ips.size, 0)
-    : 12;
+    ? totalUniqueVisitorsSet.size
+    : Math.max(12, totalUniqueVisitorsSet.size);
   const activeNow = isCleared
     ? recentLogs.filter((l) => Date.now() - new Date(l.createdAt).getTime() < 5 * 60 * 1000).length
     : 1;
