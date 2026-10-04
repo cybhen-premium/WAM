@@ -18,14 +18,28 @@ export function ForgotPasswordWrapper({ logoUrl }: { logoUrl?: string | null }) 
   async function onRequestSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const inputEmail = String(form.get("email"));
+    const inputEmail = String(form.get("email") ?? "").trim().toLowerCase();
     setPending(true);
     setError(null);
 
-    // Block deleted, suspended, and pending accounts — show a generic message
-    // so we don't reveal which accounts exist.
+    // Block non-existent, deleted, suspended, and pending accounts
     const status = await checkStatusByEmail(inputEmail);
-    if (status === "deleted" || status === "suspended" || status === "pending") {
+    if (!status || status === "deleted") {
+      setPending(false);
+      setError("No account found with that email address.");
+      return;
+    }
+    if (status === "suspended") {
+      setPending(false);
+      setError("Your account has been suspended. Please contact your administrator.");
+      return;
+    }
+    if (status === "pending") {
+      setPending(false);
+      setError("Your account is pending approval. Please contact your administrator.");
+      return;
+    }
+    if (status !== "active") {
       setPending(false);
       setError("No account found with that email address.");
       return;
@@ -47,10 +61,17 @@ export function ForgotPasswordWrapper({ logoUrl }: { logoUrl?: string | null }) 
   async function onVerifyOtpSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const inputOtp = String(form.get("otp"));
+    const inputOtp = String(form.get("otp") ?? "").trim();
     
     setPending(true);
     setError(null);
+
+    const status = await checkStatusByEmail(email);
+    if (!status || status !== "active") {
+      setPending(false);
+      setError("No active account found with that email address.");
+      return;
+    }
     
     // Better Auth exposes endpoints on the client automatically.
     // If the check method doesn't exist on the client object for some reason, we can fallback to fetch.
@@ -88,6 +109,14 @@ export function ForgotPasswordWrapper({ logoUrl }: { logoUrl?: string | null }) 
 
     setPending(true);
     setError(null);
+
+    const status = await checkStatusByEmail(email);
+    if (!status || status !== "active") {
+      setPending(false);
+      setError("No active account found with that email address.");
+      return;
+    }
+
     const { error } = await authClient.emailOtp.resetPassword({
       email,
       otp,

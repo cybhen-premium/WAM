@@ -8,7 +8,7 @@ import { requireModule } from "@/lib/permissions";
 import { MODULE_KEYS } from "@/lib/modules";
 import { logActivity } from "@/lib/activity";
 
-const { church, staff, staffModule } = schema;
+const { church, staff, staffModule, user: userTable, account } = schema;
 
 export type FormState = { error?: string; ok?: boolean; message?: string } | undefined;
 
@@ -184,6 +184,10 @@ export async function removeStaff(staffId: string) {
   const [row] = await db.select().from(staff).where(and(eq(staff.id, staffId), eq(staff.churchId, c.id))).limit(1);
   if (!row || row.userId === user.id) return;
   await db.delete(staff).where(eq(staff.id, staffId));
+  if (row.userId) {
+    await db.delete(account).where(eq(account.userId, row.userId));
+    await db.delete(userTable).where(eq(userTable.id, row.userId));
+  }
   logActivity({
     module: "settings",
     actionCode: "settings.remove_staff",

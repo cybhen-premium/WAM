@@ -100,12 +100,15 @@ export async function forcePasswordChange(password: string) {
 }
 
 export async function getTwoFactorMethodByEmail(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) return "email";
+
   // Check staff table first
   const [staffRow] = await db
     .select({ method: schema.staff.twoFactorMethod })
     .from(schema.staff)
     .innerJoin(schema.user, eq(schema.user.id, schema.staff.userId))
-    .where(eq(schema.user.email, email))
+    .where(eq(schema.user.email, normalizedEmail))
     .limit(1);
   if (staffRow) return staffRow.method || "totp";
 
@@ -114,22 +117,25 @@ export async function getTwoFactorMethodByEmail(email: string) {
     .select({ method: schema.church.ownerTwoFactorMethod })
     .from(schema.church)
     .innerJoin(schema.user, eq(schema.user.id, schema.church.ownerId))
-    .where(eq(schema.user.email, email))
+    .where(eq(schema.user.email, normalizedEmail))
     .limit(1);
   return churchRow?.method || "email";
 }
 
 /**
  * Check a user's account status by email — no session needed.
- * Used to block deleted/suspended/pending accounts before the 2FA redirect.
- * Returns null if the email is not found (let Better Auth surface the error).
+ * Used to block deleted/suspended/pending accounts before the 2FA redirect or password reset.
+ * Returns null if the email is not found.
  */
 export async function checkStatusByEmail(email: string): Promise<string | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) return null;
+
   // Look up the user row by email
   const [userRow] = await db
     .select({ id: schema.user.id })
     .from(schema.user)
-    .where(eq(schema.user.email, email))
+    .where(eq(schema.user.email, normalizedEmail))
     .limit(1);
 
   if (!userRow) return null;
@@ -144,7 +150,12 @@ export async function checkStatusByEmail(email: string): Promise<string | null> 
   if (staffRow) return staffRow.status;
 
   // Fall back to church ownership check
-  const church = await getChurchForUser(userRow.id);
-  return church ? "active" : "deleted";
+  const [churchOwner] = await db
+    .select({ id: schema.church.id })
+    .from(schema.church)
+    .where(eq(schema.church.ownerId, userRow.id))
+    .limit(1);
+
+  return churchOwner ? "active" : "deleted";
 }
 
