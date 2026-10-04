@@ -8,7 +8,7 @@ const COLUMNS = [
   ["Phone", "phone"],
   ["Email", "email"],
   ["Gender", "gender"],
-  ["Category", "category"],
+  ["Ministry", "category"],
   ["Baptized", "baptized"],
   ["Marital Status", "maritalStatus"],
   ["Occupation", "occupation"],

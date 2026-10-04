@@ -181,8 +181,8 @@ export function MemberFilters(props: {
       </div>
       <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
         <div className="relative w-full sm:w-[160px]">
-          <select value={props.group} onChange={(e) => update("group", e.target.value)} className={select} aria-label="Group">
-            <option value="">All Groups</option>
+          <select value={props.group} onChange={(e) => update("group", e.target.value)} className={select} aria-label="Ministry">
+            <option value="">All Ministries</option>
             {GROUP_FILTERS.map((c) => (
               <option key={c}>{c}</option>
             ))}
@@ -462,6 +462,10 @@ export function MemberProfileModal({
             {/* Personal Details & Milestones */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Ministry</span>
+                <p className="text-xs font-bold text-slate-800">{member.category}</p>
+              </div>
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Gender</span>
                 <p className="text-xs font-bold text-slate-800 capitalize">{member.gender || "—"}</p>
               </div>
@@ -469,7 +473,7 @@ export function MemberProfileModal({
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Marital Status</span>
                 <p className="text-xs font-bold text-slate-800">{member.maritalStatus || "—"}</p>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5 col-span-2 sm:col-span-1">
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Baptism</span>
                 <p className="text-xs font-bold text-slate-800">{member.baptized ? "Baptized" : "Not Baptized"}</p>
               </div>
@@ -743,7 +747,7 @@ function MemberFormModal({ open, onClose, member, departments }: { open: boolean
           <TextField className="sm:col-span-2" label="Full Name" name="fullName" required placeholder="Enter member's full name" defaultValue={member?.fullName} />
           <TextField label="Phone Number" name="phone" type="tel" icon={Phone} placeholder="024XXXXXXX" defaultValue={member?.phone ?? ""} />
           <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue={member?.gender === "female" ? "Female" : "Male"} />
-          <SelectField label="Member Category" name="category" options={MEMBER_CATEGORIES} defaultValue={member?.category ?? "General Member"} />
+          <SelectField label="Ministry" name="category" options={MEMBER_CATEGORIES} defaultValue={member?.category ?? "General Member"} />
           <SelectField 
             label="Department" 
             name="departmentId" 
@@ -778,7 +782,7 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
     <Modal open={open} onClose={onClose} title="Import Members" subtitle="CSV Upload" icon={Upload}>
       <form action={action} className="space-y-5 text-left">
         <p className="text-sm text-slate-600">
-          Upload a CSV with a header row. Recognised columns: <b>Full Name</b>, Photo URL, Phone, Email, Gender, Category,
+          Upload a CSV with a header row. Recognised columns: <b>Full Name</b>, Photo URL, Phone, Email, Gender, Ministry,
           Baptized, Marital Status, Occupation, Address, Date Of Birth, Wedding Anniversary (dates as YYYY-MM-DD).
           The file from <b>Export</b> can be re-imported as-is.
         </p>
