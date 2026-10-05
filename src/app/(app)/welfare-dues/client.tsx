@@ -3,9 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useFormAction } from "@/components/use-form-action";
-import { Plus, ChevronDown, HeartHandshake, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, ChevronDown, HeartHandshake, CheckCircle2, AlertCircle, Pencil, Trash2 } from "lucide-react";
 import { Modal, SelectField, TextField, buttonStyles } from "@/components/ui";
-import { recordDuesPayment } from "./actions";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { recordDuesPayment, updateDuesPayment, deleteDuesPayment } from "./actions";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -107,23 +108,96 @@ export function StatusBadge({ paid, target }: { paid: number, target: number }) 
 
 /* Per-row actions ---------------------------------------------------------- */
 
-export function DuesActions({ memberId, memberName }: { memberId: string; memberName: string }) {
+type DuesEntry = { id: string; amount: string; date: string };
+
+export function DuesActions({
+  memberId,
+  memberName,
+  isPaid,
+  dues,
+}: {
+  memberId: string;
+  memberName: string;
+  isPaid: boolean;
+  dues: DuesEntry[];
+}) {
   const [adding, setAdding] = useState(false);
+  const [editingDue, setEditingDue] = useState<DuesEntry | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   return (
-    <div className="inline-flex items-center gap-1">
-      <button 
-        onClick={() => setAdding(true)} 
-        className="h-8 rounded-lg bg-emerald-50 px-3 text-[10px] font-black uppercase text-emerald-600 hover:bg-emerald-100 transition-colors"
-      >
-        Record Payment
-      </button>
-      <PaymentModal open={adding} onClose={() => setAdding(false)} members={[{ id: memberId, name: memberName }]} preselectedMemberId={memberId} />
+    <div className="inline-flex items-center gap-1 flex-wrap justify-end">
+      {/* If fully paid, show a "Paid" chip instead of the Record button */}
+      {isPaid ? (
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-600">
+          <CheckCircle2 className="h-3 w-3" /> Paid
+        </div>
+      ) : (
+        <button
+          onClick={() => setAdding(true)}
+          className="h-8 rounded-lg bg-emerald-50 px-3 text-[10px] font-black uppercase text-emerald-600 hover:bg-emerald-100 transition-colors"
+        >
+          Record Payment
+        </button>
+      )}
+
+      {/* Edit button — only shown if there are dues records */}
+      {dues.length > 0 && (
+        <button
+          onClick={() => setEditingDue(dues[0])}
+          className="h-8 w-8 rounded-lg inline-flex items-center justify-center text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+          title="Edit latest payment"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      {/* Delete button — only shown if there are dues records */}
+      {dues.length > 0 && (
+        <button
+          onClick={() => setDeletingId(dues[0].id)}
+          className="h-8 w-8 rounded-lg inline-flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+          title="Delete latest payment"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      {/* Add payment modal */}
+      <PaymentModal
+        open={adding}
+        onClose={() => setAdding(false)}
+        members={[{ id: memberId, name: memberName }]}
+        preselectedMemberId={memberId}
+      />
+
+      {/* Edit payment modal */}
+      {editingDue && (
+        <EditPaymentModal
+          open={!!editingDue}
+          onClose={() => setEditingDue(null)}
+          due={editingDue}
+        />
+      )}
+
+      {/* Delete confirm dialog */}
+      <ConfirmDialog
+        open={!!deletingId}
+        onClose={() => setDeletingId(null)}
+        title="Delete Payment"
+        description="Are you sure you want to delete this welfare dues payment? This action cannot be undone."
+        confirmLabel="Delete"
+        successMessage="Payment deleted."
+        errorMessage="Failed to delete payment."
+        onConfirm={async () => {
+          await deleteDuesPayment(deletingId!);
+        }}
+      />
     </div>
   );
 }
 
-/* Payment form modal ---------------------------------------------------------- */
+/* Payment form modal (add new) ---------------------------------------------------------- */
 
 function PaymentModal({ 
   open, 
@@ -179,6 +253,62 @@ function PaymentModal({
         
         <button type="submit" disabled={pending} className={buttonStyles.submit}>
           {pending ? "Saving…" : "Save Payment"}
+        </button>
+      </form>
+    </Modal>
+  );
+}
+
+/* Edit payment modal ---------------------------------------------------------- */
+
+function EditPaymentModal({
+  open,
+  onClose,
+  due,
+}: {
+  open: boolean;
+  onClose: () => void;
+  due: DuesEntry;
+}) {
+  const [state, action, pending] = useFormAction(updateDuesPayment, onClose);
+  // date comes as ISO string like "2026-09-01T00:00:00.000Z" — slice to YYYY-MM-DD
+  const dateValue = due.date ? due.date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Edit Welfare Dues"
+      subtitle="Update Payment"
+      icon={HeartHandshake}
+      compact
+    >
+      <form action={action} className="space-y-5 pb-2 text-left">
+        {/* Hidden field to identify the dues record */}
+        <input type="hidden" name="duesId" value={due.id} />
+
+        <TextField
+          label="Amount (GH₵)"
+          name="amount"
+          type="number"
+          step="0.01"
+          required
+          placeholder="e.g. 20.00"
+          defaultValue={due.amount}
+        />
+
+        <TextField
+          label="Date of Payment"
+          name="date"
+          type="date"
+          required
+          defaultValue={dateValue}
+        />
+
+        {state?.error && <p className="text-sm font-semibold text-red-600">{state.error}</p>}
+
+        <button type="submit" disabled={pending} className={buttonStyles.submit}>
+          {pending ? "Saving…" : "Update Payment"}
         </button>
       </form>
     </Modal>

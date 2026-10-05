@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { eq, sql, and, sum } from "drizzle-orm";
+import { eq, sql, and, desc, notInArray } from "drizzle-orm";
 import { HandHeart, Heart, TrendingUp, Users, CheckCircle2 } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
@@ -11,6 +11,9 @@ import { requireModule } from "@/lib/permissions";
 export const metadata = { title: "Welfare Dues" };
 
 const MONTHLY_TARGET = 20;
+
+// Visitors and Regular Attendees are not full church members — exclude them from welfare dues
+const NON_MEMBER_CATEGORIES = ["Visitor", "Regular Attendee"];
 
 const TABS = [
   { id: "contributions", label: "Contributions In", icon: HandHeart },
@@ -31,7 +34,13 @@ export default async function WelfareDuesPage({ searchParams }: PageProps<"/welf
   const members = await db
     .select({ id: schema.member.id, fullName: schema.member.fullName, category: schema.member.category })
     .from(schema.member)
-    .where(and(eq(schema.member.churchId, church.id), eq(schema.member.active, true)))
+    .where(
+      and(
+        eq(schema.member.churchId, church.id),
+        eq(schema.member.active, true),
+        notInArray(schema.member.category, NON_MEMBER_CATEGORIES),
+      )
+    )
     .orderBy(schema.member.fullName);
 
   return (
@@ -103,6 +112,31 @@ async function ContributionsTab({
       ),
     )
     .groupBy(schema.welfareDues.memberId);
+
+  // Fetch all individual dues records for the period (for edit/delete)
+  const duesRecords = await db
+    .select({
+      id: schema.welfareDues.id,
+      memberId: schema.welfareDues.memberId,
+      amount: schema.welfareDues.amount,
+      date: schema.welfareDues.date,
+    })
+    .from(schema.welfareDues)
+    .where(
+      and(
+        eq(schema.welfareDues.churchId, churchId),
+        sql`CAST(${schema.welfareDues.date} AS TEXT) LIKE ${periodFilter}`,
+      ),
+    )
+    .orderBy(desc(schema.welfareDues.date));
+
+  // Group dues records by memberId
+  const duesMap = new Map<string, { id: string; amount: string; date: string }[]>();
+  for (const d of duesRecords) {
+    const existing = duesMap.get(d.memberId) ?? [];
+    existing.push({ id: d.id, amount: d.amount, date: d.date });
+    duesMap.set(d.memberId, existing);
+  }
 
   const sumsMap = new Map(sums.map((s) => [s.memberId, Number(s.totalPaid)]));
 
@@ -199,6 +233,8 @@ async function ContributionsTab({
                 const target = isYear ? MONTHLY_TARGET * 12 : MONTHLY_TARGET;
                 const monthsPaid = isYear ? Math.min(12, Math.floor(paid / MONTHLY_TARGET)) : null;
                 const progress = Math.min(100, Math.round((paid / target) * 100));
+                const memberDues = duesMap.get(m.id) ?? [];
+                const isPaid = paid >= target;
 
                 return (
                   <tr
@@ -239,7 +275,12 @@ async function ContributionsTab({
                       <StatusBadge paid={paid} target={target} />
                     </td>
                     <td className="px-4 pr-8 py-3.5 text-right">
-                      <DuesActions memberId={m.id} memberName={m.fullName} />
+                      <DuesActions
+                        memberId={m.id}
+                        memberName={m.fullName}
+                        isPaid={isPaid}
+                        dues={memberDues}
+                      />
                     </td>
                   </tr>
                 );
