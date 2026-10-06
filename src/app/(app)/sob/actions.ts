@@ -278,7 +278,6 @@ export async function completeSobLesson(_prev: FormState, form: FormData): Promi
           ? {
               category: "General Member",
               convertedAt: date,
-              akwaabaStatus: m?.category === "Visitor" ? "visiting" : "staying",
             }
           : {}),
       })

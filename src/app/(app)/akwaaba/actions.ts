@@ -45,14 +45,15 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
 
   if (values.id) {
     const [existing] = await db
-      .select({ category: member.category })
+      .select({ category: member.category, convertedAt: member.convertedAt, akwaabaStatus: member.akwaabaStatus })
       .from(member)
       .where(and(eq(member.id, values.id), eq(member.churchId, church.id)))
       .limit(1);
 
     // If the person has graduated or become a full member (e.g. General Member),
-    // don't demote their main membership category, but update their intake status.
+    // don't demote their main membership category. Also preserve "visiting" intake record if they originally visited and converted.
     const isFullMember = existing && existing.category !== "Visitor" && existing.category !== "Regular Attendee";
+    const preserveVisiting = !!existing?.convertedAt;
 
     // Update existing person. `fromAkwaaba` is deliberately left alone — it records how they arrived,
     // so someone who has since graduated to a full member keeps appearing on the Akwaaba list.
@@ -64,7 +65,7 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
         email: values.email,
         gender: values.gender,
         ...(isFullMember ? {} : { category: values.category }),
-        akwaabaStatus: values.akwaabaStatus,
+        akwaabaStatus: preserveVisiting ? "visiting" : values.akwaabaStatus,
         address: values.address,
         invitedBy: values.invitedBy,
         departmentId: values.departmentId,

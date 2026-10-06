@@ -18,7 +18,7 @@ export async function moveToSob(memberId: string) {
 
   const updated = await db
     .update(schema.member)
-    .set({ category: "Regular Attendee", akwaabaStatus: "staying" })
+    .set({ category: "Regular Attendee" })
     .where(
       and(
         eq(schema.member.id, memberId),

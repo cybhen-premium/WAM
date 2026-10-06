@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, lt, or, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, gte, lt, or, isNull, ne, isNotNull } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { fmtDate } from "@/lib/utils";
@@ -48,6 +48,7 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
       invitedBy: schema.member.invitedBy,
       category: schema.member.category,
       akwaabaStatus: schema.member.akwaabaStatus,
+      convertedAt: schema.member.convertedAt,
       joinedAt: schema.member.joinedAt,
       departmentName: schema.department.name,
     })
@@ -62,13 +63,26 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
         group === "all"
           ? undefined
           : group === "visiting"
-            ? or(eq(schema.member.akwaabaStatus, "visiting"), and(isNull(schema.member.akwaabaStatus), eq(schema.member.category, "Visitor")))
-            : or(eq(schema.member.akwaabaStatus, "staying"), and(isNull(schema.member.akwaabaStatus), ne(schema.member.category, "Visitor"))),
+            ? or(
+                eq(schema.member.akwaabaStatus, "visiting"),
+                isNotNull(schema.member.convertedAt),
+                and(isNull(schema.member.akwaabaStatus), isNull(schema.member.convertedAt), eq(schema.member.category, "Visitor"))
+              )
+            : and(
+                isNull(schema.member.convertedAt),
+                or(
+                  eq(schema.member.akwaabaStatus, "staying"),
+                  and(isNull(schema.member.akwaabaStatus), ne(schema.member.category, "Visitor"))
+                )
+              ),
       ),
     )
     .orderBy(asc(schema.member.joinedAt), asc(schema.member.fullName));
 
   const monthLabel = new Date(month + "-01").toLocaleString("default", { month: "long", year: "numeric" });
+  const isVisitingPerson = (p: { akwaabaStatus: string | null; convertedAt: string | null; category: string }) =>
+    p.akwaabaStatus === "visiting" || p.convertedAt !== null || (!p.akwaabaStatus && p.category === "Visitor");
+
   const sections = (
     group === "all" ? (["visiting", "staying", "members"] as SectionKey[]) : [group]
   ).map((key) => ({
@@ -79,11 +93,11 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
       key === "members"
         ? people.filter((p) => !AKWAABA_CATEGORIES.includes(p.category))
         : key === "visiting"
-          ? people.filter((p) => p.akwaabaStatus === "visiting" || (!p.akwaabaStatus && p.category === "Visitor"))
-          : people.filter((p) => p.akwaabaStatus === "staying" || (!p.akwaabaStatus && p.category !== "Visitor")),
+          ? people.filter(isVisitingPerson)
+          : people.filter((p) => !isVisitingPerson(p)),
   }));
-  const visitingCount = people.filter((p) => p.akwaabaStatus === "visiting" || (!p.akwaabaStatus && p.category === "Visitor")).length;
-  const stayingCount = people.filter((p) => p.akwaabaStatus === "staying" || (!p.akwaabaStatus && p.category !== "Visitor")).length;
+  const visitingCount = people.filter(isVisitingPerson).length;
+  const stayingCount = people.filter((p) => !isVisitingPerson(p)).length;
   const memberCount = people.filter((p) => !AKWAABA_CATEGORIES.includes(p.category)).length;
 
 
