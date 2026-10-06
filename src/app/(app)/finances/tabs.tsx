@@ -231,7 +231,7 @@ export async function ContributionTab({
 export async function AnalyticsTab({ churchId }: { churchId: string }) {
   const mine = and(eq(transaction.churchId, churchId), notInArray(transaction.category, [...WELFARE_CATEGORIES]));
 
-  const [months, lapsed, projects] = await Promise.all([
+  const [months, projects] = await Promise.all([
     // Last 12 months including the current one, zero-filled.
     db.execute<{ month: string; income: string; expense: string }>(sql`
       select to_char(m, 'YYYY-MM') as month,
@@ -241,15 +241,6 @@ export async function AnalyticsTab({ churchId }: { churchId: string }) {
       left join ${transaction} t
         on t.church_id = ${churchId} and t.category not in (${WELFARE_DUES}, ${WELFARE_SUPPORT}) and date_trunc('month', t.occurred_on) = m
       group by m order by m`),
-    db
-      .select({ id: member.id, fullName: member.fullName, lastGave: sql<string>`max(${transaction.occurredOn})` })
-      .from(transaction)
-      .innerJoin(member, eq(member.id, transaction.memberId))
-      .where(and(mine, eq(transaction.type, "income"), isNotNull(transaction.memberId), eq(member.active, true)))
-      .groupBy(member.id, member.fullName)
-      .having(sql`max(${transaction.occurredOn}) < current_date - 60`)
-      .orderBy(sql`3`)
-      .limit(10),
     // Raised = total of the church's transactions tagged to each project. A left join (not a correlated
     // subquery) because drizzle renders a column inside `sql` unqualified — `... where project_id = "id"`
     // would bind to transaction.id and always sum to 0.
@@ -275,7 +266,7 @@ export async function AnalyticsTab({ churchId }: { churchId: string }) {
 
   return (
     <div className="p-4 md:p-6 space-y-5">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat label="12-Month Total" value={cedis(total12)} tone="text-green-600" />
         <Stat label="Monthly Average" value={cedis(total12 / 12)} />
         <Stat
@@ -284,7 +275,6 @@ export async function AnalyticsTab({ churchId }: { churchId: string }) {
           hint={`${change >= 0 ? "+" : ""}${change.toFixed(1)}% vs prev`}
           tone="text-blue-700"
         />
-        <Stat label="Lapsed Givers" value={lapsed.length} hint="60+ days inactive" tone="text-orange-600" />
       </div>
 
       <div className="rounded-[1.5rem] border border-slate-100 p-5">
@@ -316,65 +306,44 @@ export async function AnalyticsTab({ churchId }: { churchId: string }) {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-[1.5rem] border border-orange-100 bg-orange-50/30 p-5">
-          <h3 className="text-[11px] font-black uppercase tracking-widest text-orange-700 mb-3">Lapsed Givers</h3>
-          {lapsed.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No lapsed givers</p>
-              <p className="text-xs text-slate-500 mt-1">All regular givers are active!</p>
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {lapsed.map((l) => (
-                <li key={l.id} className="flex justify-between rounded-xl bg-white px-3 py-2 text-sm border border-orange-100">
-                  <span className="font-bold text-slate-800">{l.fullName}</span>
-                  <span className="text-[10px] font-bold uppercase text-orange-600">Last gave {fmtDate(l.lastGave)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+      <div className="rounded-[1.5rem] border border-slate-100 p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500">Project Fund Progress</h3>
+          <AddProjectButton />
         </div>
-
-        <div className="rounded-[1.5rem] border border-slate-100 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500">Project Fund Progress</h3>
-            <AddProjectButton />
-          </div>
-          {projects.length === 0 ? (
-            <p className="text-center py-6 text-xs text-slate-500">
-              No projects yet. Add one (e.g. Building Fund) and tag &ldquo;Project Fund&rdquo; income to it.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {projects.map(({ p, raised }) => {
-                const pct = Math.min(100, (Number(raised) / Number(p.target)) * 100);
-                return (
-                  <div key={p.id}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-black text-slate-900">{p.name}</p>
-                        {p.dueOn && (
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Due: {fmtDate(p.dueOn)}</p>
-                        )}
-                      </div>
-                      <DeleteButton action={deleteProject.bind(null, p.id)} />
+        {projects.length === 0 ? (
+          <p className="text-center py-6 text-xs text-slate-500">
+            No projects yet. Add one (e.g. Building Fund) and tag &ldquo;Project Fund&rdquo; income to it.
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {projects.map(({ p, raised }) => {
+              const pct = Math.min(100, (Number(raised) / Number(p.target)) * 100);
+              return (
+                <div key={p.id}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-black text-slate-900">{p.name}</p>
+                      {p.dueOn && (
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Due: {fmtDate(p.dueOn)}</p>
+                      )}
                     </div>
-                    <div className="flex justify-between text-xs font-bold mt-1">
-                      <span className="text-slate-800">
-                        {cedis(raised)} <span className="text-slate-400 font-semibold">of {cedis(p.target)}</span>
-                      </span>
-                      <span className="text-blue-700">{pct.toFixed(1)}% complete</span>
-                    </div>
-                    <div className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden">
-                      <div className="h-full bg-blue-600 rounded-full" style={{ width: `${pct}%` }} />
-                    </div>
+                    <DeleteButton action={deleteProject.bind(null, p.id)} />
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                  <div className="flex justify-between text-xs font-bold mt-1">
+                    <span className="text-slate-800">
+                      {cedis(raised)} <span className="text-slate-400 font-semibold">of {cedis(p.target)}</span>
+                    </span>
+                    <span className="text-blue-700">{pct.toFixed(1)}% complete</span>
+                  </div>
+                  <div className="mt-1.5 h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-full bg-blue-600 rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="rounded-[1.5rem] border border-slate-100 overflow-x-auto">
