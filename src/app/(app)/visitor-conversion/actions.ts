@@ -9,7 +9,7 @@ import { logActivity } from "@/lib/activity";
 
 /**
  * A visitor decides to stay: move them into the School of Baptism journey. They become a
- * "Regular Attendee" (the category the SOB page tracks) and their visitor follow-up is closed.
+ * "Regular Attendee" (the category the SOB page tracks).
  * The final member category is decided later, when SOB lesson 4 (Baptised) graduates them.
  */
 export async function moveToSob(memberId: string) {
@@ -29,10 +29,6 @@ export async function moveToSob(memberId: string) {
     .returning({ id: schema.member.id, fullName: schema.member.fullName });
 
   if (updated.length) {
-    await db
-      .update(schema.followUp)
-      .set({ stage: "integrated", updatedAt: new Date() })
-      .where(and(eq(schema.followUp.memberId, memberId), eq(schema.followUp.kind, "convert")));
 
     logActivity({
       module: "care",
@@ -46,5 +42,5 @@ export async function moveToSob(memberId: string) {
   revalidatePath("/akwaaba");
   revalidatePath("/sob");
   revalidatePath("/members");
-  revalidatePath("/follow-up");
+
 }

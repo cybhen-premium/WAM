@@ -7,7 +7,7 @@ import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Visitor Command Center" };
 
-const { member, followUp } = schema;
+const { member } = schema;
 
 export default async function VisitorConversionPage() {
   const { church } = await requireChurch();
@@ -15,7 +15,7 @@ export default async function VisitorConversionPage() {
   // A "tracked" visitor is anyone currently a Visitor or who was converted from one.
   const tracked = and(eq(member.churchId, church.id), sql`(${member.category} = 'Visitor' or ${member.convertedAt} is not null)`);
 
-  const [[stats], active, funnelRows, cohorts] = await Promise.all([
+  const [[stats], active, cohorts] = await Promise.all([
     db
       .select({
         total: sql<number>`count(*)::int`,
@@ -30,17 +30,17 @@ export default async function VisitorConversionPage() {
         fullName: member.fullName,
         phone: member.phone,
         joinedAt: member.joinedAt,
-        stage: followUp.stage,
+
       })
       .from(member)
-      .leftJoin(followUp, and(eq(followUp.memberId, member.id), eq(followUp.kind, "convert")))
+
       .where(and(eq(member.churchId, church.id), eq(member.category, "Visitor"), eq(member.active, true)))
       .orderBy(asc(member.joinedAt)),
-    db
-      .select({ stage: followUp.stage, n: sql<number>`count(*)::int` })
-      .from(followUp)
-      .where(and(eq(followUp.churchId, church.id), eq(followUp.kind, "convert")))
-      .groupBy(followUp.stage),
+
+
+
+
+
     db
       .select({
         month: sql<string>`to_char(date_trunc('month', coalesce(${member.joinedAt}, ${member.createdAt}::date)), 'YYYY-MM')`,
@@ -55,11 +55,11 @@ export default async function VisitorConversionPage() {
   ]);
 
   const rate = stats.total ? Math.round((stats.converted / stats.total) * 100) : 0;
-  const reached = (stages: string[]) => funnelRows.filter((r) => stages.includes(r.stage)).reduce((a, r) => a + r.n, 0);
+
   const funnel = [
     { label: "First Visit", n: stats.total },
-    { label: "Contacted", n: reached(["contacted", "visited", "integrated"]) },
-    { label: "Home Visit", n: reached(["visited", "integrated"]) },
+    { label: "Active Visitors", n: stats.active },
+
     { label: "Became Member", n: stats.converted },
   ];
 
@@ -97,7 +97,7 @@ export default async function VisitorConversionPage() {
                   <p className="font-bold text-slate-900">{v.fullName}</p>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     First visit {v.joinedAt ? fmtDate(v.joinedAt) : "—"}
-                    {v.phone ? ` · ${v.phone}` : ""} · Follow-up: {v.stage ?? "not started"}
+                    {v.phone ? ` · ${v.phone}` : ""}
                   </p>
                 </div>
                 <ConvertButton memberId={v.id} memberName={v.fullName} />

@@ -74,7 +74,7 @@ export async function completeSobLesson(_prev: FormState, form: FormData): Promi
   revalidatePath("/akwaaba");
   revalidatePath("/dashboard");
   revalidatePath("/visitor-conversion");
-  revalidatePath("/follow-up");
+
   return { ok: true };
 }
 

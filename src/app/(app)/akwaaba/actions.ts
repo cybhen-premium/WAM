@@ -9,7 +9,7 @@ import { sendSms, withFooter } from "@/lib/sms";
 import { requireModule } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
 
-const { member, followUp } = schema;
+const { member } = schema;
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -95,8 +95,6 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
       })
       .returning({ id: member.id });
 
-    // New people enter the follow-up pipeline and optionally get a welcome SMS
-    await db.insert(followUp).values({ churchId: church.id, memberId: created.id, kind: "convert", stage: "new" });
     logActivity({
       module: "akwaaba",
       actionCode: "akwaaba.create",
@@ -116,7 +114,7 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
   revalidatePath("/akwaaba");
   revalidatePath("/members");
   revalidatePath("/dashboard");
-  revalidatePath("/follow-up");
+
   return { ok: true };
 }
 

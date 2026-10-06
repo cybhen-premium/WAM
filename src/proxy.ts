@@ -20,7 +20,6 @@ export const config = {
     "/giving-analytics/:path*",
     "/growth/:path*",
 
-    "/follow-up/:path*",
     "/welfare/:path*",
     "/announcements/:path*",
     "/message-center/:path*",

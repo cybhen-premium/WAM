@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { CalendarCheck, Check, MessageSquare, Send } from "lucide-react";
 import { useFormAction } from "@/components/use-form-action";
 import { reachOut, saveAutomation, scheduleVisit, type FormState } from "./actions";
@@ -46,9 +45,9 @@ export function LostSheepActions({ memberId, scheduled, hasPhone }: { memberId: 
           </button>
         )}
         {scheduled ? (
-          <Link href="/follow-up" className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 h-9 text-[11px] font-bold text-emerald-700">
+          <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 h-9 text-[11px] font-bold text-emerald-700">
             <Check className="h-3.5 w-3.5" /> Visit scheduled
-          </Link>
+          </span>
         ) : (
           <button
             disabled={pending}

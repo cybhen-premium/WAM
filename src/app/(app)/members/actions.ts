@@ -92,8 +92,8 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
       .values({ ...values, churchId: church.id })
       .returning({ id: member.id });
     if (values.category === VISITOR || values.category === REGULAR_ATTENDEE) {
-      // New visitors and regular attendees enter the follow-up pipeline and optionally get a welcome SMS.
-      await db.insert(schema.followUp).values({ churchId: church.id, memberId: created.id, kind: "convert", stage: "new" });
+      // New visitors and regular attendees optionally get a welcome SMS.
+
       if (church.autoWelcomeSms && values.phone) {
         const first = values.fullName.split(/\s+/)[0];
         await sendSms(church, [values.phone], withFooter(church, `Hi ${first}, thank you for worshipping with us at ${church.name}! We're glad you came and hope to see you again soon.`), {
@@ -112,7 +112,7 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
   revalidatePath("/members");
   revalidatePath("/dashboard");
   revalidatePath("/visitor-conversion");
-  revalidatePath("/follow-up");
+
   revalidatePath("/sob");
   return { ok: true };
 }

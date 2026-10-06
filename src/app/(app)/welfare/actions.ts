@@ -30,7 +30,7 @@ export async function saveAutomation(_prev: FormState, f: FormData): Promise<For
   return { ok: true, message: "Configuration saved." };
 }
 
-/** Lost Sheep → "Schedule Visit": adds a pastoral-visit entry to the follow-up pipeline. */
+/** Lost Sheep → "Schedule Visit": records a pastoral visit. */
 export async function scheduleVisit(memberId: string) {
   await requireModule("care");
   const { church } = await requireChurch();
@@ -42,7 +42,7 @@ export async function scheduleVisit(memberId: string) {
   if (!m) return;
   await db.insert(schema.followUp).values({ churchId: church.id, memberId: m.id, kind: "lost_sheep", stage: "new" });
   revalidatePath("/welfare");
-  revalidatePath("/follow-up");
+
   logActivity({
     module: "care",
     action: "Scheduled pastoral visit for member",

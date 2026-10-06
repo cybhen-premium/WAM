@@ -8,7 +8,6 @@ import {
   CreditCard,
 
 
-  UserCheck,
   HeartHandshake,
   Megaphone,
   MessageSquare,
@@ -68,10 +67,6 @@ export const NAV_CATEGORIES: NavCategory[] = [
       {
         type: "item",
         item: { href: "/visitor-conversion", module: "analytics", label: "Visitors", icon: TrendingUp },
-      },
-      {
-        type: "item",
-        item: { href: "/follow-up", module: "care", label: "Follow Up", icon: UserCheck },
       },
       {
         type: "item",

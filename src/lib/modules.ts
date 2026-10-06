@@ -12,7 +12,7 @@ export const MODULES = {
   tithes: { label: "Tithes Tracker", routes: ["/tithes"] },
   finances: { label: "Finances", routes: ["/finances"] },
   analytics: { label: "Analytics & Visitors", routes: ["/analytics", "/giving-analytics", "/growth", "/visitor-conversion"] },
-  care: { label: "Follow-up & Member Care", routes: ["/follow-up", "/welfare", "/welfare-dues"] },
+  care: { label: "Member Care & Welfare", routes: ["/welfare", "/welfare-dues"] },
   messaging: { label: "Messages & Announcements", routes: ["/message-center", "/announcements"] },
   staffs: { label: "Staffs", routes: ["/staffs"] },
   settings: { label: "Settings", routes: ["/settings"] },
