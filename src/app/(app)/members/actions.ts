@@ -66,8 +66,17 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
         .from(schema.sobProgress)
         .where(eq(schema.sobProgress.memberId, id));
       
+      const churchLessons = await db
+        .select({ lessonNumber: schema.sobLesson.lessonNumber })
+        .from(schema.sobLesson)
+        .where(eq(schema.sobLesson.churchId, church.id));
+
+      const requiredNumbers = churchLessons.length > 0 
+        ? churchLessons.map((l) => l.lessonNumber) 
+        : [1, 2, 3, 4];
+
       const sobLessons = new Set(sobCompleted.map((r) => r.lesson));
-      const sobDone = [1, 2, 3, 4].every((l) => sobLessons.has(l));
+      const sobDone = requiredNumbers.every((l) => sobLessons.has(l));
       
       if (!sobDone) {
         return { error: "Member must complete all SOB lessons before becoming a full member." };

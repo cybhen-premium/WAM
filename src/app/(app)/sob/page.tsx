@@ -1,15 +1,14 @@
-import { eq, and, ilike, gte, lt } from "drizzle-orm";
+import { eq, and, ilike } from "drizzle-orm";
 import Link from "next/link";
 import { GraduationCap, CheckCircle2, Clock, BookOpen, History } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { SobMemberRow, SobToolbar } from "./client";
+import { SobMemberRow, SobToolbar, ManageLessonsButton } from "./client";
 import { requireModule } from "@/lib/permissions";
+import { getOrSeedSobLessons } from "./actions";
 
 export const metadata = { title: "School of Baptism" };
-
-const TOTAL_LESSONS = 4;
 
 export default async function SobPage({ searchParams }: PageProps<"/sob">) {
   const { church } = await requireChurch();
@@ -17,6 +16,12 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const filter = typeof sp.filter === "string" ? sp.filter : "all";
+
+  // Fetch dynamic lessons for this church
+  const lessons = await getOrSeedSobLessons(church.id);
+  const totalLessons = lessons.length;
+  const gradLesson = lessons.find((l) => l.isGraduation) ?? (totalLessons > 0 ? lessons[totalLessons - 1] : null);
+  const baptismLessonNo = gradLesson?.lessonNumber ?? 4;
 
   // SOB only tracks the "staying" people from Akwaaba (Regular Attendees).
   // Full members added via /members must never appear here.
@@ -40,7 +45,11 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
 
   // Fetch all SOB progress for this church
   const allProgress = await db
-    .select({ memberId: schema.sobProgress.memberId, lesson: schema.sobProgress.lesson, completedAt: schema.sobProgress.completedAt })
+    .select({
+      memberId: schema.sobProgress.memberId,
+      lesson: schema.sobProgress.lesson,
+      completedAt: schema.sobProgress.completedAt,
+    })
     .from(schema.sobProgress)
     .where(eq(schema.sobProgress.churchId, church.id));
 
@@ -53,17 +62,17 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
 
   // Apply lesson filter
   const filteredMembers = members.filter((m) => {
-    const lessons = progressMap.get(m.id) ?? [];
-    const count = lessons.length;
-    // lesson1 = completed lesson 1 but NOT lesson 2 yet
-    if (filter === "lesson1") return lessons.includes(1) && !lessons.includes(2) && !lessons.includes(3) && !lessons.includes(4);
-    // lesson2 = completed lesson 2 but NOT lesson 3 yet
-    if (filter === "lesson2") return lessons.includes(2) && !lessons.includes(3) && !lessons.includes(4);
-    // lesson3 = completed lesson 3 but NOT lesson 4 yet
-    if (filter === "lesson3") return lessons.includes(3) && !lessons.includes(4);
-    // completed = all 4 done
-    if (filter === "completed") return count === TOTAL_LESSONS;
+    const completed = progressMap.get(m.id) ?? [];
+    const count = completed.length;
+    const isDone = (gradLesson && completed.includes(gradLesson.lessonNumber)) || count >= totalLessons;
+
+    if (filter === "completed") return isDone;
     if (filter === "not_started") return count === 0;
+    if (filter === "in_progress") return count > 0 && !isDone;
+    if (filter.startsWith("lesson_")) {
+      const targetNo = parseInt(filter.replace("lesson_", ""), 10);
+      return completed.includes(targetNo);
+    }
     return true;
   });
 
@@ -71,25 +80,31 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
   const allMembers = await db
     .select({ id: schema.member.id })
     .from(schema.member)
-    .where(and(
-      eq(schema.member.churchId, church.id), 
-      eq(schema.member.active, true),
-      eq(schema.member.category, "Regular Attendee")
-    ));
+    .where(
+      and(
+        eq(schema.member.churchId, church.id),
+        eq(schema.member.active, true),
+        eq(schema.member.category, "Regular Attendee"),
+      ),
+    );
 
   const totalCount = allMembers.length;
-  const graduated = allMembers.filter((m) => (progressMap.get(m.id)?.length ?? 0) === TOTAL_LESSONS).length;
+  const graduated = allMembers.filter((m) => {
+    const completed = progressMap.get(m.id) ?? [];
+    return (gradLesson && completed.includes(gradLesson.lessonNumber)) || completed.length >= totalLessons;
+  }).length;
   const inProgress = allMembers.filter((m) => {
-    const c = progressMap.get(m.id)?.length ?? 0;
-    return c > 0 && c < TOTAL_LESSONS;
+    const completed = progressMap.get(m.id) ?? [];
+    const isDone = (gradLesson && completed.includes(gradLesson.lessonNumber)) || completed.length >= totalLessons;
+    return completed.length > 0 && !isDone;
   }).length;
   const notStarted = allMembers.filter((m) => (progressMap.get(m.id)?.length ?? 0) === 0).length;
 
-  // Baptised totals: lesson 4 completions grouped by year and month of completion
+  // Baptised totals: graduation lesson completions grouped by year and month
   const baptismByYear = new Map<string, number>();
   const baptismByMonth = new Map<string, number>();
   for (const p of allProgress) {
-    if (p.lesson !== 4 || !p.completedAt) continue;
+    if (p.lesson !== baptismLessonNo || !p.completedAt) continue;
     const y = p.completedAt.slice(0, 4);
     const ym = p.completedAt.slice(0, 7);
     baptismByYear.set(y, (baptismByYear.get(y) ?? 0) + 1);
@@ -110,18 +125,24 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
             <GraduationCap className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">School of Baptism</h1>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+              School of Baptism
+            </h1>
             <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">
-              Track member progress through the 4 SOB lessons before baptism
+              Track member progress through the {totalLessons} SOB lessons before baptism
             </p>
           </div>
         </div>
-        <Link
-          href="/sob/history"
-          className="inline-flex items-center justify-center gap-2 whitespace-nowrap transition-all duration-200 active:scale-[0.98] px-4 h-11 md:h-9 text-xs md:text-[11px] font-black rounded-xl bg-[#1e3a8a] text-white hover:bg-blue-900 shadow-md shrink-0"
-        >
-          <History className="h-4 w-4" /> History
-        </Link>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <ManageLessonsButton lessons={lessons} />
+          <Link
+            href="/sob/history"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap transition-all duration-200 active:scale-[0.98] px-4 h-11 md:h-9 text-xs md:text-[11px] font-black rounded-xl bg-[#1e3a8a] text-white hover:bg-blue-900 shadow-md shrink-0"
+          >
+            <History className="h-4 w-4" /> History
+          </Link>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -150,7 +171,7 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
       </div>
 
       {/* Toolbar: search + filter */}
-      <SobToolbar />
+      <SobToolbar lessons={lessons} />
 
       {/* Result count hint */}
       {(q || filter !== "all") && (
@@ -173,6 +194,7 @@ export default async function SobPage({ searchParams }: PageProps<"/sob">) {
               key={m.id}
               member={m}
               completedLessons={progressMap.get(m.id) ?? []}
+              lessons={lessons}
             />
           ))}
         </div>

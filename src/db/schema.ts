@@ -231,7 +231,7 @@ export const member = pgTable(
   (t) => [index("member_church_idx").on(t.churchId)],
 );
 
-// Tracks the 3 SOB lessons each member completes before baptism.
+// Tracks the SOB lessons each member completes before baptism.
 export const sobProgress = pgTable(
   "sob_progress",
   {
@@ -242,7 +242,7 @@ export const sobProgress = pgTable(
     memberId: uuid("member_id")
       .notNull()
       .references(() => member.id, { onDelete: "cascade" }),
-    // 1, 2, 3, or 4 — the lesson number completed
+    // Lesson number completed
     lesson: integer("lesson").notNull(),
     completedAt: date("completed_at").notNull().defaultNow(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -250,6 +250,27 @@ export const sobProgress = pgTable(
   (t) => [
     index("sob_church_idx").on(t.churchId),
     uniqueIndex("sob_member_lesson_uq").on(t.memberId, t.lesson),
+  ],
+);
+
+// Customizable SOB curriculum lessons per church.
+export const sobLesson = pgTable(
+  "sob_lesson",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    lessonNumber: integer("lesson_number").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    isGraduation: boolean("is_graduation").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("sob_lesson_church_idx").on(t.churchId),
+    uniqueIndex("sob_lesson_church_num_uq").on(t.churchId, t.lessonNumber),
   ],
 );
 

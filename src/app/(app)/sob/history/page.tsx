@@ -5,6 +5,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { HistoryFilters, HistoryTable } from "./history-client";
 import { requireModule } from "@/lib/permissions";
+import { getOrSeedSobLessons } from "../actions";
 
 export const metadata = { title: "Baptism History" };
 
@@ -29,11 +30,15 @@ export default async function SobHistoryPage({ searchParams }: PageProps<"/sob/h
   await requireModule("sob");
   const sp = await searchParams;
 
+  const lessons = await getOrSeedSobLessons(church.id);
+  const gradLesson = lessons.find((l) => l.isGraduation) ?? lessons[lessons.length - 1];
+  const baptismLessonNo = gradLesson?.lessonNumber ?? 4;
+
   // Years with at least one baptism (year dropdown options)
   const yearRows = await db
     .select({ completedAt: schema.sobProgress.completedAt })
     .from(schema.sobProgress)
-    .where(and(eq(schema.sobProgress.churchId, church.id), eq(schema.sobProgress.lesson, 4)))
+    .where(and(eq(schema.sobProgress.churchId, church.id), eq(schema.sobProgress.lesson, baptismLessonNo)))
     .limit(2000);
   const years = [...new Set(yearRows.map((r) => r.completedAt?.slice(0, 4)).filter((y): y is string => !!y))].sort().reverse();
 
@@ -69,7 +74,7 @@ export default async function SobHistoryPage({ searchParams }: PageProps<"/sob/h
     .where(
       and(
         eq(schema.sobProgress.churchId, church.id),
-        eq(schema.sobProgress.lesson, 4),
+        eq(schema.sobProgress.lesson, baptismLessonNo),
         periodFilter,
       ),
     )
