@@ -28,5 +28,5 @@ export const EXPENSE_CATEGORIES = [
 export const TITHE = "Tithe";
 export const WELFARE_DUES = "Welfare Dues";
 export const WELFARE_SUPPORT = "Welfare Support";
+export const WELFARE_CATEGORIES = [WELFARE_DUES, WELFARE_SUPPORT] as const;
 
-export const EVENT_TYPES = ["Service", "Rehearsal", "Meeting", "Outreach", "Celebration", "Other"] as const;

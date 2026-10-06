@@ -52,7 +52,11 @@ export async function completeSobLesson(_prev: FormState, form: FormData): Promi
       .set({
         baptized: true,
         ...(graduating
-          ? { category: "General Member", convertedAt: date }
+          ? {
+              category: "General Member",
+              convertedAt: date,
+              akwaabaStatus: m?.category === "Visitor" ? "visiting" : "staying",
+            }
           : {}),
       })
       .where(and(eq(member.id, memberId), eq(member.churchId, church.id)));

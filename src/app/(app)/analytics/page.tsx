@@ -260,7 +260,7 @@ export default async function AnalyticsPage(props: {
             { label: "/giving", count: 7 },
             { label: "/visitors", count: 6 },
             { label: "/growth", count: 5 },
-            { label: "/events", count: 4 },
+            { label: "/tithes", count: 4 },
           ],
           realPages
         ),
@@ -271,7 +271,7 @@ export default async function AnalyticsPage(props: {
             { label: "/finances", count: 31 },
             { label: "/staff", count: 19 },
             { label: "/giving", count: 14 },
-            { label: "/events", count: 9 },
+            { label: "/tithes", count: 9 },
             { label: "/settings", count: 6 },
           ],
           realRoutes

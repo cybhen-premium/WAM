@@ -254,7 +254,7 @@ function PersonFormModal({ open, onClose, person }: { open: boolean; onClose: ()
           <TextField label="Date" name="joinedAt" type="date" defaultValue={person?.joinedAt || new Date().toISOString().split("T")[0]} required />
           <TextField label="Phone Number" name="phone" type="tel" icon={Phone} placeholder="024XXXXXXX" defaultValue={person?.phone} />
           <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue={person?.gender || "Male"} />
-          <SelectField label="Status (Visit or Join?)" name="status" options={["Visiting", "Staying"]} defaultValue={person?.category === "Regular Attendee" ? "Staying" : "Visiting"} />
+          <SelectField label="Status (Visit or Join?)" name="status" options={["Visiting", "Staying"]} defaultValue={(person?.akwaabaStatus === "staying" || (!person?.akwaabaStatus && person?.category === "Regular Attendee")) ? "Staying" : "Visiting"} />
           <TextField label="Who brought you?" name="invitedBy" placeholder="Name of inviter" defaultValue={person?.invitedBy} />
           <TextField className="sm:col-span-2" label="Residential Address" name="address" placeholder="House number, Street, Area" defaultValue={person?.address} />
         </div>

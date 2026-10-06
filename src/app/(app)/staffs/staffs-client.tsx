@@ -39,7 +39,6 @@ const MODULE_DESC: Record<string, string> = {
   tithes:     "Record and review weekly tithe contributions.",
   finances:   "Manage income, expenses, receipts, and financial reports.",
   analytics:  "View giving analytics, growth trends, and visitor conversion.",
-  events:     "Create events and record attendance check-ins.",
   care:       "Manage pastoral follow-up, welfare, and dues.",
   messaging:  "Send SMS broadcasts, announcements, and AI-assisted sermons.",
   staffs:     "Manage staff accounts, roles, and module access.",

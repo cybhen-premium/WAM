@@ -1,9 +1,10 @@
-import { and, countDistinct, eq, sql } from "drizzle-orm";
+import { and, countDistinct, eq, notInArray, sql } from "drizzle-orm";
 import { DollarSign, TrendingUp, Users } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { sumAmount } from "@/lib/finance";
 import { cedis } from "@/lib/utils";
+import { WELFARE_CATEGORIES, WELFARE_DUES, WELFARE_SUPPORT } from "@/lib/constants";
 import { TrendChart } from "@/components/trend-chart";
 import { requireModule } from "@/lib/permissions";
 
@@ -14,7 +15,7 @@ const { transaction } = schema;
 export default async function GivingAnalyticsPage() {
   const { church } = await requireChurch();
   await requireModule("analytics");
-  const income = and(eq(transaction.churchId, church.id), eq(transaction.type, "income"));
+  const income = and(eq(transaction.churchId, church.id), eq(transaction.type, "income"), notInArray(transaction.category, [...WELFARE_CATEGORIES]));
 
   const [[totals], months] = await Promise.all([
     db
@@ -25,7 +26,7 @@ export default async function GivingAnalyticsPage() {
       select to_char(m, 'YYYY-MM') as month, coalesce(sum(t.amount), 0) as total
       from generate_series(date_trunc('month', current_date) - interval '5 months', date_trunc('month', current_date), interval '1 month') m
       left join ${transaction} t
-        on t.church_id = ${church.id} and t.type = 'income' and date_trunc('month', t.occurred_on) = m
+        on t.church_id = ${church.id} and t.type = 'income' and t.category not in (${WELFARE_DUES}, ${WELFARE_SUPPORT}) and date_trunc('month', t.occurred_on) = m
       group by m order by m`),
   ]);
 

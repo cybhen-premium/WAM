@@ -18,7 +18,8 @@ function readPerson(form: FormData) {
   const opt = (k: string) => s(k) || null;
   const date = (k: string) => (/^\d{4}-\d{2}-\d{2}$/.test(s(k)) ? s(k) : null);
   const gender = s("gender").toLowerCase();
-  const status = s("status"); // "visiting" or "staying"
+  const status = s("status").toLowerCase(); // "visiting" or "staying"
+  const akwaabaStatus = status === "staying" ? "staying" : "visiting";
   const id = s("id");
   return {
     id: id || null,
@@ -26,7 +27,8 @@ function readPerson(form: FormData) {
     phone: opt("phone"),
     email: opt("email"),
     gender: gender === "male" || gender === "female" ? gender : null,
-    category: status.toLowerCase() === "staying" ? "Regular Attendee" : "Visitor",
+    category: akwaabaStatus === "staying" ? "Regular Attendee" : "Visitor",
+    akwaabaStatus,
     address: opt("address"),
     invitedBy: opt("invitedBy"),
     joinedAt: date("joinedAt") || undefined,
@@ -41,6 +43,16 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
   if (!values.fullName) return { error: "Full name is required." };
 
   if (values.id) {
+    const [existing] = await db
+      .select({ category: member.category })
+      .from(member)
+      .where(and(eq(member.id, values.id), eq(member.churchId, church.id)))
+      .limit(1);
+
+    // If the person has graduated or become a full member (e.g. General Member),
+    // don't demote their main membership category, but update their intake status.
+    const isFullMember = existing && existing.category !== "Visitor" && existing.category !== "Regular Attendee";
+
     // Update existing person. `fromAkwaaba` is deliberately left alone — it records how they arrived,
     // so someone who has since graduated to a full member keeps appearing on the Akwaaba list.
     await db
@@ -50,7 +62,8 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
         phone: values.phone,
         email: values.email,
         gender: values.gender,
-        category: values.category,
+        ...(isFullMember ? {} : { category: values.category }),
+        akwaabaStatus: values.akwaabaStatus,
         address: values.address,
         invitedBy: values.invitedBy,
         joinedAt: values.joinedAt,
@@ -72,6 +85,7 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
         email: values.email,
         gender: values.gender,
         category: values.category,
+        akwaabaStatus: values.akwaabaStatus,
         address: values.address,
         invitedBy: values.invitedBy,
         joinedAt: values.joinedAt,

@@ -20,9 +20,6 @@ export const config = {
     "/giving-analytics/:path*",
     "/growth/:path*",
 
-    "/events/:path*",
-    "/event-analytics/:path*",
-    "/attendance/:path*",
     "/follow-up/:path*",
     "/welfare/:path*",
     "/announcements/:path*",

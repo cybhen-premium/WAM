@@ -2,8 +2,8 @@ import Link from "next/link";
 import { and, count, eq, sql, type AnyColumn } from "drizzle-orm";
 import {
   Cake,
-  Calendar,
-  ClipboardCheck,
+  HandHeart,
+
   Clock,
   CreditCard,
   DollarSign,
@@ -109,8 +109,8 @@ export default async function DashboardPage() {
       <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
         <QuickLink href="/members" icon={Users} label="Members" color="text-blue-600" />
         <QuickLink href="/finances" icon={DollarSign} label="Finances" color="text-emerald-600" />
-        <QuickLink href="/events" icon={Calendar} label="Events" color="text-purple-600" />
-        <QuickLink href="/attendance" icon={ClipboardCheck} label="Attendance" color="text-orange-600" />
+        <QuickLink href="/tithes" icon={CreditCard} label="Tithes" color="text-purple-600" />
+        <QuickLink href="/welfare-dues" icon={HandHeart} label="Welfare Dues" color="text-orange-600" />
       </div>
 
       <div className="space-y-3">

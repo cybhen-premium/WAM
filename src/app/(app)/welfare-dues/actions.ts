@@ -1,14 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { sql, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
-import { WELFARE_DUES } from "@/lib/constants";
 import { requireModule } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
 
-const { welfareDues, transaction, member } = schema;
+const { welfareDues, member } = schema;
 
 // Visitors and Regular Attendees are not full church members — block welfare dues for them
 const NON_MEMBER_CATEGORIES = ["Visitor", "Regular Attendee"];
@@ -45,23 +44,6 @@ export async function recordDuesPayment(_prev: FormState, form: FormData): Promi
     date: dateStr + "T00:00:00.000Z",
   });
 
-  // Generate receipt number
-  const [{ n }] = await db
-    .select({ n: sql<number>`coalesce(max(${transaction.receiptNo}), 0) + 1` })
-    .from(transaction)
-    .where(eq(transaction.churchId, church.id));
-
-  // Record it in the main ledger for income tracking & receipts
-  await db.insert(transaction).values({
-    churchId: church.id,
-    type: "income",
-    category: WELFARE_DUES,
-    amount: amount.toString(),
-    memberId,
-    receiptNo: Number(n),
-    occurredOn: dateStr,
-  });
-
   const [m] = await db
     .select({ fullName: member.fullName })
     .from(member)
@@ -72,11 +54,12 @@ export async function recordDuesPayment(_prev: FormState, form: FormData): Promi
     module: "welfare",
     actionCode: "welfare.dues",
     action: `Recorded welfare dues payment of ₵${amount.toFixed(2)} for ${m?.fullName || "member"}`,
-    metadata: { memberId, memberName: m?.fullName, amount, date: dateStr, receiptNo: Number(n) },
+    metadata: { memberId, memberName: m?.fullName, amount, date: dateStr },
   });
 
   revalidatePath("/welfare-dues");
   revalidatePath("/dashboard");
+  revalidatePath("/finances");
   return { ok: true };
 }
 

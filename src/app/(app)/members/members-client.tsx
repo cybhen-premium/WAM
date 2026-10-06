@@ -17,8 +17,8 @@ import {
   Pencil,
   Phone,
   Plus,
-  QrCode,
-  ScanFace,
+
+
   Search,
   Trash2,
   Upload,
@@ -30,6 +30,7 @@ import {
 import type { InferSelectModel } from "drizzle-orm";
 import type { schema } from "@/db";
 import { Modal, SelectField, TextField, buttonStyles } from "@/components/ui";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MARITAL_STATUSES, MEMBER_CATEGORIES } from "@/lib/constants";
 import { deleteMember, importMembers, saveMember, setMemberActive } from "./actions";
 
@@ -104,16 +105,8 @@ export function MembersToolbar({ departments }: { departments: Department[] }) {
           <Upload /> Import
         </button>
       </div>
-      <a href="/print/member-cards" target="_blank" className={`${buttonStyles.outline} flex-1 sm:flex-none`}>
-        <QrCode className="text-[#1e3a8a]" /> QR Cards
-      </a>
-      <button
-        disabled
-        title="Biometric check-in is coming soon"
-        className={`${buttonStyles.outline} w-full sm:w-auto h-11 md:h-9`}
-      >
-        <ScanFace className="text-[#1e3a8a]" /> Biometrics
-      </button>
+
+
       <button onClick={() => setAdding(true)} className={`${buttonStyles.primary} w-full sm:w-auto`}>
         <Plus /> Add Member
       </button>
@@ -323,6 +316,7 @@ export function MemberProfileModal({
   member,
   department,
   onEdit,
+  onDelete,
   onZoomImage,
 }: {
   open: boolean;
@@ -330,6 +324,7 @@ export function MemberProfileModal({
   member: Member;
   department: Department | null;
   onEdit: () => void;
+  onDelete?: () => void;
   onZoomImage: (url: string) => void;
 }) {
   useEffect(() => {
@@ -425,13 +420,6 @@ export function MemberProfileModal({
                 <Phone className="h-3.5 w-3.5" /> Call
               </a>
             )}
-            <a
-              href={`/print/member-cards?id=${member.id}`}
-              target="_blank"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 transition-colors"
-            >
-              <QrCode className="h-3.5 w-3.5 text-[#1e3a8a]" /> QR Card
-            </a>
             <button
               type="button"
               onClick={onEdit}
@@ -439,6 +427,16 @@ export function MemberProfileModal({
             >
               <Pencil className="h-3.5 w-3.5" /> Edit Profile
             </button>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 border border-red-200 px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-100 transition-colors"
+                title="Delete member"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </button>
+            )}
           </div>
 
           {/* Details Grid */}
@@ -558,15 +556,6 @@ export function MemberRowActions({
       >
         <Eye />
       </button>
-      <a
-        href={`/print/member-cards?id=${member.id}`}
-        target="_blank"
-        className={buttonStyles.ghost}
-        title="Check-in QR card"
-        aria-label="Check-in QR card"
-      >
-        <QrCode />
-      </a>
       <button onClick={() => setEditing(true)} className={buttonStyles.ghost} title="Edit" aria-label="Edit">
         <Pencil />
       </button>
@@ -584,31 +573,26 @@ export function MemberRowActions({
       >
         {member.active ? <UserMinus /> : <UserRoundCheck />}
       </button>
-      {confirmDelete ? (
-        <button
-          disabled={pending}
-          onClick={() => {
-            startTransition(async () => {
-              await deleteMember(member.id);
-              toast.success("Member deleted");
-            });
-          }}
-          onBlur={() => setConfirmDelete(false)}
-          autoFocus
-          className="h-8 rounded-lg bg-red-600 px-2 text-[10px] font-black uppercase text-white"
-        >
-          Confirm
-        </button>
-      ) : (
-        <button
-          onClick={() => setConfirmDelete(true)}
-          className={`${buttonStyles.ghost} hover:text-red-600 hover:bg-red-50`}
-          title="Delete"
-          aria-label="Delete"
-        >
-          <Trash2 />
-        </button>
-      )}
+      <button
+        onClick={() => setConfirmDelete(true)}
+        className={`${buttonStyles.ghost} hover:text-red-600 hover:bg-red-50`}
+        title="Delete"
+        aria-label="Delete"
+      >
+        <Trash2 />
+      </button>
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title={`Delete ${member.fullName}?`}
+        description={`Are you sure you want to delete ${member.fullName}? This will permanently remove their records from the church directory. This action cannot be undone.`}
+        confirmLabel="Delete Member"
+        onConfirm={async () => {
+          await deleteMember(member.id);
+        }}
+        successMessage="Member deleted successfully."
+        errorMessage="Failed to delete member."
+      />
       <MemberProfileModal
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
@@ -617,6 +601,10 @@ export function MemberRowActions({
         onEdit={() => {
           setProfileOpen(false);
           setEditing(true);
+        }}
+        onDelete={() => {
+          setProfileOpen(false);
+          setConfirmDelete(true);
         }}
         onZoomImage={(url) => setZoomImage(url)}
       />

@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, lt } from "drizzle-orm";
+import { and, asc, eq, gte, lt, or, isNull, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { fmtDate } from "@/lib/utils";
@@ -47,6 +47,7 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
       address: schema.member.address,
       invitedBy: schema.member.invitedBy,
       category: schema.member.category,
+      akwaabaStatus: schema.member.akwaabaStatus,
       joinedAt: schema.member.joinedAt,
     })
     .from(schema.member)
@@ -56,7 +57,11 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
         eq(schema.member.fromAkwaaba, true),
         gte(schema.member.joinedAt, start),
         lt(schema.member.joinedAt, end),
-        group === "all" ? undefined : eq(schema.member.category, GROUPS[group].category),
+        group === "all"
+          ? undefined
+          : group === "visiting"
+            ? or(eq(schema.member.akwaabaStatus, "visiting"), and(isNull(schema.member.akwaabaStatus), eq(schema.member.category, "Visitor")))
+            : or(eq(schema.member.akwaabaStatus, "staying"), and(isNull(schema.member.akwaabaStatus), ne(schema.member.category, "Visitor"))),
       ),
     )
     .orderBy(asc(schema.member.joinedAt), asc(schema.member.fullName));
@@ -71,11 +76,13 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
     rows:
       key === "members"
         ? people.filter((p) => !AKWAABA_CATEGORIES.includes(p.category))
-        : people.filter((p) => p.category === GROUPS[key].category),
+        : key === "visiting"
+          ? people.filter((p) => p.akwaabaStatus === "visiting" || (!p.akwaabaStatus && p.category === "Visitor"))
+          : people.filter((p) => p.akwaabaStatus === "staying" || (!p.akwaabaStatus && p.category !== "Visitor")),
   }));
-  const visitingCount = people.filter((p) => p.category === "Visitor").length;
-  const stayingCount = people.filter((p) => p.category === "Regular Attendee").length;
-  const memberCount = people.length - visitingCount - stayingCount;
+  const visitingCount = people.filter((p) => p.akwaabaStatus === "visiting" || (!p.akwaabaStatus && p.category === "Visitor")).length;
+  const stayingCount = people.filter((p) => p.akwaabaStatus === "staying" || (!p.akwaabaStatus && p.category !== "Visitor")).length;
+  const memberCount = people.filter((p) => !AKWAABA_CATEGORIES.includes(p.category)).length;
 
 
   return (

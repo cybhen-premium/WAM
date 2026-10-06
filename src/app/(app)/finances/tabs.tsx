@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { and, countDistinct, desc, eq, ilike, isNotNull, or, sql } from "drizzle-orm";
+import { and, countDistinct, desc, eq, ilike, isNotNull, ne, notInArray, or, sql } from "drizzle-orm";
 import { FileText, Printer } from "lucide-react";
 import { db, schema } from "@/db";
 import { inPeriod, receiptLabel, sumAmount, type Period } from "@/lib/finance";
-import { TITHE, WELFARE_DUES, WELFARE_SUPPORT } from "@/lib/constants";
+import { TITHE, WELFARE_CATEGORIES, WELFARE_DUES, WELFARE_SUPPORT } from "@/lib/constants";
 import { cedis, cn, fmtDate } from "@/lib/utils";
 import {
   AddProjectButton,
@@ -46,7 +46,7 @@ export async function GeneralTab({ churchId, period, q }: { churchId: string; pe
     })
     .from(transaction)
     .leftJoin(member, eq(member.id, transaction.memberId))
-    .where(and(inPeriod(churchId, period), q ? or(ilike(transaction.category, like), ilike(transaction.description, like)) : undefined))
+    .where(and(inPeriod(churchId, period), notInArray(transaction.category, [...WELFARE_CATEGORIES]), q ? or(ilike(transaction.category, like), ilike(transaction.description, like)) : undefined))
     .orderBy(desc(transaction.occurredOn), desc(transaction.createdAt))
     .limit(200);
 
@@ -229,7 +229,7 @@ export async function ContributionTab({
 /* Analytics ---------------------------------------------------------------- */
 
 export async function AnalyticsTab({ churchId }: { churchId: string }) {
-  const mine = eq(transaction.churchId, churchId);
+  const mine = and(eq(transaction.churchId, churchId), notInArray(transaction.category, [...WELFARE_CATEGORIES]));
 
   const [months, lapsed, projects] = await Promise.all([
     // Last 12 months including the current one, zero-filled.
@@ -239,7 +239,7 @@ export async function AnalyticsTab({ churchId }: { churchId: string }) {
         coalesce(sum(t.amount) filter (where t.type = 'expense'), 0) as expense
       from generate_series(date_trunc('month', current_date) - interval '11 months', date_trunc('month', current_date), interval '1 month') m
       left join ${transaction} t
-        on t.church_id = ${churchId} and date_trunc('month', t.occurred_on) = m
+        on t.church_id = ${churchId} and t.category not in (${WELFARE_DUES}, ${WELFARE_SUPPORT}) and date_trunc('month', t.occurred_on) = m
       group by m order by m`),
     db
       .select({ id: member.id, fullName: member.fullName, lastGave: sql<string>`max(${transaction.occurredOn})` })
@@ -411,7 +411,7 @@ export async function AnalyticsTab({ churchId }: { churchId: string }) {
 /* Receipts ----------------------------------------------------------------- */
 
 export async function ReceiptsTab({ churchId, period, category }: { churchId: string; period: Period; category: string }) {
-  const base = and(inPeriod(churchId, period), eq(transaction.type, "income"), isNotNull(transaction.receiptNo));
+  const base = and(inPeriod(churchId, period), eq(transaction.type, "income"), isNotNull(transaction.receiptNo), notInArray(transaction.category, [...WELFARE_CATEGORIES]));
   const [rows, cats] = await Promise.all([
     db
       .select({ t: transaction, memberName: member.fullName })

@@ -1,4 +1,4 @@
-import { eq, and, ilike, asc, count, sql, gte, lt, type SQL } from "drizzle-orm";
+import { eq, and, ilike, asc, count, sql, gte, lt, or, isNull, ne, type SQL } from "drizzle-orm";
 import { HandHeart, Users, UserCheck } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
@@ -50,8 +50,22 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
     gte(schema.member.joinedAt, range.start),
     lt(schema.member.joinedAt, range.end),
   ];
-  if (status === "visiting") tableFilters.push(eq(schema.member.category, "Visitor"));
-  if (status === "staying") tableFilters.push(eq(schema.member.category, "Regular Attendee"));
+  if (status === "visiting") {
+    tableFilters.push(
+      or(
+        eq(schema.member.akwaabaStatus, "visiting"),
+        and(isNull(schema.member.akwaabaStatus), eq(schema.member.category, "Visitor"))
+      )
+    );
+  }
+  if (status === "staying") {
+    tableFilters.push(
+      or(
+        eq(schema.member.akwaabaStatus, "staying"),
+        and(isNull(schema.member.akwaabaStatus), ne(schema.member.category, "Visitor"))
+      )
+    );
+  }
   if (q) tableFilters.push(ilike(schema.member.fullName, `%${q}%`));
 
   // Cards use the same period window as the table (search / status only narrow the table itself)
@@ -71,10 +85,14 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
       .orderBy(asc(schema.member.fullName))
       .limit(500),
     db
-      .select({ category: schema.member.category, n: count() })
+      .select({
+        category: schema.member.category,
+        akwaabaStatus: schema.member.akwaabaStatus,
+        n: count(),
+      })
       .from(schema.member)
       .where(and(...cardFilters))
-      .groupBy(schema.member.category),
+      .groupBy(schema.member.category, schema.member.akwaabaStatus),
     // Years with at least one registration (unfiltered, for dropdown options)
     db
       .select({
@@ -94,10 +112,12 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   const years = [...new Set(yearRows.map((r) => r.year).filter(Boolean))].sort().reverse();
   if (!years.includes(currentYear)) years.unshift(currentYear);
 
-  const visitingCount = counts.find((c) => c.category === "Visitor")?.n ?? 0;
-  const stayingCount = counts.find((c) => c.category === "Regular Attendee")?.n ?? 0;
-  // Everyone received — includes the ones who have since graduated to a full member.
-  const totalCount = counts.reduce((sum, c) => sum + c.n, 0);
+  const isVisitingRow = (c: { category: string; akwaabaStatus: string | null }) =>
+    c.akwaabaStatus === "visiting" || (!c.akwaabaStatus && c.category === "Visitor");
+
+  const visitingCount = counts.filter(isVisitingRow).reduce((sum, c) => sum + c.n, 0);
+  const stayingCount = counts.filter((c) => !isVisitingRow(c)).reduce((sum, c) => sum + c.n, 0);
+  const totalCount = visitingCount + stayingCount;
   const periodHint =
     period.length === 4
       ? period
@@ -217,16 +237,17 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
                   <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{person.address ?? "—"}</td>
                   <td className="px-4 py-3 text-slate-600 text-xs">{person.invitedBy ?? "—"}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-tight ${
-                      person.category === "Visitor" 
-                        ? "bg-blue-50 text-blue-600" 
-                        : person.category === "Regular Attendee"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-slate-100 text-slate-600"
-                    }`}>
-                      {/* After baptism the category becomes a full member one — show that instead of "Staying". */}
-                      {person.category === "Visitor" ? "Visiting" : person.category === "Regular Attendee" ? "Staying" : person.category}
-                    </span>
+                    {(() => {
+                      const isVisiting = person.akwaabaStatus === "visiting" || (!person.akwaabaStatus && person.category === "Visitor");
+                      return (
+                        <span className={cn(
+                          "inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-tight",
+                          isVisiting ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"
+                        )}>
+                          {isVisiting ? "Visiting" : "Staying"}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 pr-8 py-3 text-right">
                     <PersonRowActions person={person} />

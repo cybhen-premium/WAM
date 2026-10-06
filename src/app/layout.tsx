@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     default: "WAM | The Heart of Church Growth. Managed.",
     template: "%s | WAM",
   },
-  description: "Church management: members, finances, events, attendance and pastoral care in one place.",
+  description: "Church management: members, finances, and pastoral care in one place.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

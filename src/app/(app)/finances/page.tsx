@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, notInArray, sql } from "drizzle-orm";
 import {
   ChartPie,
   Receipt,
@@ -8,6 +8,7 @@ import {
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { inPeriod, parsePeriod, periodLabel, sumAmount } from "@/lib/finance";
+import { WELFARE_CATEGORIES } from "@/lib/constants";
 import { cedis, cn } from "@/lib/utils";
 import { FinanceHeader } from "./finance-client";
 import { AnalyticsTab, GeneralTab, ReceiptsTab } from "./tabs";
@@ -33,7 +34,7 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
   const tab: TabId = TABS.some((t) => t.id === sp.tab) ? (sp.tab as TabId) : "general";
   const q = typeof sp.q === "string" ? sp.q : "";
 
-  const where = inPeriod(church.id, period);
+  const where = and(inPeriod(church.id, period), notInArray(transaction.category, [...WELFARE_CATEGORIES]));
   const [totals, breakdown, projects, yearRows] = await Promise.all([
     db
       .select({ type: transaction.type, total: sumAmount })
@@ -55,7 +56,7 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
     db
       .select({ year: sql<string>`to_char(${transaction.occurredOn}, 'YYYY')` })
       .from(transaction)
-      .where(eq(transaction.churchId, church.id))
+      .where(and(eq(transaction.churchId, church.id), notInArray(transaction.category, [...WELFARE_CATEGORIES])))
       .groupBy(sql`to_char(${transaction.occurredOn}, 'YYYY')`)
       .orderBy(sql`to_char(${transaction.occurredOn}, 'YYYY')`),
   ]);

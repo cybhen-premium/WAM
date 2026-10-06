@@ -1,7 +1,8 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, notInArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { inPeriod, parsePeriod, periodLabel, sumAmount } from "@/lib/finance";
+import { WELFARE_CATEGORIES } from "@/lib/constants";
 import { cedis, fmtDate } from "@/lib/utils";
 import { PrintButton } from "../print-button";
 import { requireModule } from "@/lib/permissions";
@@ -16,7 +17,7 @@ export default async function ReportPage({ searchParams }: PageProps<"/print/rep
   const sp = await searchParams;
   const period = parsePeriod(sp.period);
   const category = typeof sp.category === "string" ? sp.category : "";
-  const where = and(inPeriod(church.id, period), category ? eq(transaction.category, category) : undefined);
+  const where = and(inPeriod(church.id, period), category ? eq(transaction.category, category) : notInArray(transaction.category, [...WELFARE_CATEGORIES]));
 
   const [byCategory, rows] = await Promise.all([
     db

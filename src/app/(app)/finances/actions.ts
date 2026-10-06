@@ -8,7 +8,7 @@ import { requireModule } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
 import {
   TITHE,
-  WELFARE_DUES,
+
   WELFARE_SUPPORT,
 } from "@/lib/constants";
 
@@ -84,7 +84,8 @@ export async function addTransaction(_prev: FormState, f: FormData): Promise<For
 export async function recordContribution(_prev: FormState, f: FormData): Promise<FormState> {
   await requireModule("finances");
   const { church } = await requireChurch();
-  const category = s(f, "kind") === "dues" ? WELFARE_DUES : TITHE;
+  if (s(f, "kind") === "dues") return { error: "Welfare dues must be recorded in the Welfare Dues module." };
+  const category = TITHE;
   const memberId = await owned(member, s(f, "memberId"), church.id);
   if (!memberId) return { error: "Select a member." };
   const amount = amountOf(f);
@@ -130,6 +131,7 @@ export async function recordWelfareOut(_prev: FormState, f: FormData): Promise<F
     action: `Recorded welfare support of ₵${amount}`,
     metadata: { amount, memberId },
   });
+  revalidatePath("/welfare-dues");
   return done();
 }
 

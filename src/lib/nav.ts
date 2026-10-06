@@ -6,8 +6,8 @@ import {
   ChartColumn,
   TrendingUp,
   CreditCard,
-  Calendar,
-  ClipboardCheck,
+
+
   UserCheck,
   HeartHandshake,
   Megaphone,
@@ -105,16 +105,8 @@ export const NAV_CATEGORIES: NavCategory[] = [
     ],
   },
   {
-    title: "EVENTS & CARE",
+    title: "MEMBER CARE",
     entries: [
-      {
-        type: "item",
-        item: { href: "/events", module: "events", label: "Events", icon: Calendar },
-      },
-      {
-        type: "item",
-        item: { href: "/attendance", module: "events", label: "Attendance", icon: ClipboardCheck },
-      },
       {
         type: "item",
         item: { href: "/welfare", module: "care", label: "Member Care", icon: HeartHandshake },

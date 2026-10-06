@@ -383,7 +383,7 @@ export function PreferencesForm({ church }: { church: Church }) {
           <label className="block">
             <span className={label}>Absence Alert Threshold (weeks)</span>
             <input type="number" name="absenceThresholdWeeks" min={1} max={12} defaultValue={church.absenceThresholdWeeks} className={field} />
-            <span className="mt-1 block text-xs text-slate-400">Flags members as &lsquo;At-Risk&rsquo; after this many weeks of no attendance.</span>
+            <span className="mt-1 block text-xs text-slate-400">Flags members as &lsquo;At-Risk&rsquo; after this many weeks of absence.</span>
           </label>
           <label className="block">
             <span className={label}>AI Language</span>

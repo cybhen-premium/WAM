@@ -217,6 +217,9 @@ export const member = pgTable(
     // (Visitor / Regular Attendee → General Member), but this flag never changes, so they stay on the
     // Akwaaba list after they graduate.
     fromAkwaaba: boolean("from_akwaaba").notNull().default(false),
+    // Reception intake status in Akwaaba: "visiting" (guests/visitors) or "staying" (regular attendees).
+    // Preserved even when SOB graduation converts their category to "General Member".
+    akwaabaStatus: text("akwaaba_status"),
     lastAttendedAt: date("last_attended_at"),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
