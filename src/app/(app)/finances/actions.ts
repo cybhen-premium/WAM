@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
-import { requireModule } from "@/lib/permissions";
+import { notFound } from "next/navigation";
+import { requireModule, can } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
 import {
   TITHE,
@@ -110,7 +111,7 @@ export async function recordContribution(_prev: FormState, f: FormData): Promise
 
 /** Welfare Out tab: support paid to a member. */
 export async function recordWelfareOut(_prev: FormState, f: FormData): Promise<FormState> {
-  await requireModule("finances");
+  if (!(await can("finances")) && !(await can("care"))) notFound();
   const { church } = await requireChurch();
   const memberId = await owned(member, s(f, "memberId"), church.id);
   if (!memberId) return { error: "Select the beneficiary." };
@@ -136,7 +137,7 @@ export async function recordWelfareOut(_prev: FormState, f: FormData): Promise<F
 }
 
 export async function deleteTransaction(id: string) {
-  await requireModule("finances");
+  if (!(await can("finances")) && !(await can("care"))) notFound();
   const { church } = await requireChurch();
   await db.delete(transaction).where(and(eq(transaction.id, id), eq(transaction.churchId, church.id)));
   logActivity({

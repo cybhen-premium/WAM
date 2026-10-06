@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { eq, sql, and, desc, notInArray } from "drizzle-orm";
-import { HandHeart, Heart, TrendingUp, Users, CheckCircle2 } from "lucide-react";
+import { HandHeart, Heart, TrendingUp, Users, CheckCircle2, Wallet } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { WelfareDuesToolbar, DuesActions, PeriodSelector, StatusBadge } from "./client";
-import { WelfareOutTab } from "@/app/(app)/finances/tabs";
+import { WelfareOutTab } from "./welfare-out";
 import { requireModule } from "@/lib/permissions";
+import { inPeriod } from "@/lib/finance";
+import { WELFARE_SUPPORT } from "@/lib/constants";
 
 export const metadata = { title: "Welfare Dues" };
 
@@ -142,6 +144,36 @@ async function ContributionsTab({
 
   const totalCollected = sums.reduce((acc, r) => acc + Number(r.totalPaid), 0);
 
+  const selectedYear = rawPeriod.slice(0, 4);
+
+  // Welfare Out disbursements for selected period
+  const [periodDisbursedRow] = await db
+    .select({ total: sql<string>`coalesce(sum(${schema.transaction.amount}), 0)` })
+    .from(schema.transaction)
+    .where(
+      and(
+        eq(schema.transaction.churchId, churchId),
+        eq(schema.transaction.category, WELFARE_SUPPORT),
+        inPeriod(churchId, rawPeriod),
+      ),
+    );
+  const totalDisbursed = Number(periodDisbursedRow?.total ?? 0);
+
+  // Welfare Out disbursements for the entire year
+  const [yearDisbursedRow] = await db
+    .select({ total: sql<string>`coalesce(sum(${schema.transaction.amount}), 0)` })
+    .from(schema.transaction)
+    .where(
+      and(
+        eq(schema.transaction.churchId, churchId),
+        eq(schema.transaction.category, WELFARE_SUPPORT),
+        inPeriod(churchId, selectedYear),
+      ),
+    );
+  const yearlyDisbursed = Number(yearDisbursedRow?.total ?? 0);
+
+  const netBalance = totalCollected - totalDisbursed;
+
   // For year: 12 months × 20 GH₵ each
   // For month: 20 GH₵ each
   const memberCount = members.length;
@@ -170,13 +202,13 @@ async function ContributionsTab({
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <SummaryCard
-          label="Period"
-          value={periodLabel}
-          sub=""
-          tone="text-slate-700"
-          icon={TrendingUp}
+          label="Net Balance"
+          value={`GH₵ ${netBalance.toFixed(2)}`}
+          sub={`GH₵ ${totalCollected.toFixed(2)} in · GH₵ ${totalDisbursed.toFixed(2)} out`}
+          tone={netBalance >= 0 ? "text-emerald-700" : "text-rose-600"}
+          icon={Wallet}
         />
         <SummaryCard
           label="Total Collected"
@@ -184,6 +216,14 @@ async function ContributionsTab({
           sub={`of GH₵ ${expectedTotal.toFixed(2)} expected`}
           tone="text-emerald-600"
           icon={HandHeart}
+        />
+        <SummaryCard
+          label="Total Expenses"
+          value={`GH₵ ${totalDisbursed.toFixed(2)}`}
+          sub={isYear ? `Year ${selectedYear} total` : `Year total: GH₵ ${yearlyDisbursed.toFixed(2)}`}
+          tone="text-pink-600"
+          icon={Heart}
+          href={`/welfare-dues?tab=disbursements&period=${rawPeriod}`}
         />
         <SummaryCard
           label="Fully Paid"
@@ -299,21 +339,28 @@ function SummaryCard({
   sub,
   tone,
   icon: Icon,
+  href,
 }: {
   label: string;
   value: string;
   sub: string;
   tone: string;
   icon: typeof TrendingUp;
+  href?: string;
 }) {
-  return (
-    <div className="rounded-2xl bg-white border border-slate-100 shadow-sm p-4">
-      <div className="flex items-center gap-2 mb-1">
-        <Icon className={`h-3.5 w-3.5 ${tone}`} />
-        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+  const content = (
+    <div className={cn("rounded-2xl bg-white border border-slate-100 shadow-sm p-4 transition-all h-full", href && "hover:border-pink-200 hover:shadow-md cursor-pointer")}>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <Icon className={`h-3.5 w-3.5 ${tone}`} />
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+        </div>
+        {href && <span className="text-[9px] font-bold text-pink-500 hover:text-pink-600">Inspect →</span>}
       </div>
       <p className={`text-lg font-black ${tone} truncate`}>{value}</p>
       {sub && <p className="text-[9px] text-slate-400 font-semibold mt-0.5 truncate">{sub}</p>}
     </div>
   );
+
+  return href ? <Link href={href} className="block">{content}</Link> : content;
 }
