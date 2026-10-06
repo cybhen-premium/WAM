@@ -7,7 +7,6 @@ import { atRiskWhere, isThisMonth } from "@/lib/pastoral";
 import { smsProviderConfigured } from "@/lib/sms";
 import { cn, fmtDate } from "@/lib/utils";
 import { AutomationForm, LostSheepActions, ReachOutAllButton } from "./welfare-client";
-import { WelfareOutTab } from "@/app/(app)/finances/tabs";
 import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Member Care" };

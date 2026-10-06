@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { GrowthCharts } from "./growth-charts";
 import { requireModule } from "@/lib/permissions";
+import { WELFARE_DUES, WELFARE_SUPPORT } from "@/lib/constants";
 
 export const metadata = { title: "Growth Analytics" };
 
@@ -30,9 +31,9 @@ export default async function GrowthPage() {
            and x.category not in ('Visitor', 'Regular Attendee')
            and coalesce(x.joined_at, x.created_at::date) < m.m + interval '1 month') as cumulative,
         (select coalesce(sum(amount), 0) from ${transaction} t where t.church_id = ${church.id}
-           and t.type = 'income' and date_trunc('month', t.occurred_on) = m.m) as income,
+           and t.type = 'income' and t.category not in (${WELFARE_DUES}, ${WELFARE_SUPPORT}) and date_trunc('month', t.occurred_on) = m.m) as income,
         (select coalesce(sum(amount), 0) from ${transaction} t where t.church_id = ${church.id}
-           and t.type = 'expense' and date_trunc('month', t.occurred_on) = m.m) as expense
+           and t.type = 'expense' and t.category not in (${WELFARE_DUES}, ${WELFARE_SUPPORT}) and date_trunc('month', t.occurred_on) = m.m) as expense
       from m order by m.m`),
   ]);
 
@@ -58,7 +59,7 @@ export default async function GrowthPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat icon={Users} label="Total Members" value={String(total)} hint={`${sign(cur.joined)}${cur.joined} from last month`} />
+        <Stat icon={Users} label="Total Members" value={String(total)} hint={`${sign(cur.joined)}${cur.joined} joined this month`} />
         <Stat
           icon={DollarSign}
           label="Total Revenue"

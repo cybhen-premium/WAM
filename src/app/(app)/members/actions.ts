@@ -57,34 +57,34 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
       .where(and(eq(member.id, id), eq(member.churchId, church.id)))
       .limit(1);
     if (!before) return { error: "Member not found." };
-    
+
     // Prevent conversion to full member categories without completing SOB
-    if ((before.category === VISITOR || before.category === REGULAR_ATTENDEE) && 
-        (values.category !== VISITOR && values.category !== REGULAR_ATTENDEE)) {
+    if ((before.category === VISITOR || before.category === REGULAR_ATTENDEE) &&
+      (values.category !== VISITOR && values.category !== REGULAR_ATTENDEE)) {
       const sobCompleted = await db
         .select({ lesson: schema.sobProgress.lesson })
         .from(schema.sobProgress)
         .where(eq(schema.sobProgress.memberId, id));
-      
+
       const churchLessons = await db
         .select({ lessonNumber: schema.sobLesson.lessonNumber })
         .from(schema.sobLesson)
         .where(eq(schema.sobLesson.churchId, church.id));
 
-      const requiredNumbers = churchLessons.length > 0 
-        ? churchLessons.map((l) => l.lessonNumber) 
+      const requiredNumbers = churchLessons.length > 0
+        ? churchLessons.map((l) => l.lessonNumber)
         : [1, 2, 3, 4];
 
       const sobLessons = new Set(sobCompleted.map((r) => r.lesson));
       const sobDone = requiredNumbers.every((l) => sobLessons.has(l));
-      
+
       if (!sobDone) {
         return { error: "Member must complete all SOB lessons before becoming a full member." };
       }
     }
-    
-    const converted = (before.category === VISITOR || before.category === REGULAR_ATTENDEE) && 
-                      (values.category !== VISITOR && values.category !== REGULAR_ATTENDEE);
+
+    const converted = (before.category === VISITOR || before.category === REGULAR_ATTENDEE) &&
+      (values.category !== VISITOR && values.category !== REGULAR_ATTENDEE);
     await db
       .update(member)
       .set({ ...values, ...(converted ? { convertedAt: new Date().toISOString().slice(0, 10) } : {}) })

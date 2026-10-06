@@ -31,6 +31,7 @@ function readPerson(form: FormData) {
     akwaabaStatus,
     address: opt("address"),
     invitedBy: opt("invitedBy"),
+    departmentId: opt("departmentId"),
     joinedAt: date("joinedAt") || undefined,
   } as const;
 }
@@ -66,6 +67,7 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
         akwaabaStatus: values.akwaabaStatus,
         address: values.address,
         invitedBy: values.invitedBy,
+        departmentId: values.departmentId,
         joinedAt: values.joinedAt,
       })
       .where(and(eq(member.id, values.id), eq(member.churchId, church.id)));
@@ -88,6 +90,7 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
         akwaabaStatus: values.akwaabaStatus,
         address: values.address,
         invitedBy: values.invitedBy,
+        departmentId: values.departmentId,
         joinedAt: values.joinedAt,
         churchId: church.id,
         baptized: false, // Not baptized until SOB completion

@@ -77,7 +77,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   ];
 
   // Years with at least one registration (year dropdown options)
-  const [rows, counts, yearRows] = await Promise.all([
+  const [rows, counts, yearRows, departments] = await Promise.all([
     db
       .select()
       .from(schema.member)
@@ -107,6 +107,11 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
       )
       .groupBy(sql`to_char(${schema.member.joinedAt}, 'YYYY')`)
       .orderBy(sql`to_char(${schema.member.joinedAt}, 'YYYY')`),
+    db
+      .select({ id: schema.department.id, name: schema.department.name })
+      .from(schema.department)
+      .where(eq(schema.department.churchId, church.id))
+      .orderBy(asc(schema.department.name)),
   ]);
 
   const years = [...new Set(yearRows.map((r) => r.year).filter(Boolean))].sort().reverse();
@@ -128,6 +133,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
       {/* Print opens the report for the month being viewed (the report page can change it). */}
       <AkwaabaHeader
         printHref={`/print/akwaaba?month=${period.length === 7 ? period : new Date().toISOString().slice(0, 7)}&group=all`}
+        departments={departments}
       />
 
       {/* The year/month combo box sits in the filter bar above the table and drives the cards too */}
@@ -175,7 +181,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
         <table className="w-full min-w-[800px] text-sm">
           <thead className="bg-slate-50/50 border-b border-slate-100">
             <tr>
-              {["Person Profile", "Gender", "Contact", "Location", "Invited By", "Status"].map((h, i) => (
+              {["Person Profile", "Gender", "Contact", "Location", "Department", "Invited By", "Status"].map((h, i) => (
                 <th
                   key={h}
                   className={`px-4 h-16 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400 ${i === 0 ? "pl-8" : ""}`}
@@ -191,7 +197,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="h-64 text-center">
+                <td colSpan={8} className="h-64 text-center">
                   <div className="flex flex-col items-center justify-center text-slate-400">
                     <HandHeart className="h-10 w-10 mb-3 opacity-20" />
                     <p className="text-sm font-medium italic">
@@ -235,6 +241,18 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
                     {person.email && <p className="text-xs text-slate-400">{person.email}</p>}
                   </td>
                   <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{person.address ?? "—"}</td>
+                  <td className="px-4 py-3 max-w-[150px] truncate">
+                    {(() => {
+                      const dept = departments.find((d) => d.id === person.departmentId);
+                      return dept ? (
+                        <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight text-[#1e3a8a]">
+                          {dept.name}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-4 py-3 text-slate-600 text-xs">{person.invitedBy ?? "—"}</td>
                   <td className="px-4 py-3">
                     {(() => {
@@ -250,7 +268,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
                     })()}
                   </td>
                   <td className="px-4 pr-8 py-3 text-right">
-                    <PersonRowActions person={person} />
+                    <PersonRowActions person={person} departments={departments} />
                   </td>
                 </tr>
               ))

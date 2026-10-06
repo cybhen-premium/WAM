@@ -7,6 +7,7 @@ import { TITHE, WELFARE_CATEGORIES, WELFARE_DUES, WELFARE_SUPPORT } from "@/lib/
 import { cedis, cn, fmtDate } from "@/lib/utils";
 import {
   AddProjectButton,
+  GivingTrendsChart,
   ReceiptTypeFilter,
   RecordContributionForm,
   RecordWelfareButton,
@@ -261,9 +262,6 @@ export async function AnalyticsTab({ churchId }: { churchId: string }) {
   const thisMonth = data.at(-1)?.income ?? 0;
   const prevMonth = data.at(-2)?.income ?? 0;
   const change = prevMonth ? ((thisMonth - prevMonth) / prevMonth) * 100 : 0;
-  const max = Math.max(1, ...data.flatMap((r) => [r.income, r.expense]));
-  const monthName = (m: string) => new Date(m + "-01T00:00:00").toLocaleDateString("en-GB", { month: "short" });
-
   return (
     <div className="p-4 md:p-6 space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -277,34 +275,7 @@ export async function AnalyticsTab({ churchId }: { churchId: string }) {
         />
       </div>
 
-      <div className="rounded-[1.5rem] border border-slate-100 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500">12-Month Giving Trends</h3>
-          <div className="flex gap-3 text-[10px] font-bold text-slate-500">
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500" /> Income</span>
-            <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-400" /> Expenses</span>
-          </div>
-        </div>
-        <div className="flex items-end gap-2 h-48">
-          {data.map((r) => (
-            <div key={r.month} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group">
-              <div className="flex items-end gap-0.5 w-full justify-center h-full">
-                <div
-                  className="w-1/2 max-w-4 rounded-t bg-green-500"
-                  style={{ height: `${(r.income / max) * 100}%` }}
-                  title={`Income ${cedis(r.income)}`}
-                />
-                <div
-                  className="w-1/2 max-w-4 rounded-t bg-red-400"
-                  style={{ height: `${(r.expense / max) * 100}%` }}
-                  title={`Expenses ${cedis(r.expense)}`}
-                />
-              </div>
-              <span className="text-[9px] font-bold text-slate-400">{monthName(r.month)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <GivingTrendsChart data={data} />
 
       <div className="rounded-[1.5rem] border border-slate-100 p-5">
         <div className="flex items-center justify-between mb-3">

@@ -1,5 +1,5 @@
-import { and, countDistinct, eq, notInArray, sql } from "drizzle-orm";
-import { DollarSign, TrendingUp, Users } from "lucide-react";
+import { and, eq, notInArray, sql } from "drizzle-orm";
+import { DollarSign, TrendingUp, CalendarDays } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { sumAmount } from "@/lib/finance";
@@ -19,7 +19,7 @@ export default async function GivingAnalyticsPage() {
 
   const [[totals], months] = await Promise.all([
     db
-      .select({ total: sumAmount, donors: countDistinct(transaction.memberId) })
+      .select({ total: sumAmount })
       .from(transaction)
       .where(income),
     db.execute<{ month: string; total: string }>(sql`
@@ -31,7 +31,11 @@ export default async function GivingAnalyticsPage() {
   ]);
 
   const total = Number(totals.total);
-  const avg = totals.donors ? total / totals.donors : 0;
+  const thisMonth = Number(months.rows.at(-1)?.total ?? 0);
+  const monthlyAvg = months.rows.length > 0
+    ? months.rows.reduce((sum, r) => sum + Number(r.total), 0) / months.rows.length
+    : 0;
+
   const data = months.rows.map((r) => ({
     label: new Date(r.month + "-01T00:00:00").toLocaleDateString("en-GB", { month: "short" }),
     value: Number(r.total),
@@ -46,8 +50,8 @@ export default async function GivingAnalyticsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <Card label="Total Revenue" value={cedis(total)} icon={<DollarSign className="h-3.5 w-3.5 opacity-50" />} dark />
-        <Card label="Avg / Contributor" value={cedis(avg)} icon={<TrendingUp className="h-3.5 w-3.5 text-primary opacity-30" />} />
-        <Card label="Total Donors" value={String(totals.donors)} icon={<Users className="h-3.5 w-3.5 text-slate-400 opacity-30" />} />
+        <Card label="This Month" value={cedis(thisMonth)} icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-600 opacity-60" />} />
+        <Card label="Monthly Average" value={cedis(monthlyAvg)} icon={<CalendarDays className="h-3.5 w-3.5 text-blue-600 opacity-60" />} />
       </div>
 
       <div className="rounded-[2rem] shadow-sm bg-white border border-slate-100 overflow-hidden">

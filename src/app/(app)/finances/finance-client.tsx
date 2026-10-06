@@ -379,3 +379,149 @@ export function AddProjectButton() {
     </>
   );
 }
+
+/* 12-Month Giving Trends Chart with Interactive Tooltip ---------------------- */
+
+export function GivingTrendsChart({
+  data,
+}: {
+  data: { month: string; income: number; expense: number }[];
+}) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  const max = Math.max(1, ...data.flatMap((r) => [r.income, r.expense]));
+
+  const formatMonthName = (m: string) => {
+    return new Date(m + "-01T00:00:00").toLocaleDateString("en-GB", { month: "short" });
+  };
+
+  const formatFullMonth = (m: string) => {
+    return new Date(m + "-01T00:00:00").toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  };
+
+  const fmtCedis = (n: number) =>
+    "GH₵ " + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  return (
+    <div className="rounded-[1.5rem] border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+        <div>
+          <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+            12-Month Giving Trends
+          </h3>
+          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+            Hover or tap any month to inspect income, expenses & net balance
+          </p>
+        </div>
+        <div className="flex items-center gap-4 text-[10px] font-bold text-slate-600">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-sm" /> Income
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-sm" /> Expenses
+          </span>
+        </div>
+      </div>
+
+      <div className="relative h-56 pt-10">
+        <div className="flex items-end gap-1.5 sm:gap-2 h-full">
+          {data.map((r, idx) => {
+            const isHovered = hoveredIdx === idx;
+            const incPct = (r.income / max) * 100;
+            const expPct = (r.expense / max) * 100;
+            const net = r.income - r.expense;
+
+            return (
+              <div
+                key={r.month}
+                onMouseEnter={() => setHoveredIdx(idx)}
+                onMouseLeave={() => setHoveredIdx(null)}
+                onClick={() => setHoveredIdx(isHovered ? null : idx)}
+                className={cn(
+                  "relative flex-1 flex flex-col items-center justify-end h-full py-1.5 rounded-xl transition-all cursor-pointer select-none",
+                  isHovered ? "bg-slate-100/80 ring-1 ring-slate-200" : "hover:bg-slate-50"
+                )}
+              >
+                {/* Floating Interactive Tooltip */}
+                {isHovered && (
+                  <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+                    <div className="rounded-xl bg-slate-900 text-white shadow-xl px-3 py-2 text-xs min-w-[155px] whitespace-nowrap">
+                      <p className="font-black text-[11px] text-slate-200 pb-1 border-b border-slate-700/80 mb-1.5">
+                        {formatFullMonth(r.month)}
+                      </p>
+                      <div className="space-y-1 text-[11px]">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Income:
+                          </span>
+                          <span className="font-mono font-black">{fmtCedis(r.income)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="flex items-center gap-1.5 text-rose-400 font-bold">
+                            <span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Expenses:
+                          </span>
+                          <span className="font-mono font-black">{fmtCedis(r.expense)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-700/80">
+                          <span className="text-slate-400 font-bold">Net:</span>
+                          <span className={cn("font-mono font-black", net >= 0 ? "text-emerald-300" : "text-rose-300")}>
+                            {net >= 0 ? "+" : ""}{fmtCedis(net)}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Tooltip caret */}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Bars */}
+                <div className="flex items-end gap-0.5 sm:gap-1 w-full justify-center h-full px-0.5">
+                  {/* Income bar */}
+                  {r.income > 0 ? (
+                    <div
+                      className={cn(
+                        "w-1/2 max-w-[14px] rounded-t-md bg-emerald-500 transition-all duration-300 shadow-sm",
+                        isHovered && "bg-emerald-400 brightness-110"
+                      )}
+                      style={{ height: `${Math.max(4, incPct)}%` }}
+                    />
+                  ) : (
+                    <div className="w-1/2 max-w-[14px] flex justify-center pb-0.5">
+                      <div className="h-0.5 w-1.5 rounded-full bg-slate-200" />
+                    </div>
+                  )}
+
+                  {/* Expense bar */}
+                  {r.expense > 0 ? (
+                    <div
+                      className={cn(
+                        "w-1/2 max-w-[14px] rounded-t-md bg-rose-500 transition-all duration-300 shadow-sm",
+                        isHovered && "bg-rose-400 brightness-110"
+                      )}
+                      style={{ height: `${Math.max(4, expPct)}%` }}
+                    />
+                  ) : (
+                    <div className="w-1/2 max-w-[14px] flex justify-center pb-0.5">
+                      <div className="h-0.5 w-1.5 rounded-full bg-slate-200" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Month label */}
+                <span
+                  className={cn(
+                    "text-[9px] font-bold mt-2 transition-colors",
+                    isHovered ? "text-blue-700 font-black scale-105" : "text-slate-400"
+                  )}
+                >
+                  {formatMonthName(r.month)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -49,8 +49,10 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
       category: schema.member.category,
       akwaabaStatus: schema.member.akwaabaStatus,
       joinedAt: schema.member.joinedAt,
+      departmentName: schema.department.name,
     })
     .from(schema.member)
+    .leftJoin(schema.department, eq(schema.member.departmentId, schema.department.id))
     .where(
       and(
         eq(schema.member.churchId, church.id),
@@ -125,6 +127,7 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
                   <th className="py-2">Gender</th>
                   <th className="py-2">Contact</th>
                   <th className="py-2">Location</th>
+                  <th className="py-2">Department</th>
                   <th className="py-2">Invited By</th>
                   <th className="py-2 pr-2 text-right">Date Received</th>
                 </tr>
@@ -139,6 +142,7 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
                       {[person.phone, person.email].filter(Boolean).join(" · ") || "—"}
                     </td>
                     <td className="py-1.5 text-slate-600">{person.address ?? "—"}</td>
+                    <td className="py-1.5 text-slate-600">{person.departmentName ?? "—"}</td>
                     <td className="py-1.5 text-slate-600">{person.invitedBy ?? "—"}</td>
                     <td className="py-1.5 pr-2 text-right text-slate-600">
                       {person.joinedAt ? fmtDate(person.joinedAt) : "—"}

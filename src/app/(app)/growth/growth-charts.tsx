@@ -19,7 +19,7 @@ export function GrowthCharts({ data, hasMembers, hasMoney }: { data: Row[]; hasM
           <Tooltip {...tooltip} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           <Line type="monotone" dataKey="members" name="Total members" stroke="#1e3a8a" strokeWidth={3} dot={{ r: 3 }} />
-          <Line type="monotone" dataKey="joined" name="New visitors" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
+          <Line type="monotone" dataKey="joined" name="New members" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} />
         </LineChart>
       </Panel>
       <Panel title="Monthly Revenue" empty={!hasMoney && "No financial data available"}>

@@ -402,9 +402,8 @@ export function MemberProfileModal({
               </span>
             )}
             <span
-              className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight ${
-                member.active ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
-              }`}
+              className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight ${member.active ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                }`}
             >
               {member.active ? "Active" : "Inactive"}
             </span>
@@ -736,11 +735,11 @@ function MemberFormModal({ open, onClose, member, departments }: { open: boolean
           <TextField label="Phone Number" name="phone" type="tel" icon={Phone} placeholder="024XXXXXXX" defaultValue={member?.phone ?? ""} />
           <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue={member?.gender === "female" ? "Female" : "Male"} />
           <SelectField label="Ministry" name="category" options={MEMBER_CATEGORIES} defaultValue={member?.category ?? "General Member"} />
-          <SelectField 
-            label="Department" 
-            name="departmentId" 
-            options={[{label: "None", value: ""}, ...departments.map(d => ({label: d.name, value: d.id}))]} 
-            defaultValue={member?.departmentId ?? ""} 
+          <SelectField
+            label="Department"
+            name="departmentId"
+            options={[{ label: "None", value: "" }, ...departments.map(d => ({ label: d.name, value: d.id }))]}
+            defaultValue={member?.departmentId ?? ""}
           />
           <SelectField label="Baptism Status" name="baptized" options={["Not Baptized", "Baptized"]} defaultValue={member?.baptized ? "Baptized" : "Not Baptized"} />
           <SelectField label="Marital Status" name="maritalStatus" options={MARITAL_STATUSES} defaultValue={member?.maritalStatus ?? "Single"} />

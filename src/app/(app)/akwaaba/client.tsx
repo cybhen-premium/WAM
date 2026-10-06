@@ -85,7 +85,9 @@ export function PeriodDropdown({ currentPeriod, years }: { currentPeriod: string
   );
 }
 
-export function AkwaabaHeader({ printHref }: { printHref: string }) {
+export type DepartmentOption = { id: string; name: string };
+
+export function AkwaabaHeader({ printHref, departments = [] }: { printHref: string; departments?: DepartmentOption[] }) {
   const [adding, setAdding] = useState(false);
 
   return (
@@ -106,7 +108,7 @@ export function AkwaabaHeader({ printHref }: { printHref: string }) {
         <button onClick={() => setAdding(true)} className={buttonStyles.primary}>
           <Plus /> Register Person
         </button>
-        <PersonFormModal open={adding} onClose={() => setAdding(false)} />
+        <PersonFormModal open={adding} onClose={() => setAdding(false)} departments={departments} />
       </div>
     </div>
   );
@@ -175,7 +177,7 @@ export function AkwaabaFilters(props: {
 
 /* Per-row actions ---------------------------------------------------------- */
 
-export function PersonRowActions({ person }: { person: any }) {
+export function PersonRowActions({ person, departments = [] }: { person: any; departments?: DepartmentOption[] }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -228,14 +230,24 @@ export function PersonRowActions({ person }: { person: any }) {
           <Trash2 />
         </button>
       )}
-      <PersonFormModal open={editing} onClose={() => setEditing(false)} person={person} />
+      <PersonFormModal open={editing} onClose={() => setEditing(false)} person={person} departments={departments} />
     </div>
   );
 }
 
 /* Add / edit form ---------------------------------------------------------- */
 
-function PersonFormModal({ open, onClose, person }: { open: boolean; onClose: () => void; person?: any }) {
+function PersonFormModal({
+  open,
+  onClose,
+  person,
+  departments = [],
+}: {
+  open: boolean;
+  onClose: () => void;
+  person?: any;
+  departments?: DepartmentOption[];
+}) {
   const [state, action, pending] = useFormAction(registerPerson, onClose);
   const isEditing = !!person;
 
@@ -255,6 +267,12 @@ function PersonFormModal({ open, onClose, person }: { open: boolean; onClose: ()
           <TextField label="Phone Number" name="phone" type="tel" icon={Phone} placeholder="024XXXXXXX" defaultValue={person?.phone} />
           <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue={person?.gender || "Male"} />
           <SelectField label="Status (Visit or Join?)" name="status" options={["Visiting", "Staying"]} defaultValue={(person?.akwaabaStatus === "staying" || (!person?.akwaabaStatus && person?.category === "Regular Attendee")) ? "Staying" : "Visiting"} />
+          <SelectField
+            label="Department"
+            name="departmentId"
+            options={[{ label: "None", value: "" }, ...departments.map((d) => ({ label: d.name, value: d.id }))]}
+            defaultValue={person?.departmentId ?? ""}
+          />
           <TextField label="Who brought you?" name="invitedBy" placeholder="Name of inviter" defaultValue={person?.invitedBy} />
           <TextField className="sm:col-span-2" label="Residential Address" name="address" placeholder="House number, Street, Area" defaultValue={person?.address} />
         </div>
