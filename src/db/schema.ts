@@ -121,6 +121,10 @@ export const church = pgTable("church", {
   aiTone: text("ai_tone").notNull().default("Warm & Pastoral"),
   // Messaging credits
   smsCredits: integer("sms_credits").notNull().default(20),
+  // Welfare dues expected monthly target per member
+  welfareMonthlyTarget: numeric("welfare_monthly_target", { precision: 12, scale: 2 })
+    .notNull()
+    .default("20.00"),
   ownerId: text("owner_id")
     .notNull()
     .references(() => user.id),

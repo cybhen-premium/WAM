@@ -29,4 +29,5 @@ export const TITHE = "Tithe";
 export const WELFARE_DUES = "Welfare Dues";
 export const WELFARE_SUPPORT = "Welfare Support";
 export const WELFARE_CATEGORIES = [WELFARE_DUES, WELFARE_SUPPORT] as const;
+export const WELFARE_MONTHLY_TARGET = 20;
 

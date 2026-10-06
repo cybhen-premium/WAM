@@ -4,15 +4,13 @@ import { HandHeart, Heart, TrendingUp, Users, CheckCircle2, Wallet } from "lucid
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
-import { WelfareDuesToolbar, DuesActions, PeriodSelector, StatusBadge } from "./client";
+import { WelfareDuesToolbar, DuesActions, PeriodSelector, StatusBadge, DuesTargetSection } from "./client";
 import { WelfareOutTab } from "./welfare-out";
 import { requireModule } from "@/lib/permissions";
 import { inPeriod } from "@/lib/finance";
-import { WELFARE_SUPPORT } from "@/lib/constants";
+import { WELFARE_SUPPORT, WELFARE_MONTHLY_TARGET } from "@/lib/constants";
 
 export const metadata = { title: "Welfare Dues" };
-
-const MONTHLY_TARGET = 20;
 
 // Visitors and Regular Attendees are not full church members — exclude them from welfare dues
 const NON_MEMBER_CATEGORIES = ["Visitor", "Regular Attendee"];
@@ -27,6 +25,8 @@ export default async function WelfareDuesPage({ searchParams }: PageProps<"/welf
   await requireModule("care");
   const sp = await searchParams;
   const tab = TABS.find((t) => t.id === sp.tab)?.id ?? "contributions";
+
+  const monthlyTarget = parseFloat(church.welfareMonthlyTarget ?? "20.00") || WELFARE_MONTHLY_TARGET;
 
   // Determine period — e.g. "2026-09" (month) or "2026" (All Months = the whole year)
   const rawPeriod = typeof sp.period === "string" ? sp.period : new Date().toISOString().slice(0, 7);
@@ -56,6 +56,8 @@ export default async function WelfareDuesPage({ searchParams }: PageProps<"/welf
         </div>
       </div>
 
+      <DuesTargetSection currentTarget={monthlyTarget} />
+
       <nav className="grid w-full max-w-sm grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1.5">
         {TABS.map(({ id, label, icon: Icon }) => (
           <Link
@@ -79,6 +81,7 @@ export default async function WelfareDuesPage({ searchParams }: PageProps<"/welf
           periodFilter={periodFilter}
           rawPeriod={rawPeriod}
           isYear={isYear}
+          monthlyTarget={monthlyTarget}
         />
       )}
       {/* Welfare Out follows the same year/month selection as Contributions In. */}
@@ -93,12 +96,14 @@ async function ContributionsTab({
   periodFilter,
   rawPeriod,
   isYear,
+  monthlyTarget,
 }: {
   churchId: string;
   members: { id: string; fullName: string; category: string }[];
   periodFilter: string;
   rawPeriod: string;
   isYear: boolean;
+  monthlyTarget: number;
 }) {
   // Sum dues per member for the selected period
   const sums = await db
@@ -174,18 +179,18 @@ async function ContributionsTab({
 
   const netBalance = totalCollected - totalDisbursed;
 
-  // For year: 12 months × 20 GH₵ each
-  // For month: 20 GH₵ each
+  // For year: 12 months × monthlyTarget GH₵ each
+  // For month: monthlyTarget GH₵ each
   const memberCount = members.length;
-  const expectedTotal = isYear ? memberCount * MONTHLY_TARGET * 12 : memberCount * MONTHLY_TARGET;
+  const expectedTotal = isYear ? memberCount * monthlyTarget * 12 : memberCount * monthlyTarget;
   const totalPaidCount = isYear
-    ? members.filter((m) => (sumsMap.get(m.id) ?? 0) >= MONTHLY_TARGET * 12).length
-    : members.filter((m) => (sumsMap.get(m.id) ?? 0) >= MONTHLY_TARGET).length;
+    ? members.filter((m) => (sumsMap.get(m.id) ?? 0) >= monthlyTarget * 12).length
+    : members.filter((m) => (sumsMap.get(m.id) ?? 0) >= monthlyTarget).length;
 
   const paidMonths = isYear
     ? members.map((m) => {
         const paid = sumsMap.get(m.id) ?? 0;
-        return Math.floor(paid / MONTHLY_TARGET);
+        return Math.floor(paid / monthlyTarget);
       })
     : [];
 
@@ -198,7 +203,10 @@ async function ContributionsTab({
       {/* Period selector + toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <PeriodSelector current={rawPeriod} />
-        <WelfareDuesToolbar members={members.map((m) => ({ id: m.id, name: m.fullName }))} />
+        <WelfareDuesToolbar
+          members={members.map((m) => ({ id: m.id, name: m.fullName }))}
+          target={monthlyTarget}
+        />
       </div>
 
       {/* Summary cards */}
@@ -270,8 +278,8 @@ async function ContributionsTab({
             ) : (
               members.map((m) => {
                 const paid = sumsMap.get(m.id) ?? 0;
-                const target = isYear ? MONTHLY_TARGET * 12 : MONTHLY_TARGET;
-                const monthsPaid = isYear ? Math.min(12, Math.floor(paid / MONTHLY_TARGET)) : null;
+                const target = isYear ? monthlyTarget * 12 : monthlyTarget;
+                const monthsPaid = isYear ? Math.min(12, Math.floor(paid / monthlyTarget)) : null;
                 const progress = Math.min(100, Math.round((paid / target) * 100));
                 const memberDues = duesMap.get(m.id) ?? [];
                 const isPaid = paid >= target;
@@ -320,6 +328,7 @@ async function ContributionsTab({
                         memberName={m.fullName}
                         isPaid={isPaid}
                         dues={memberDues}
+                        target={monthlyTarget}
                       />
                     </td>
                   </tr>
