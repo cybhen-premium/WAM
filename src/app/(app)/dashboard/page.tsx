@@ -62,8 +62,14 @@ export default async function DashboardPage() {
       .where(eq(staff.churchId, church.id))
       .groupBy(staff.status),
     db
-      .select({ id: member.id, fullName: member.fullName, lastAttendedAt: member.lastAttendedAt })
+      .select({
+        id: member.id,
+        fullName: member.fullName,
+        lastAttendedAt: member.lastAttendedAt,
+        departmentName: schema.department.name,
+      })
       .from(member)
+      .leftJoin(schema.department, eq(member.departmentId, schema.department.id))
       .where(atRiskWhere(church))
       .orderBy(member.lastAttendedAt)
       .limit(6),
@@ -217,10 +223,19 @@ export default async function DashboardPage() {
               ) : (
                 atRisk.map((m) => (
                   <div key={m.id} className="flex items-center justify-between rounded-lg bg-white border border-orange-100 px-3 py-2">
-                    <span className="text-sm font-bold text-slate-800">
-                      {m.fullName}
+                    <div className="flex items-center gap-2 truncate pr-2">
+                      <span className="text-sm font-bold text-slate-800 truncate">
+                        {m.fullName}
+                      </span>
+                      {m.departmentName && (
+                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-black uppercase text-[#1e3a8a] shrink-0">
+                          {m.departmentName}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold uppercase text-orange-600 shrink-0">
+                      {m.lastAttendedAt ? `Last seen ${m.lastAttendedAt}` : "Not seen"}
                     </span>
-                    <span className="text-[10px] font-bold uppercase text-orange-600">Last seen {m.lastAttendedAt}</span>
                   </div>
                 ))
               )}

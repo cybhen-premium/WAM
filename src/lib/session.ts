@@ -65,7 +65,12 @@ export const getChurchForUser = cache(async (userId: string) => {
     const [row] = await retry(
       () =>
         db
-          .select({ church: schema.church, role: schema.staff.role, staffId: schema.staff.id })
+          .select({
+            church: schema.church,
+            role: schema.staff.role,
+            staffId: schema.staff.id,
+            departmentId: schema.staff.departmentId,
+          })
           .from(schema.staff)
           .innerJoin(schema.church, eq(schema.staff.churchId, schema.church.id))
           .where(and(eq(schema.staff.userId, userId), eq(schema.staff.status, "active")))
@@ -101,5 +106,5 @@ export async function requireChurch() {
       redirect("/login?status=deleted");
     }
   }
-  return { user, church: row.church, role: row.role };
+  return { user, church: row.church, role: row.role, staffId: row.staffId, departmentId: row.departmentId };
 }

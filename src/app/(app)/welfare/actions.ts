@@ -16,11 +16,17 @@ export async function saveAutomation(_prev: FormState, f: FormData): Promise<For
   const { church } = await requireChurch();
   const birthday = String(f.get("birthdayTemplate") ?? "").trim();
   const anniversary = String(f.get("anniversaryTemplate") ?? "").trim();
-  if (!birthday || !anniversary) return { error: "Both templates are required." };
+  const absence = String(f.get("absenceTemplate") ?? "").trim();
+  if (!birthday || !anniversary) return { error: "Both birthday and anniversary templates are required." };
 
   await db
     .update(schema.church)
-    .set({ automationEnabled: f.get("enabled") === "on", birthdayTemplate: birthday, anniversaryTemplate: anniversary })
+    .set({
+      automationEnabled: f.get("enabled") === "on",
+      birthdayTemplate: birthday,
+      anniversaryTemplate: anniversary,
+      ...(absence ? { absenceTemplate: absence } : {}),
+    })
     .where(eq(schema.church.id, church.id));
   revalidatePath("/welfare");
   logActivity({

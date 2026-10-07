@@ -115,6 +115,10 @@ export const church = pgTable("church", {
   anniversaryTemplate: text("anniversary_template")
     .notNull()
     .default("Happy wedding anniversary [Name]! May God continue to bless your home."),
+  // Automated warm message sent to members absent on Sunday
+  absenceTemplate: text("absence_template")
+    .notNull()
+    .default("Hello [Name], we missed you at church today! We prayed for you and look forward to seeing you next Sunday. Have a blessed week!"),
   // Pastoral AI preferences
   absenceThresholdWeeks: integer("absence_threshold_weeks").notNull().default(3),
   aiLanguage: text("ai_language").notNull().default("English"),
@@ -144,6 +148,7 @@ export const staff = pgTable(
       .notNull()
       .references(() => church.id, { onDelete: "cascade" }),
     userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    departmentId: uuid("department_id").references(() => department.id, { onDelete: "set null" }),
     email: text("email").notNull(),
     role: text("role").notNull().default("admin"),
     twoFactorMethod: text("two_factor_method").notNull().default("none"), // none | email | sms
@@ -394,16 +399,19 @@ export const attendance = pgTable(
     churchId: uuid("church_id")
       .notNull()
       .references(() => church.id, { onDelete: "cascade" }),
+    departmentId: uuid("department_id").references(() => department.id, { onDelete: "set null" }),
     memberId: uuid("member_id")
       .notNull()
       .references(() => member.id, { onDelete: "cascade" }),
     eventId: uuid("event_id").references(() => event.id, { onDelete: "set null" }),
     serviceDate: date("service_date").notNull(),
+    status: text("status").notNull().default("present"), // present | absent
+    notes: text("notes"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
     index("attendance_church_idx").on(t.churchId, t.serviceDate),
-    uniqueIndex("attendance_event_member_uq").on(t.eventId, t.memberId),
+    uniqueIndex("attendance_member_date_uq").on(t.memberId, t.serviceDate),
   ],
 );
 

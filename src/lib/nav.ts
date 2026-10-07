@@ -75,6 +75,15 @@ export const NAV_CATEGORIES: NavCategory[] = [
     ],
   },
   {
+    title: "DEPARTMENT",
+    entries: [
+      {
+        type: "item",
+        item: { href: "/department-portal", module: "department_portal", label: "Department Portal", icon: Building2 },
+      },
+    ],
+  },
+  {
     title: "FINANCE & GROWTH",
     entries: [
       {

@@ -6,6 +6,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
+import { hashPassword } from "better-auth/crypto";
 
 const { department } = schema;
 
@@ -56,4 +57,151 @@ export async function deleteDepartment(id: string) {
   });
   revalidatePath("/departments");
   revalidatePath("/members");
+}
+
+export async function assignDepartmentAccount(
+  _prev: FormState,
+  form: FormData,
+): Promise<FormState> {
+  await requireModule("members");
+  const { church, role } = await requireChurch();
+  if (role !== "admin") return { error: "Only admins can assign department accounts." };
+
+  const deptId = String(form.get("departmentId") ?? "").trim();
+  const emailRaw = String(form.get("email") ?? "").trim().toLowerCase();
+  const password = String(form.get("password") ?? "").trim();
+
+  if (!deptId) return { error: "Department is required." };
+  if (!emailRaw || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)) {
+    return { error: "Enter a valid email address." };
+  }
+
+  const [dept] = await db
+    .select()
+    .from(schema.department)
+    .where(and(eq(schema.department.id, deptId), eq(schema.department.churchId, church.id)))
+    .limit(1);
+  if (!dept) return { error: "Department not found." };
+
+  // Check if an existing staff account is already assigned to this department
+  const [existingDeptStaff] = await db
+    .select()
+    .from(schema.staff)
+    .where(and(eq(schema.staff.churchId, church.id), eq(schema.staff.departmentId, deptId)))
+    .limit(1);
+
+  if (existingDeptStaff) {
+    if (password) {
+      const hashed = await hashPassword(password);
+      if (existingDeptStaff.userId) {
+        await db
+          .update(schema.account)
+          .set({ password: hashed, updatedAt: new Date() })
+          .where(eq(schema.account.userId, existingDeptStaff.userId));
+      }
+    }
+    if (existingDeptStaff.email !== emailRaw) {
+      if (existingDeptStaff.userId) {
+        await db
+          .update(schema.user)
+          .set({ email: emailRaw, updatedAt: new Date() })
+          .where(eq(schema.user.id, existingDeptStaff.userId));
+      }
+      await db
+        .update(schema.staff)
+        .set({ email: emailRaw })
+        .where(eq(schema.staff.id, existingDeptStaff.id));
+    }
+    revalidatePath("/departments");
+    revalidatePath("/staffs");
+    return { ok: true };
+  }
+
+  // Create new user & staff account for this department
+  if (!password) return { error: "Password is required for new department account." };
+
+  const [existingUser] = await db
+    .select({ id: schema.user.id })
+    .from(schema.user)
+    .where(eq(schema.user.email, emailRaw))
+    .limit(1);
+  if (existingUser) return { error: "A user with that email already exists." };
+
+  const hashed = await hashPassword(password);
+  const userId = crypto.randomUUID().replace(/-/g, "");
+  const accountId = crypto.randomUUID().replace(/-/g, "");
+  const now = new Date();
+
+  await db.insert(schema.user).values({
+    id: userId,
+    name: `${dept.name} Lead`,
+    email: emailRaw,
+    emailVerified: true,
+    passwordChangeRequired: false,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await db.insert(schema.account).values({
+    id: accountId,
+    accountId: userId,
+    providerId: "credential",
+    userId,
+    password: hashed,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const [newStaff] = await db
+    .insert(schema.staff)
+    .values({
+      churchId: church.id,
+      userId,
+      email: emailRaw,
+      role: "Department Lead",
+      departmentId: dept.id,
+      status: "active",
+    })
+    .returning({ id: schema.staff.id });
+
+  // Assign department_portal module
+  await db.insert(schema.staffModule).values({
+    churchId: church.id,
+    staffId: newStaff.id,
+    module: "department_portal",
+  });
+
+  logActivity({
+    module: "departments",
+    actionCode: "department.account.create",
+    action: `Created department login account for "${dept.name}" (${emailRaw})`,
+    metadata: { departmentId: dept.id, email: emailRaw },
+  });
+
+  revalidatePath("/departments");
+  revalidatePath("/staffs");
+  return { ok: true };
+}
+
+export async function removeDepartmentAccount(deptId: string) {
+  await requireModule("members");
+  const { church, role } = await requireChurch();
+  if (role !== "admin") throw new Error("Only admins can manage department accounts.");
+
+  const [existing] = await db
+    .select()
+    .from(schema.staff)
+    .where(and(eq(schema.staff.churchId, church.id), eq(schema.staff.departmentId, deptId)))
+    .limit(1);
+
+  if (existing) {
+    if (existing.userId) {
+      await db.delete(schema.user).where(eq(schema.user.id, existing.userId));
+    } else {
+      await db.delete(schema.staff).where(eq(schema.staff.id, existing.id));
+    }
+  }
+
+  revalidatePath("/departments");
+  revalidatePath("/staffs");
 }

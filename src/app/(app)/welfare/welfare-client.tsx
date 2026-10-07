@@ -67,6 +67,7 @@ export function AutomationForm(props: {
   enabled: boolean;
   birthdayTemplate: string;
   anniversaryTemplate: string;
+  absenceTemplate: string;
   smsReady: boolean;
 }) {
   const [state, action, pending] = useFormAction(saveAutomation);
@@ -77,7 +78,7 @@ export function AutomationForm(props: {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-black text-slate-900">AI Delivery Engine</h2>
-          <p className="text-sm text-slate-500">Automatically dispatches messages at 8:00 AM daily.</p>
+          <p className="text-sm text-slate-500">Automatically dispatches daily celebrations & Sunday absentee care messages.</p>
           {!props.smsReady && (
             <p className="mt-1 text-xs font-bold text-amber-600">No SMS provider configured yet: messages will be logged as queued.</p>
           )}
@@ -109,6 +110,26 @@ export function AutomationForm(props: {
           />
         </div>
       ))}
+
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <label htmlFor="absenceTemplate" className="text-[10px] font-black uppercase tracking-widest text-blue-600">
+            Sunday Absentee Warm Message Template
+          </label>
+          <span className="text-[10px] font-bold text-slate-400">Use tag: [Name]</span>
+        </div>
+        <textarea
+          id="absenceTemplate"
+          name="absenceTemplate"
+          defaultValue={props.absenceTemplate}
+          rows={3}
+          required
+          className="w-full rounded-2xl bg-blue-50/40 border border-blue-100 p-4 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-blue-200"
+        />
+        <p className="mt-1.5 text-xs text-slate-400">
+          Automatically sent to members who did not come to church when department leads take Sunday attendance.
+        </p>
+      </div>
 
       <div className="flex items-center gap-4">
         <button type="submit" disabled={pending} className="h-12 rounded-2xl bg-[#1e3a8a] px-8 text-xs font-black uppercase tracking-widest text-white hover:bg-blue-900 disabled:opacity-60">

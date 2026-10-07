@@ -17,6 +17,9 @@ export const getMyPermissions = cache(async (): Promise<Permissions> => {
   if (!user) return new Set();
   const row = await getChurchForUser(user.id);
   if (!row) return new Set();
+  if (row.departmentId) {
+    return new Set<ModuleKey>(["department_portal"]);
+  }
   if (isSuperAdmin(row.role)) return "all";
 
   const rows = await db
@@ -48,6 +51,11 @@ export async function requirePath(pathname: string): Promise<void> {
  * were given — so nobody is dropped on a page they cannot access.
  */
 export async function landingHref(): Promise<string> {
+  const user = await getUser();
+  if (user) {
+    const row = await getChurchForUser(user.id);
+    if (row?.departmentId) return "/department-portal";
+  }
   if (await can("dashboard")) return "/dashboard";
   const perms = await getMyPermissions();
   if (perms === "all") return "/dashboard";

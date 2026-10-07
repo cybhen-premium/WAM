@@ -57,6 +57,10 @@ export default async function WelfarePage({ searchParams }: PageProps<"/welfare"
           enabled={church.automationEnabled}
           birthdayTemplate={church.birthdayTemplate}
           anniversaryTemplate={church.anniversaryTemplate}
+          absenceTemplate={
+            church.absenceTemplate ||
+            "Hello [Name], we missed you at church today! We prayed for you and look forward to seeing you next Sunday. Have a blessed week!"
+          }
           smsReady={await smsProviderConfigured()}
         />
       )}
@@ -132,8 +136,16 @@ function OverviewCard(props: {
 async function LostSheep({ church }: { church: Church }) {
   const [sheep, [{ volunteers }], [{ pending }], visits] = await Promise.all([
     db
-      .select({ id: member.id, fullName: member.fullName, phone: member.phone, lastAttendedAt: member.lastAttendedAt, category: member.category })
+      .select({
+        id: member.id,
+        fullName: member.fullName,
+        phone: member.phone,
+        lastAttendedAt: member.lastAttendedAt,
+        category: member.category,
+        departmentName: schema.department.name,
+      })
       .from(member)
+      .leftJoin(schema.department, eq(member.departmentId, schema.department.id))
       .where(atRiskWhere(church))
       .orderBy(asc(member.lastAttendedAt)),
     db.select({ volunteers: count() }).from(staff).where(and(eq(staff.churchId, church.id), eq(staff.status, "active"))),
@@ -159,7 +171,9 @@ async function LostSheep({ church }: { church: Church }) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-5 border-b border-slate-100">
           <div>
             <h2 className="text-lg font-black text-slate-900">Lost Sheep Registry</h2>
-            <p className="text-xs text-slate-500">Absent {church.absenceThresholdWeeks}+ weeks. Threshold is set in Settings → Preferences.</p>
+            <p className="text-xs text-slate-500">
+              Flagged as Risk Members: Absent {church.absenceThresholdWeeks}+ weeks within a month or recorded absent 3+ times.
+            </p>
           </div>
           {sheep.length > 0 && <ReachOutAllButton />}
         </div>
@@ -173,8 +187,18 @@ async function LostSheep({ church }: { church: Church }) {
             {sheep.map((m) => (
               <li key={m.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4">
                 <div>
-                  <p className="font-bold text-slate-900">{m.fullName}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-bold text-slate-900">{m.fullName}</p>
+                    {m.departmentName && (
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-black uppercase text-[#1e3a8a]">
+                        {m.departmentName}
+                      </span>
+                    )}
+                    <span className="rounded-full bg-red-50 px-2 py-0.5 text-[9px] font-black uppercase text-red-600">
+                      Risk Member (Missed 3+ weeks)
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
                     {m.category} · last seen {m.lastAttendedAt ? fmtDate(m.lastAttendedAt) : "never"}
                     {m.phone ? ` · ${m.phone}` : ""}
                   </p>

@@ -16,6 +16,7 @@ export const MODULES = {
   messaging: { label: "Messages & Announcements", routes: ["/message-center", "/announcements"] },
   staffs: { label: "Staffs", routes: ["/staffs"] },
   settings: { label: "Settings", routes: ["/settings"] },
+  department_portal: { label: "Department Portal", routes: ["/department-portal"] },
 } as const;
 
 export type ModuleKey = keyof typeof MODULES;
