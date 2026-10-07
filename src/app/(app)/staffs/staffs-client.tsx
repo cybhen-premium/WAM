@@ -3,7 +3,7 @@
 import React, { useState, useTransition, useActionState, useEffect } from "react";
 import {
   ArrowLeft, ArrowUpDown, BanIcon, Check, CheckCircle, ChevronDown,
-  Edit2, Eye, EyeOff, Filter, Plus, Search, Shield, Trash2, X, XCircle, Users
+  Edit2, Eye, EyeOff, Filter, Plus, Search, Shield, Trash2, X, XCircle, Users, Church
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MODULES, MODULE_KEYS } from "@/lib/modules";
@@ -19,13 +19,15 @@ function toUsername(name: string): string {
 /* --- Types -------------------------------------------------------------- */
 
 export type ActiveStaff = {
-  id: string; name: string; email: string; role: string;
+  id: string; userId?: string; name: string; email: string; role: string;
   joined: string; self: boolean; status: string; modules: string[];
   twoFactorMethod: string;
+  assignedBranches?: Array<{ id: string; name: string }>;
 };
 export type PendingStaff = {
-  id: string; email: string; role: string; invited: string; modules: string[];
+  id: string; userId?: string; email: string; role: string; invited: string; modules: string[];
   twoFactorMethod: string;
+  assignedBranches?: Array<{ id: string; name: string }>;
 };
 
 const DEFAULT_ROLES = ["Admin", "Finance", "SOB", "Akwaaba"];
@@ -143,7 +145,17 @@ function ModuleToggles({ staff, disabled }: { staff: { id: string; modules: stri
 /* ===========================================================================
    CREATE / EDIT STAFF VIEW — 2-step wizard
 =========================================================================== */
-function CreateStaffView({ onClose, initialData }: { onClose: () => void, initialData?: ActiveStaff | PendingStaff }) {
+function CreateStaffView({
+  onClose,
+  initialData,
+  availableBranches = [],
+  currentBranch,
+}: {
+  onClose: () => void;
+  initialData?: ActiveStaff | PendingStaff;
+  availableBranches?: Array<{ id: string; name: string }>;
+  currentBranch?: { id: string; name: string };
+}) {
   const isEditing = !!initialData;
   const [step, setStep] = useState<1 | 2>(1);
   const [showPass, setShowPass] = useState(false);
@@ -154,6 +166,13 @@ function CreateStaffView({ onClose, initialData }: { onClose: () => void, initia
   const [role, setRole] = useState<string>(initialData?.role || "Akwaaba");
   const [activate, setActivate] = useState(!initialData || (initialData as ActiveStaff).status === "active");
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set(initialData?.modules || []));
+
+  const [selectedBranches, setSelectedBranches] = useState<Set<string>>(() => {
+    if (initialData?.assignedBranches && initialData.assignedBranches.length > 0) {
+      return new Set(initialData.assignedBranches.map((b) => b.id));
+    }
+    return new Set(currentBranch ? [currentBranch.id] : (availableBranches[0] ? [availableBranches[0].id] : []));
+  });
 
   // Auto-generate username from full name
   useEffect(() => { 
@@ -177,7 +196,7 @@ function CreateStaffView({ onClose, initialData }: { onClose: () => void, initia
   function selectAll() { setSelectedModules(new Set(MODULE_KEYS)); }
   function clearAll() { setSelectedModules(new Set()); }
 
-  const step1Valid = fullName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const step1Valid = fullName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && selectedBranches.size > 0;
 
   return (
     <div className="w-full max-w-2xl mx-auto rounded-3xl bg-[#F5F7FB] shadow-md border border-slate-100 animate-in fade-in zoom-in-95 duration-300">
@@ -223,6 +242,10 @@ function CreateStaffView({ onClose, initialData }: { onClose: () => void, initia
           <input type="hidden" name="email"    value={email} />
           <input type="hidden" name="password" value={password} />
           <input type="hidden" name="role"     value={role} />
+          {/* Branch assignments */}
+          {[...selectedBranches].map((bId) => (
+            <input key={bId} type="hidden" name="branchIds" value={bId} />
+          ))}
           {/* Temporary Password & Activate */}
           {!isEditing && activate && <input type="hidden" name="activate" value="on" />}
           {[...selectedModules].map((m) => (
@@ -262,6 +285,91 @@ function CreateStaffView({ onClose, initialData }: { onClose: () => void, initia
                   className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all"
                 />
               </label>
+
+              {/* Branch Assignment */}
+              {availableBranches.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="block text-sm font-bold text-slate-700">
+                      Branch Sanctuary Access <span className="text-red-500">*</span>
+                    </span>
+                    {availableBranches.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedBranches.size === availableBranches.length) {
+                            setSelectedBranches(
+                              new Set(currentBranch ? [currentBranch.id] : [availableBranches[0].id])
+                            );
+                          } else {
+                            setSelectedBranches(new Set(availableBranches.map((b) => b.id)));
+                          }
+                        }}
+                        className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        {selectedBranches.size === availableBranches.length
+                          ? "Reset to Current"
+                          : "Select All Branches"}
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {availableBranches.map((b) => {
+                      const isChecked = selectedBranches.has(b.id);
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedBranches((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(b.id)) {
+                                if (next.size > 1) next.delete(b.id); // At least 1 branch
+                              } else {
+                                next.add(b.id);
+                              }
+                              return next;
+                            });
+                          }}
+                          className={cn(
+                            "flex items-center justify-between gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer",
+                            isChecked
+                              ? "border-blue-500 bg-blue-50/70 text-blue-950 font-bold"
+                              : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className={cn(
+                                "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs",
+                                isChecked ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+                              )}
+                            >
+                              <Church className="h-3.5 w-3.5" />
+                            </div>
+                            <span className="text-xs font-bold truncate">
+                              {b.name.replace("World Ark Missions - ", "")}
+                            </span>
+                          </div>
+                          <div
+                            className={cn(
+                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all",
+                              isChecked
+                                ? "border-blue-600 bg-blue-600 text-white"
+                                : "border-slate-300 bg-white"
+                            )}
+                          >
+                            {isChecked && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    User will be granted access to login into the selected branch sanctuaries.
+                  </p>
+                </div>
+              )}
 
               {/* Role */}
               <label className="block">
@@ -414,11 +522,17 @@ function CreateStaffView({ onClose, initialData }: { onClose: () => void, initia
    MAIN STAFFS CLIENT
 =========================================================================== */
 export function StaffsClient({
-  isAdmin, active, pending,
+  isAdmin,
+  active,
+  pending,
+  availableBranches = [],
+  currentBranch,
 }: {
   isAdmin: boolean;
   active: ActiveStaff[];
   pending: PendingStaff[];
+  availableBranches?: Array<{ id: string; name: string }>;
+  currentBranch?: { id: string; name: string };
 }) {
   const [busy, startTransition] = useTransition();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -435,9 +549,17 @@ export function StaffsClient({
   const allStaff = [
     ...active,
     ...pending.map((p) => ({
-      id: p.id, name: p.email.split("@")[0], email: p.email,
-      role: p.role, joined: p.invited, self: false,
-      status: "pending", modules: p.modules, twoFactorMethod: p.twoFactorMethod,
+      id: p.id,
+      userId: p.userId,
+      name: p.email.split("@")[0],
+      email: p.email,
+      role: p.role,
+      joined: p.invited,
+      self: false,
+      status: "pending",
+      modules: p.modules,
+      twoFactorMethod: p.twoFactorMethod,
+      assignedBranches: p.assignedBranches,
     })),
   ];
 
@@ -472,7 +594,14 @@ export function StaffsClient({
 
   if (showCreate || editingStaffId) {
     const editData = editingStaffId ? allStaff.find(s => s.id === editingStaffId) : undefined;
-    return <CreateStaffView onClose={() => { setShowCreate(false); setEditingStaffId(null); }} initialData={editData} />;
+    return (
+      <CreateStaffView
+        onClose={() => { setShowCreate(false); setEditingStaffId(null); }}
+        initialData={editData}
+        availableBranches={availableBranches}
+        currentBranch={currentBranch}
+      />
+    );
   }
 
   return (
@@ -556,9 +685,9 @@ export function StaffsClient({
                       <input type="checkbox" checked={allChecked} onChange={toggleAll}
                         className="h-4 w-4 rounded border-slate-300 accent-blue-600 cursor-pointer" />
                     </th>
-                    {["Staff Info", "Access Level", "2FA", "Status", "Joined", "Actions"].map((h, i) => (
+                    {["Staff Info", "Branch Access", "Access Level", "2FA", "Status", "Joined", "Actions"].map((h, i) => (
                       <th key={h} className={cn("py-3 pr-4 text-[10px] font-black uppercase tracking-widest text-slate-400",
-                        i === 5 ? "text-right pr-5" : "text-left")}>{h}</th>
+                        i === 6 ? "text-right pr-5" : "text-left")}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -582,6 +711,27 @@ export function StaffsClient({
                               </p>
                               <p className="text-xs text-slate-500 mt-0.5">{s.email}</p>
                             </div>
+                          </div>
+                        </td>
+
+                        {/* Branch Access */}
+                        <td className="py-4 pr-4">
+                          <div className="flex flex-wrap gap-1 max-w-[200px]">
+                            {s.assignedBranches && s.assignedBranches.length > 0 ? (
+                              s.assignedBranches.map((b) => (
+                                <span
+                                  key={b.id}
+                                  className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700"
+                                >
+                                  <Church className="h-3 w-3 text-amber-600 shrink-0" />
+                                  <span className="truncate max-w-[120px]">
+                                    {b.name.replace("World Ark Missions - ", "")}
+                                  </span>
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-slate-400">Current Branch</span>
+                            )}
                           </div>
                         </td>
 

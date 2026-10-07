@@ -46,64 +46,97 @@ export async function createStaff(
   const role     = roleRaw || "Secretary";
   const activateNow = f.get("activate") === "on";
   const modulesRaw  = f.getAll("modules") as string[];
+  const branchIdsRaw = f.getAll("branchIds") as string[];
+  const targetBranchIds = branchIdsRaw.length > 0 ? branchIdsRaw : [c.id];
 
   if (!name)   return { error: "Full name is required." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw))
     return { error: "Enter a valid email address." };
 
-  // Duplicate checks
+  // Check if user already exists
   const [existingUser] = await db
-    .select({ id: user.id }).from(user)
-    .where(eq(user.email, emailRaw)).limit(1);
-  if (existingUser) return { error: "A user with that email already exists." };
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.email, emailRaw))
+    .limit(1);
 
-  const [existingStaff] = await db
-    .select({ id: staff.id }).from(staff)
-    .where(and(eq(staff.churchId, c.id), eq(staff.email, emailRaw))).limit(1);
-  if (existingStaff) return { error: "A staff record with that email already exists." };
+  // Check which of the target branches this user is already in
+  const existingStaffRows = await db
+    .select({ churchId: staff.churchId })
+    .from(staff)
+    .where(eq(staff.email, emailRaw));
 
-  // Hash password using Better Auth's own scrypt hasher
-  const hashed = await hashPassword(password);
+  const existingChurchIds = new Set(existingStaffRows.map((r) => r.churchId));
+  const newChurchIds = targetBranchIds.filter((cid) => !existingChurchIds.has(cid));
 
-  const userId    = crypto.randomUUID().replace(/-/g, "");
-  const accountId = crypto.randomUUID().replace(/-/g, "");
-  const now = new Date();
+  if (newChurchIds.length === 0) {
+    return { error: "A staff record with that email already exists in the selected branch(es)." };
+  }
 
-  await db.insert(user).values({
-    id: userId, name: username, email: emailRaw,
-    emailVerified: true, passwordChangeRequired: true, createdAt: now, updatedAt: now,
-  });
+  let finalUserId = existingUser?.id;
 
-  await db.insert(account).values({
-    id: accountId, accountId: userId,
-    providerId: "credential", userId,
-    password: hashed, createdAt: now, updatedAt: now,
-  });
+  if (!finalUserId) {
+    // Hash password using Better Auth's own scrypt hasher
+    const hashed = await hashPassword(password);
+    finalUserId = crypto.randomUUID().replace(/-/g, "");
+    const accountId = crypto.randomUUID().replace(/-/g, "");
+    const now = new Date();
 
-  const [newStaff] = await db.insert(staff).values({
-    churchId: c.id, userId, email: emailRaw,
-    role, status: activateNow ? "active" : "pending",
-  }).returning({ id: staff.id });
+    await db.insert(user).values({
+      id: finalUserId,
+      name: username,
+      email: emailRaw,
+      emailVerified: true,
+      passwordChangeRequired: true,
+      createdAt: now,
+      updatedAt: now,
+    });
 
-  // Assign modules (non-admins)
-  if (role !== "admin" && modulesRaw.length > 0) {
-    const wanted = MODULE_KEYS.filter((k) => modulesRaw.includes(k));
-    if (wanted.length > 0) {
-      await db.insert(staffModule).values(
-        wanted.map((module) => ({ churchId: c.id, staffId: newStaff.id, module })),
-      );
+    await db.insert(account).values({
+      id: accountId,
+      accountId: finalUserId,
+      providerId: "credential",
+      userId: finalUserId,
+      password: hashed,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  let firstNewStaffId = "";
+
+  for (const branchId of newChurchIds) {
+    const [newStaff] = await db.insert(staff).values({
+      churchId: branchId,
+      userId: finalUserId,
+      email: emailRaw,
+      role,
+      status: activateNow ? "active" : "pending",
+    }).returning({ id: staff.id });
+
+    if (!firstNewStaffId) firstNewStaffId = newStaff.id;
+
+    // Assign modules (non-admins)
+    if (role !== "admin" && modulesRaw.length > 0) {
+      const wanted = MODULE_KEYS.filter((k) => modulesRaw.includes(k));
+      if (wanted.length > 0) {
+        await db.insert(staffModule).values(
+          wanted.map((module) => ({ churchId: branchId, staffId: newStaff.id, module })),
+        );
+      }
     }
   }
+
   logActivity({
     module: "staffs",
     actionCode: "user.create",
     action: `Created new user ${username || name}`,
-    metadata: { staffId: newStaff.id, email: emailRaw, role, status: activateNow ? "active" : "pending" },
+    metadata: { staffId: firstNewStaffId, email: emailRaw, role, status: activateNow ? "active" : "pending" },
   });
 
   revalidatePath("/staffs");
   revalidatePath("/", "layout");
-  return { ok: true, staffId: newStaff.id };
+  return { ok: true, staffId: firstNewStaffId };
 }
 
 export async function updateStaff(

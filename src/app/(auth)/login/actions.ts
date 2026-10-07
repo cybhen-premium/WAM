@@ -1,11 +1,11 @@
 "use server";
 
-import { requireUser, getChurchForUser } from "@/lib/session";
+import { requireUser, getChurchForUser, getUserBranches } from "@/lib/session";
 import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "better-auth/crypto";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 
@@ -63,10 +63,40 @@ export async function checkLoginStatus() {
       (staffRow && staffRow.twoFactorMethod !== "none" && !user.twoFactorEnabled) ||
       (ownerTwoFactorMethod !== null && ownerTwoFactorMethod !== "none" && !user.twoFactorEnabled);
 
-    return { status, missingTwoFactorSetup };
+    // Fetch accessible branches for this user
+    const branches = await getUserBranches(user.id);
+
+    return {
+      status,
+      missingTwoFactorSetup,
+      branches: branches.map((b) => ({
+        id: b.church.id,
+        name: b.church.name,
+        role: b.role,
+      })),
+    };
   } catch {
-    return { status: "error", missingTwoFactorSetup: false };
+    return { status: "error", missingTwoFactorSetup: false, branches: [] };
   }
+}
+
+export async function selectBranchForSession(branchId: string) {
+  const user = await requireUser();
+  const branches = await getUserBranches(user.id);
+  const match = branches.find((b) => b.church.id === branchId);
+  if (!match) {
+    return { ok: false, error: "You do not have access to this branch." };
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set("active_branch_id", branchId, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30, // 30 days
+    sameSite: "lax",
+    httpOnly: false,
+  });
+
+  return { ok: true, branchId, branchName: match.church.name };
 }
 
 export async function forcePasswordChange(password: string) {

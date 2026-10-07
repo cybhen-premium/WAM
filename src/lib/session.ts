@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
@@ -59,10 +59,18 @@ export async function requireUser() {
   return user;
 }
 
-/** The church the signed-in user works in, or null if they haven't set one up. */
-export const getChurchForUser = cache(async (userId: string) => {
+export type UserBranchInfo = {
+  church: typeof schema.church.$inferSelect;
+  role: string;
+  staffId: string;
+  departmentId: string | null;
+  status: string;
+};
+
+/** All active branches the signed-in user is assigned to. */
+export const getUserBranches = cache(async (userId: string): Promise<UserBranchInfo[]> => {
   try {
-    const [row] = await retry(
+    const rows = await retry(
       () =>
         db
           .select({
@@ -70,15 +78,65 @@ export const getChurchForUser = cache(async (userId: string) => {
             role: schema.staff.role,
             staffId: schema.staff.id,
             departmentId: schema.staff.departmentId,
+            status: schema.staff.status,
           })
           .from(schema.staff)
           .innerJoin(schema.church, eq(schema.staff.churchId, schema.church.id))
-          .where(and(eq(schema.staff.userId, userId), eq(schema.staff.status, "active")))
-          .limit(1),
+          .where(and(eq(schema.staff.userId, userId), eq(schema.staff.status, "active"))),
       undefined,
       4,
     );
-    return row ?? null;
+
+    // If no staff row was found, check if the user is a church owner (superadmin)
+    if (rows.length === 0) {
+      const ownedChurches = await retry(
+        () =>
+          db
+            .select()
+            .from(schema.church)
+            .where(eq(schema.church.ownerId, userId)),
+        undefined,
+        4,
+      );
+      if (ownedChurches.length > 0) {
+        return ownedChurches.map((c) => ({
+          church: c,
+          role: "admin",
+          staffId: "",
+          departmentId: null,
+          status: "active",
+        }));
+      }
+    }
+
+    return rows;
+  } catch (err) {
+    console.error("[Session] Error fetching user branches:", err);
+    return [];
+  }
+});
+
+/** The church the signed-in user is currently working with, or null if they haven't set one up. */
+export const getChurchForUser = cache(async (userId: string) => {
+  try {
+    const branches = await getUserBranches(userId);
+    if (!branches || branches.length === 0) return null;
+
+    let activeBranchId: string | undefined;
+    try {
+      const cookieStore = await cookies();
+      activeBranchId = cookieStore.get("active_branch_id")?.value;
+    } catch {
+      // In contexts without cookies
+    }
+
+    if (activeBranchId) {
+      const matched = branches.find((b) => b.church.id === activeBranchId);
+      if (matched) return matched;
+    }
+
+    // Default to first active branch
+    return branches[0];
   } catch (err) {
     console.error("[Session] Error fetching church for user:", err);
     return null;
@@ -106,5 +164,19 @@ export async function requireChurch() {
       redirect("/login?status=deleted");
     }
   }
-  return { user, church: row.church, role: row.role, staffId: row.staffId, departmentId: row.departmentId };
+
+  const allBranches = await getUserBranches(user.id);
+
+  return {
+    user,
+    church: row.church,
+    role: row.role,
+    staffId: row.staffId,
+    departmentId: row.departmentId,
+    availableBranches: allBranches.map((b) => ({
+      id: b.church.id,
+      name: b.church.name,
+      role: b.role,
+    })),
+  };
 }
