@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTablePagination } from "@/components/table-pagination";
 
 export type HistoryRow = {
   memberId: string;
@@ -20,6 +21,14 @@ export type HistoryRow = {
 export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
   const [hidden, setHidden] = useState<string[]>([]);
   const visible = rows.filter((r) => !hidden.includes(r.memberId));
+
+  const {
+    paginatedItems,
+    Pagination,
+  } = useTablePagination({
+    items: visible,
+    initialPageSize: 50,
+  });
 
   return (
     <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
@@ -38,7 +47,7 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {visible.map((r) => (
+            {paginatedItems.map((r) => (
               <tr key={r.memberId} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
                 <td className="px-4 pl-8 py-3">
                   <p className="font-bold text-slate-900">{r.fullName}</p>
@@ -70,6 +79,7 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
           </tbody>
         </table>
       </div>
+      {Pagination}
 
       {hidden.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/50 px-4 py-3">

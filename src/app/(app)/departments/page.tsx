@@ -3,6 +3,7 @@ import { Users, KeyRound, ExternalLink, CheckCircle2, Clock, Calendar } from "lu
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { DepartmentToolbar, DepartmentRowActions } from "./client";
+import { TablePagination } from "@/components/table-pagination";
 import { requireModule } from "@/lib/permissions";
 import Link from "next/link";
 
@@ -16,9 +17,12 @@ function getRecentSunday(): string {
   return d.toISOString().slice(0, 10);
 }
 
-export default async function DepartmentsPage() {
+export default async function DepartmentsPage({ searchParams }: PageProps<"/departments">) {
   const { church, role } = await requireChurch();
   await requireModule("members");
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp?.page) || 1);
+  const pageSize = Math.max(1, Number(sp?.pageSize) || 50);
 
   const recentSunday = getRecentSunday();
 
@@ -180,7 +184,7 @@ export default async function DepartmentsPage() {
                 </td>
               </tr>
             ) : (
-              rows.map((d) => {
+              rows.slice((page - 1) * pageSize, page * pageSize).map((d) => {
                 const memberCount = countMap.get(d.id) ?? 0;
                 const assignedStaff = staffMap.get(d.id);
                 const attendanceStatus = sundayMap.get(d.id);
@@ -247,6 +251,12 @@ export default async function DepartmentsPage() {
             )}
           </tbody>
         </table>
+        <TablePagination
+          currentPage={page}
+          totalItems={rows.length}
+          pageSize={pageSize}
+          useUrlParams={true}
+        />
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { MembersToolbar, MemberFilters, MemberRowActions, MemberProfileCell } from "./members-client";
 import { requireModule } from "@/lib/permissions";
+import { TablePagination } from "@/components/table-pagination";
 
 export const metadata = { title: "Members Directory" };
 
@@ -17,6 +18,8 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
   const group = typeof sp.group === "string" ? sp.group : "";
   const departmentId = typeof sp.departmentId === "string" ? sp.departmentId : "";
   const status = sp.status === "inactive" ? "inactive" : "active";
+  const page = Math.max(1, Number(sp.page) || 1);
+  const pageSize = Math.max(10, Number(sp.pageSize) || 50);
 
   const filters: (SQL | undefined)[] = [
     eq(member.churchId, church.id),
@@ -31,14 +34,15 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
     filters.push(or(ilike(member.fullName, like), ilike(member.phone, like), ilike(member.occupation, like)));
   }
 
-  const [rows, counts, departments] = await Promise.all([
+  const [rows, counts, departments, [totalFiltered]] = await Promise.all([
     db
       .select({ member, department: schema.department })
       .from(member)
       .leftJoin(schema.department, eq(member.departmentId, schema.department.id))
       .where(and(...filters))
       .orderBy(asc(member.fullName))
-      .limit(500),
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
     db
       .select({ active: member.active, n: count() })
       .from(member)
@@ -49,9 +53,14 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
       .from(schema.department)
       .where(eq(schema.department.churchId, church.id))
       .orderBy(asc(schema.department.name)),
+    db
+      .select({ total: count() })
+      .from(member)
+      .where(and(...filters)),
   ]);
   const activeCount = counts.find((c) => c.active)?.n ?? 0;
   const inactiveCount = counts.find((c) => !c.active)?.n ?? 0;
+  const totalFilteredCount = totalFiltered?.total ?? 0;
 
   return (
     <div className="space-y-5 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
@@ -140,6 +149,13 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
             )}
           </tbody>
         </table>
+        <TablePagination
+          currentPage={page}
+          totalItems={totalFilteredCount}
+          pageSize={pageSize}
+          pageSizeOptions={[10, 25, 50, 100]}
+          useUrlParams={true}
+        />
       </div>
     </div>
   );

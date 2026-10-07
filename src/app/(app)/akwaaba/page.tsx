@@ -5,6 +5,7 @@ import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { AkwaabaHeader, AkwaabaFilters, PersonRowActions } from "./client";
 import { requireModule } from "@/lib/permissions";
+import { TablePagination } from "@/components/table-pagination";
 
 export const metadata = { title: "Akwaaba - Reception" };
 
@@ -14,6 +15,8 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const status = typeof sp.status === "string" ? sp.status : "";
+  const page = Math.max(1, Number(sp.page) || 1);
+  const pageSize = Math.max(10, Number(sp.pageSize) || 50);
 
   // Year the cards fall back to when ?period is missing/invalid.
   const currentYear = String(new Date().getFullYear());
@@ -81,13 +84,14 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   ];
 
   // Years with at least one registration (year dropdown options)
-  const [rows, counts, yearRows, departments] = await Promise.all([
+  const [rows, counts, yearRows, departments, [totalFiltered]] = await Promise.all([
     db
       .select()
       .from(schema.member)
       .where(and(...tableFilters))
       .orderBy(asc(schema.member.fullName))
-      .limit(500),
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
     db
       .select({
         category: schema.member.category,
@@ -117,7 +121,13 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
       .from(schema.department)
       .where(eq(schema.department.churchId, church.id))
       .orderBy(asc(schema.department.name)),
+    db
+      .select({ total: count() })
+      .from(schema.member)
+      .where(and(...tableFilters)),
   ]);
+
+  const totalFilteredCount = totalFiltered?.total ?? 0;
 
   const years = [...new Set(yearRows.map((r) => r.year).filter(Boolean))].sort().reverse();
   if (!years.includes(currentYear)) years.unshift(currentYear);
@@ -280,6 +290,13 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
             )}
           </tbody>
         </table>
+        <TablePagination
+          currentPage={page}
+          totalItems={totalFilteredCount}
+          pageSize={pageSize}
+          pageSizeOptions={[10, 25, 50, 100]}
+          useUrlParams={true}
+        />
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import {
   RecordWelfareButton,
 } from "./finance-client";
 import { DeleteButton, SearchBox } from "@/components/controls";
+import { TablePagination } from "@/components/table-pagination";
 import { deleteProject, deleteTransaction } from "./actions";
 
 const { transaction, member, projectFund } = schema;
@@ -38,18 +39,41 @@ function Stat({ label, value, hint, tone = "text-slate-900" }: { label: string; 
 
 /* General ------------------------------------------------------------------ */
 
-export async function GeneralTab({ churchId, period, q }: { churchId: string; period: Period; q: string }) {
+export async function GeneralTab({
+  churchId,
+  period,
+  q,
+  page = 1,
+  pageSize = 50,
+}: {
+  churchId: string;
+  period: Period;
+  q: string;
+  page?: number;
+  pageSize?: number;
+}) {
   const like = `%${q}%`;
-  const rows = await db
-    .select({
-      t: transaction,
-      memberName: member.fullName,
-    })
-    .from(transaction)
-    .leftJoin(member, eq(member.id, transaction.memberId))
-    .where(and(inPeriod(churchId, period), notInArray(transaction.category, [...WELFARE_CATEGORIES]), q ? or(ilike(transaction.category, like), ilike(transaction.description, like)) : undefined))
-    .orderBy(desc(transaction.occurredOn), desc(transaction.createdAt))
-    .limit(200);
+  const where = and(
+    inPeriod(churchId, period),
+    notInArray(transaction.category, [...WELFARE_CATEGORIES]),
+    q ? or(ilike(transaction.category, like), ilike(transaction.description, like)) : undefined,
+  );
+
+  const [totalCountResult, rows] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(transaction).where(where),
+    db
+      .select({
+        t: transaction,
+        memberName: member.fullName,
+      })
+      .from(transaction)
+      .leftJoin(member, eq(member.id, transaction.memberId))
+      .where(where)
+      .orderBy(desc(transaction.occurredOn), desc(transaction.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+  ]);
+  const totalItems = Number(totalCountResult[0]?.count ?? 0);
 
   return (
     <div>
@@ -101,6 +125,12 @@ export async function GeneralTab({ churchId, period, q }: { churchId: string; pe
               ))}
             </tbody>
           </table>
+          <TablePagination
+            currentPage={page}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            useUrlParams={true}
+          />
         </div>
       )}
     </div>
@@ -350,25 +380,44 @@ export async function AnalyticsTab({ churchId }: { churchId: string }) {
 
 /* Receipts ----------------------------------------------------------------- */
 
-export async function ReceiptsTab({ churchId, period, category }: { churchId: string; period: Period; category: string }) {
+export async function ReceiptsTab({
+  churchId,
+  period,
+  category,
+  page = 1,
+  pageSize = 50,
+}: {
+  churchId: string;
+  period: Period;
+  category: string;
+  page?: number;
+  pageSize?: number;
+}) {
   const base = and(inPeriod(churchId, period), eq(transaction.type, "income"), isNotNull(transaction.receiptNo), notInArray(transaction.category, [...WELFARE_CATEGORIES]));
-  const [rows, cats] = await Promise.all([
+  const where = and(base, category ? eq(transaction.category, category) : undefined);
+  const [totalResult, rows, cats] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)`, total: sumAmount })
+      .from(transaction)
+      .where(where),
     db
       .select({ t: transaction, memberName: member.fullName })
       .from(transaction)
       .leftJoin(member, eq(member.id, transaction.memberId))
-      .where(and(base, category ? eq(transaction.category, category) : undefined))
+      .where(where)
       .orderBy(desc(transaction.receiptNo))
-      .limit(300),
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
     db.selectDistinct({ category: transaction.category }).from(transaction).where(base),
   ]);
-  const total = rows.reduce((a, r) => a + Number(r.t.amount), 0);
+  const totalItems = Number(totalResult[0]?.count ?? 0);
+  const total = Number(totalResult[0]?.total ?? 0);
 
   return (
     <div className="p-4 md:p-6 space-y-5">
       <ReceiptTypeFilter categories={cats.map((c) => c.category)} value={category} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Stat label="Total Receipts" value={rows.length} />
+        <Stat label="Total Receipts" value={totalItems} />
         <Stat label="Total Amount" value={cedis(total)} tone="text-green-600" />
         <Stat label="Categories" value={`${cats.length} Active`} />
       </div>
@@ -377,32 +426,40 @@ export async function ReceiptsTab({ churchId, period, category }: { churchId: st
         {rows.length === 0 ? (
           <Empty>No receipts found matching criteria</Empty>
         ) : (
-          <table className="w-full min-w-[620px] text-sm mt-2">
-            <thead>
-              <tr>
-                <th className={cn(TH, "pl-5")}>Receipt #</th>
-                <th className={TH}>Date</th>
-                <th className={TH}>Member</th>
-                <th className={TH}>Category</th>
-                <th className={cn(TH, "text-right")}>Amount</th>
-                <th className={cn(TH, "pr-5 text-right")}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ t, memberName }) => (
-                <tr key={t.id} className="border-t border-slate-50">
-                  <td className={cn(TD, "pl-5 font-mono text-xs font-bold text-slate-700")}>{receiptLabel(t.receiptNo)}</td>
-                  <td className={cn(TD, "text-xs text-slate-500")}>{fmtDate(t.occurredOn)}</td>
-                  <td className={cn(TD, "text-slate-700")}>{memberName ?? "Anonymous"}</td>
-                  <td className={cn(TD, "text-xs font-bold text-slate-500")}>{t.category}</td>
-                  <td className={cn(TD, "text-right font-black text-green-600")}>{cedis(t.amount)}</td>
-                  <td className={cn(TD, "pr-5 text-right")}>
-                    <PrintReceiptLink id={t.id} />
-                  </td>
+          <>
+            <table className="w-full min-w-[620px] text-sm mt-2">
+              <thead>
+                <tr>
+                  <th className={cn(TH, "pl-5")}>Receipt #</th>
+                  <th className={TH}>Date</th>
+                  <th className={TH}>Member</th>
+                  <th className={TH}>Category</th>
+                  <th className={cn(TH, "text-right")}>Amount</th>
+                  <th className={cn(TH, "pr-5 text-right")}>Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map(({ t, memberName }) => (
+                  <tr key={t.id} className="border-t border-slate-50">
+                    <td className={cn(TD, "pl-5 font-mono text-xs font-bold text-slate-700")}>{receiptLabel(t.receiptNo)}</td>
+                    <td className={cn(TD, "text-xs text-slate-500")}>{fmtDate(t.occurredOn)}</td>
+                    <td className={cn(TD, "text-slate-700")}>{memberName ?? "Anonymous"}</td>
+                    <td className={cn(TD, "text-xs font-bold text-slate-500")}>{t.category}</td>
+                    <td className={cn(TD, "text-right font-black text-green-600")}>{cedis(t.amount)}</td>
+                    <td className={cn(TD, "pr-5 text-right")}>
+                      <PrintReceiptLink id={t.id} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <TablePagination
+              currentPage={page}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              useUrlParams={true}
+            />
+          </>
         )}
       </div>
     </div>

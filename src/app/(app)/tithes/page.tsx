@@ -6,6 +6,7 @@ import { cedis } from "@/lib/utils";
 import { weekColumns } from "@/lib/weeks";
 import { TithesToolbar, TithePeriodDropdown, TitheActions, TitheSearch } from "./client";
 import { requireModule } from "@/lib/permissions";
+import { TablePagination } from "@/components/table-pagination";
 
 export const metadata = { title: "Tithes Tracker" };
 
@@ -51,6 +52,9 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
   const { church } = await requireChurch();
   await requireModule("tithes");
   const sp = await searchParams;
+
+  const page = Math.max(1, Number(sp.page) || 1);
+  const pageSize = Math.max(10, Number(sp.pageSize) || 50);
 
   // Period — "YYYY" (whole year) or "YYYY-MM" (single month), defaulting to the current year.
   // One combo box drives the whole page: the summary cards, the member list and the print report.
@@ -254,6 +258,8 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
                 records.filter((r) => r.month === month).map((r) => r.week),
               );
 
+              const pagedRows = sectionRows.slice((page - 1) * pageSize, page * pageSize);
+
               return (
                 <div key={month} className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-x-auto">
                   <div className="flex items-center justify-between px-4 sm:px-8 py-3 border-b border-slate-100 bg-slate-50/50">
@@ -286,7 +292,7 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
                       </tr>
                     </thead>
                     <tbody>
-                      {sectionRows.map((m) => {
+                      {pagedRows.map((m) => {
                         const weeks = memberWeeks(month, m.id);
                         const memberTotal = sumWeeks(weeks);
 
@@ -329,6 +335,13 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
                       })}
                     </tbody>
                   </table>
+                  <TablePagination
+                    currentPage={page}
+                    totalItems={sectionRows.length}
+                    pageSize={pageSize}
+                    pageSizeOptions={[10, 25, 50, 100]}
+                    useUrlParams={true}
+                  />
                 </div>
               );
             })}

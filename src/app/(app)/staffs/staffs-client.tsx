@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { MODULES, MODULE_KEYS } from "@/lib/modules";
 import { changeTwoFactorMethod, createStaff, removeStaff, updateStaff, setStaffModules, updateStaffStatus } from "./actions";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useTablePagination } from "@/components/table-pagination";
 
 /** "John Doe" -> "johndoe" */
 function toUsername(name: string): string {
@@ -454,6 +455,14 @@ export function StaffsClient({
       return sortAsc ? r : -r;
     });
 
+  const {
+    paginatedItems: paginatedStaff,
+    Pagination: staffPagination,
+  } = useTablePagination({
+    items: filtered,
+    initialPageSize: 50,
+  });
+
   const allChecked = filtered.length > 0 && filtered.every((s) => selected.has(s.id));
   const toggleAll  = () => setSelected(allChecked ? new Set() : new Set(filtered.map((s) => s.id)));
   const toggleOne  = (id: string) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -554,7 +563,7 @@ export function StaffsClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filtered.map((s) => (
+                  {paginatedStaff.map((s) => (
                     <React.Fragment key={s.id}>
                       <tr className={cn("group transition-colors", selected.has(s.id) ? "bg-blue-50/40" : "hover:bg-slate-50/60")}>
                         <td className="w-12 py-4 pl-5 pr-2">
@@ -673,6 +682,7 @@ export function StaffsClient({
               </table>
             </div>
           )}
+          {staffPagination}
 
           {/* Footer */}
           {filtered.length > 0 && (

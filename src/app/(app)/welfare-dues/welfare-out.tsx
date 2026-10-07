@@ -9,6 +9,7 @@ import { RecordWelfareButton } from "@/app/(app)/finances/finance-client";
 import { DeleteButton } from "@/components/controls";
 import { deleteTransaction } from "@/app/(app)/finances/actions";
 import { PeriodSelector } from "./client";
+import { TablePagination } from "@/components/table-pagination";
 
 const { transaction, member, welfareDues } = schema;
 
@@ -33,11 +34,16 @@ export async function WelfareOutTab({
   churchId,
   period,
   members,
+  searchParams,
 }: {
   churchId: string;
   period: Period;
   members: Option[];
+  searchParams?: Record<string, string | string[] | undefined>;
 }) {
+  const page = Math.max(1, Number(searchParams?.page) || 1);
+  const pageSize = Math.max(10, Number(searchParams?.pageSize) || 50);
+
   const isWelfare = eq(transaction.category, WELFARE_SUPPORT);
   const isYear = /^\d{4}$/.test(period);
   const selectedYear = period.slice(0, 4);
@@ -321,7 +327,7 @@ export async function WelfareOutTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {rows.map(({ t, memberName }) => (
+                {rows.slice((page - 1) * pageSize, page * pageSize).map(({ t, memberName }) => (
                   <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-4 pl-6 py-3.5">
                       <p className="font-bold text-slate-900">{memberName ?? "—"}</p>
@@ -342,6 +348,13 @@ export async function WelfareOutTab({
                 ))}
               </tbody>
             </table>
+            <TablePagination
+              currentPage={page}
+              totalItems={rows.length}
+              pageSize={pageSize}
+              pageSizeOptions={[10, 25, 50, 100]}
+              useUrlParams={true}
+            />
           </div>
         )}
       </div>

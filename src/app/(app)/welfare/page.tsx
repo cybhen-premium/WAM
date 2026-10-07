@@ -7,6 +7,7 @@ import { atRiskWhere, isThisMonth } from "@/lib/pastoral";
 import { smsProviderConfigured } from "@/lib/sms";
 import { cn, fmtDate } from "@/lib/utils";
 import { AutomationForm, LostSheepActions, ReachOutAllButton } from "./welfare-client";
+import { TablePagination } from "@/components/table-pagination";
 import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Member Care" };
@@ -24,6 +25,8 @@ export default async function WelfarePage({ searchParams }: PageProps<"/welfare"
   await requireModule("care");
   const sp = await searchParams;
   const tab = TABS.find((t) => t.id === sp.tab)?.id ?? "overview";
+  const page = Math.max(1, Number(sp?.page) || 1);
+  const pageSize = Math.max(1, Number(sp?.pageSize) || 50);
 
   return (
     <div className="space-y-6 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
@@ -51,7 +54,7 @@ export default async function WelfarePage({ searchParams }: PageProps<"/welfare"
       </nav>
 
       {tab === "overview" && <Overview church={church} />}
-      {tab === "lost-sheep" && <LostSheep church={church} />}
+      {tab === "lost-sheep" && <LostSheep church={church} page={page} pageSize={pageSize} />}
       {tab === "automation" && (
         <AutomationForm
           enabled={church.automationEnabled}
@@ -133,7 +136,7 @@ function OverviewCard(props: {
   );
 }
 
-async function LostSheep({ church }: { church: Church }) {
+async function LostSheep({ church, page = 1, pageSize = 50 }: { church: Church; page?: number; pageSize?: number }) {
   const [sheep, [{ volunteers }], [{ pending }], visits] = await Promise.all([
     db
       .select({
@@ -183,30 +186,38 @@ async function LostSheep({ church }: { church: Church }) {
             <p className="text-sm text-slate-500">All members are currently active. Great pastoral care!</p>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-50">
-            {sheep.map((m) => (
-              <li key={m.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-bold text-slate-900">{m.fullName}</p>
-                    {m.departmentName && (
-                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-black uppercase text-[#1e3a8a]">
-                        {m.departmentName}
+          <>
+            <ul className="divide-y divide-slate-50">
+              {sheep.slice((page - 1) * pageSize, page * pageSize).map((m) => (
+                <li key={m.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-bold text-slate-900">{m.fullName}</p>
+                      {m.departmentName && (
+                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-black uppercase text-[#1e3a8a]">
+                          {m.departmentName}
+                        </span>
+                      )}
+                      <span className="rounded-full bg-red-50 px-2 py-0.5 text-[9px] font-black uppercase text-red-600">
+                        Risk Member (Missed 3+ weeks)
                       </span>
-                    )}
-                    <span className="rounded-full bg-red-50 px-2 py-0.5 text-[9px] font-black uppercase text-red-600">
-                      Risk Member (Missed 3+ weeks)
-                    </span>
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
+                      {m.category} · last seen {m.lastAttendedAt ? fmtDate(m.lastAttendedAt) : "never"}
+                      {m.phone ? ` · ${m.phone}` : ""}
+                    </p>
                   </div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
-                    {m.category} · last seen {m.lastAttendedAt ? fmtDate(m.lastAttendedAt) : "never"}
-                    {m.phone ? ` · ${m.phone}` : ""}
-                  </p>
-                </div>
-                <LostSheepActions memberId={m.id} scheduled={scheduled.has(m.id)} hasPhone={!!m.phone} />
-              </li>
-            ))}
-          </ul>
+                  <LostSheepActions memberId={m.id} scheduled={scheduled.has(m.id)} hasPhone={!!m.phone} />
+                </li>
+              ))}
+            </ul>
+            <TablePagination
+              currentPage={page}
+              totalItems={sheep.length}
+              pageSize={pageSize}
+              useUrlParams={true}
+            />
+          </>
         )}
       </div>
     </div>

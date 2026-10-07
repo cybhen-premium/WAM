@@ -9,6 +9,7 @@ import { WelfareOutTab } from "./welfare-out";
 import { requireModule } from "@/lib/permissions";
 import { inPeriod } from "@/lib/finance";
 import { WELFARE_SUPPORT, WELFARE_MONTHLY_TARGET } from "@/lib/constants";
+import { TablePagination } from "@/components/table-pagination";
 
 export const metadata = { title: "Welfare Dues" };
 
@@ -25,6 +26,9 @@ export default async function WelfareDuesPage({ searchParams }: PageProps<"/welf
   await requireModule("care");
   const sp = await searchParams;
   const tab = TABS.find((t) => t.id === sp.tab)?.id ?? "contributions";
+
+  const page = Math.max(1, Number(sp.page) || 1);
+  const pageSize = Math.max(10, Number(sp.pageSize) || 50);
 
   const monthlyTarget = parseFloat(church.welfareMonthlyTarget ?? "20.00") || WELFARE_MONTHLY_TARGET;
 
@@ -82,10 +86,19 @@ export default async function WelfareDuesPage({ searchParams }: PageProps<"/welf
           rawPeriod={rawPeriod}
           isYear={isYear}
           monthlyTarget={monthlyTarget}
+          page={page}
+          pageSize={pageSize}
         />
       )}
       {/* Welfare Out follows the same year/month selection as Contributions In. */}
-      {tab === "disbursements" && <WelfareOutTab churchId={church.id} period={rawPeriod} members={members as any} />}
+      {tab === "disbursements" && (
+        <WelfareOutTab
+          churchId={church.id}
+          period={rawPeriod}
+          members={members as any}
+          searchParams={sp}
+        />
+      )}
     </div>
   );
 }
@@ -97,6 +110,8 @@ async function ContributionsTab({
   rawPeriod,
   isYear,
   monthlyTarget,
+  page,
+  pageSize,
 }: {
   churchId: string;
   members: { id: string; fullName: string; category: string }[];
@@ -104,6 +119,8 @@ async function ContributionsTab({
   rawPeriod: string;
   isYear: boolean;
   monthlyTarget: number;
+  page: number;
+  pageSize: number;
 }) {
   // Sum dues per member for the selected period
   const sums = await db
@@ -276,7 +293,7 @@ async function ContributionsTab({
                 </td>
               </tr>
             ) : (
-              members.map((m) => {
+              members.slice((page - 1) * pageSize, page * pageSize).map((m) => {
                 const paid = sumsMap.get(m.id) ?? 0;
                 const target = isYear ? monthlyTarget * 12 : monthlyTarget;
                 const monthsPaid = isYear ? Math.min(12, Math.floor(paid / monthlyTarget)) : null;
@@ -337,6 +354,13 @@ async function ContributionsTab({
             )}
           </tbody>
         </table>
+        <TablePagination
+          currentPage={page}
+          totalItems={members.length}
+          pageSize={pageSize}
+          pageSizeOptions={[10, 25, 50, 100]}
+          useUrlParams={true}
+        />
       </div>
     </div>
   );

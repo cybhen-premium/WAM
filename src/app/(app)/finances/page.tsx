@@ -33,6 +33,8 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
   const period = parsePeriod(sp.period, String(new Date().getFullYear()));
   const tab: TabId = TABS.some((t) => t.id === sp.tab) ? (sp.tab as TabId) : "general";
   const q = typeof sp.q === "string" ? sp.q : "";
+  const page = Math.max(1, Number(sp.page) || 1);
+  const pageSize = Math.max(1, Number(sp.pageSize) || 50);
 
   const where = and(inPeriod(church.id, period), notInArray(transaction.category, [...WELFARE_CATEGORIES]));
   const [totals, breakdown, projects, yearRows] = await Promise.all([
@@ -150,10 +152,10 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
           </nav>
         </div>
 
-        {tab === "general" && <GeneralTab churchId={church.id} period={period} q={q} />}
+        {tab === "general" && <GeneralTab churchId={church.id} period={period} q={q} page={page} pageSize={pageSize} />}
         {tab === "analytics" && <AnalyticsTab churchId={church.id} />}
         {tab === "receipts" && (
-          <ReceiptsTab churchId={church.id} period={period} category={typeof sp.category === "string" ? sp.category : ""} />
+          <ReceiptsTab churchId={church.id} period={period} category={typeof sp.category === "string" ? sp.category : ""} page={page} pageSize={pageSize} />
         )}
       </div>
     </div>

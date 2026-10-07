@@ -20,6 +20,7 @@ import {
 } from "./actions";
 import { MODULES, MODULE_KEYS } from "@/lib/modules";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { useTablePagination } from "@/components/table-pagination";
 
 type Church = typeof schema.church.$inferSelect;
 
@@ -468,6 +469,14 @@ export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; act
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const date = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
+  const {
+    paginatedItems: paginatedActive,
+    Pagination: activePagination,
+  } = useTablePagination({
+    items: active,
+    initialPageSize: 50,
+  });
+
   return (
     <div className="space-y-6">
       <Section title="Active Staff" subtitle="Users with access to your church account">
@@ -502,7 +511,7 @@ export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; act
               </tr>
             </thead>
             <tbody>
-              {active.map((s) => (
+              {paginatedActive.map((s) => (
                 <tr key={s.id} className="border-t border-slate-100">
                   <td className="py-3">
                     <p className="font-bold text-slate-900">
@@ -549,6 +558,7 @@ export function StaffPanel({ isAdmin, active, pending }: { isAdmin: boolean; act
               ))}
             </tbody>
           </table>
+          {activePagination}
         </div>
       </Section>
 

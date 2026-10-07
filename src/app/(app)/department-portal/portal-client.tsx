@@ -31,6 +31,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { recordSundayAttendance, saveDepartmentServiceNotes } from "./actions";
+import { useTablePagination } from "@/components/table-pagination";
 import { cn } from "@/lib/utils";
 
 type Department = { id: string; name: string };
@@ -201,6 +202,22 @@ export function DepartmentPortalClient({
     m.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (m.phone && m.phone.includes(searchQuery)),
   );
+
+  const {
+    paginatedItems: paginatedDirectoryMembers,
+    Pagination: directoryPagination,
+  } = useTablePagination({
+    items: filteredMembers,
+    initialPageSize: 50,
+  });
+
+  const {
+    paginatedItems: paginatedChecklistMembers,
+    Pagination: checklistPagination,
+  } = useTablePagination({
+    items: filteredMembers,
+    initialPageSize: 50,
+  });
 
   const presentCount = members.filter((m) => presentMemberIds.has(m.id)).length;
   const absentCount = members.length - presentCount;
@@ -421,7 +438,7 @@ export function DepartmentPortalClient({
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
-                {filteredMembers.map((member) => {
+                {paginatedChecklistMembers.map((member) => {
                   const isPresent = !isAdmin
                     ? presentMemberIds.has(member.id)
                     : isAlreadyRecorded
@@ -534,6 +551,7 @@ export function DepartmentPortalClient({
                 })}
               </div>
             )}
+            {checklistPagination}
           </div>
 
           {/* Automated Care Card - Returned for Admin department portal */}
@@ -683,7 +701,7 @@ export function DepartmentPortalClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredMembers.map((m) => {
+                {paginatedDirectoryMembers.map((m) => {
                   const stat = memberStatsMap[m.id] || { present: 0, absent: 0 };
                   const totalRecorded = stat.present + stat.absent;
                   const rate = totalRecorded > 0 ? Math.round((stat.present / totalRecorded) * 100) : null;
@@ -728,6 +746,7 @@ export function DepartmentPortalClient({
                 })}
               </tbody>
             </table>
+            {directoryPagination}
           </div>
         </div>
       )}

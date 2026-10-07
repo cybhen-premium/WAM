@@ -3,15 +3,19 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { fmtDate } from "@/lib/utils";
 import { ConvertButton } from "./convert-button";
+import { TablePagination } from "@/components/table-pagination";
 import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Visitor Command Center" };
 
 const { member } = schema;
 
-export default async function VisitorConversionPage() {
+export default async function VisitorConversionPage({ searchParams }: PageProps<"/visitor-conversion">) {
   const { church } = await requireChurch();
   await requireModule("analytics");
+  const sp = await searchParams;
+  const page = Math.max(1, Number(sp?.page) || 1);
+  const pageSize = Math.max(1, Number(sp?.pageSize) || 50);
   // A "tracked" visitor is anyone currently a Visitor or who was converted from one.
   const tracked = and(eq(member.churchId, church.id), sql`(${member.category} = 'Visitor' or ${member.convertedAt} is not null)`);
 
@@ -30,17 +34,10 @@ export default async function VisitorConversionPage() {
         fullName: member.fullName,
         phone: member.phone,
         joinedAt: member.joinedAt,
-
       })
       .from(member)
-
       .where(and(eq(member.churchId, church.id), eq(member.category, "Visitor"), eq(member.active, true)))
       .orderBy(asc(member.joinedAt)),
-
-
-
-
-
     db
       .select({
         month: sql<string>`to_char(date_trunc('month', coalesce(${member.joinedAt}, ${member.createdAt}::date)), 'YYYY-MM')`,
@@ -59,7 +56,6 @@ export default async function VisitorConversionPage() {
   const funnel = [
     { label: "First Visit", n: stats.total },
     { label: "Active Visitors", n: stats.active },
-
     { label: "Became Member", n: stats.converted },
   ];
 
@@ -77,7 +73,7 @@ export default async function VisitorConversionPage() {
         <Stat label="Conversion Rate" value={`${rate}%`} hint="Historical average" />
       </div>
 
-      <section className="rounded-xl border bg-card shadow-card">
+      <section className="rounded-xl border bg-card shadow-card overflow-hidden">
         <div className="p-6 pb-3">
           <h2 className="text-lg font-black text-slate-900">Active Visitor Registry</h2>
           <p className="text-sm text-muted-foreground">Manage current visitors and convert them to official members.</p>
@@ -90,20 +86,28 @@ export default async function VisitorConversionPage() {
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100 px-2 pb-2">
-            {active.map((v) => (
-              <li key={v.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3">
-                <div>
-                  <p className="font-bold text-slate-900">{v.fullName}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    First visit {v.joinedAt ? fmtDate(v.joinedAt) : "—"}
-                    {v.phone ? ` · ${v.phone}` : ""}
-                  </p>
-                </div>
-                <ConvertButton memberId={v.id} memberName={v.fullName} />
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="divide-y divide-slate-100 px-2 pb-2">
+              {active.slice((page - 1) * pageSize, page * pageSize).map((v) => (
+                <li key={v.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3">
+                  <div>
+                    <p className="font-bold text-slate-900">{v.fullName}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      First visit {v.joinedAt ? fmtDate(v.joinedAt) : "—"}
+                      {v.phone ? ` · ${v.phone}` : ""}
+                    </p>
+                  </div>
+                  <ConvertButton memberId={v.id} memberName={v.fullName} />
+                </li>
+              ))}
+            </ul>
+            <TablePagination
+              currentPage={page}
+              totalItems={active.length}
+              pageSize={pageSize}
+              useUrlParams={true}
+            />
+          </>
         )}
       </section>
 

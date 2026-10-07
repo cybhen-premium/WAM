@@ -33,6 +33,7 @@ import {
   YAxis,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { useTablePagination } from "@/components/table-pagination";
 import { toast } from "sonner";
 import { clearActivityLogs } from "./actions";
 
@@ -234,6 +235,14 @@ export function AnalyticsClient({
       );
     });
   }, [activitiesList, searchQuery]);
+
+  const {
+    paginatedItems: paginatedActivities,
+    Pagination: activityPagination,
+  } = useTablePagination({
+    items: filteredActivities,
+    initialPageSize: 50,
+  });
 
   // Breakdown items for the currently active tab
   const currentBreakdownItems = data.breakdowns[activeTab] || [];
@@ -784,7 +793,7 @@ export function AnalyticsClient({
                     </td>
                   </tr>
                 ) : (
-                  filteredActivities.map((log) => {
+                  paginatedActivities.map((log) => {
                     const actionCode = log.actionCode || getDisplayActionCode(log);
                     const meta = (log.metadata as Record<string, unknown>) || {};
                     const device = (typeof meta.device === "string" ? meta.device : null) || "Desktop";
@@ -885,6 +894,7 @@ export function AnalyticsClient({
               </tbody>
             </table>
           </div>
+          {activityPagination}
         </div>
       )}
 
