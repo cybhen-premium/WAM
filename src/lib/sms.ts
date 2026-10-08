@@ -16,8 +16,9 @@ export function creditsFor(body: string, recipients: number) {
 /** Appends the church signature when "Append Footer to Broadcasts" is on. */
 export function withFooter(church: Church, body: string) {
   if (!church.appendFooter) return body;
-  const contact = church.phone ? ` | Tel: ${church.phone}` : "";
-  return `${body}\n---\n${church.name}${contact}`;
+  const defaultSignature = `${church.name}${church.phone ? ` | Tel: ${church.phone}` : ""}`;
+  const signature = church.customFooter?.trim() || defaultSignature;
+  return `${body}\n---\n${signature}`;
 }
 
 /** Ghana numbers to international format: 024xxxxxxx -> 23324xxxxxxx. */

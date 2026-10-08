@@ -7,6 +7,8 @@ import { requireChurch } from "@/lib/session";
 import { notFound } from "next/navigation";
 import { requireModule, can } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
+import { sendSms, withFooter } from "@/lib/sms";
+import { cedis } from "@/lib/utils";
 import {
   TITHE,
 
@@ -92,6 +94,12 @@ export async function recordContribution(_prev: FormState, f: FormData): Promise
   const amount = amountOf(f);
   if (!amount) return { error: "Enter an amount greater than zero." };
 
+  const [payer] = await db
+    .select({ fullName: member.fullName, phone: member.phone })
+    .from(member)
+    .where(and(eq(member.id, memberId), eq(member.churchId, church.id)))
+    .limit(1);
+
   await db.insert(transaction).values({
     churchId: church.id,
     type: "income",
@@ -104,8 +112,24 @@ export async function recordContribution(_prev: FormState, f: FormData): Promise
   logActivity({
     module: "finances",
     action: `Recorded ${category} of ₵${amount}`,
-    metadata: { category, amount, memberId },
+    metadata: { category, amount, memberId, memberName: payer?.fullName },
   });
+
+  if (payer?.phone) {
+    try {
+      const first = payer.fullName.split(/\s+/)[0];
+      const monthLabel = new Date().toLocaleString("default", { month: "long", year: "numeric" });
+      await sendSms(
+        church,
+        [payer.phone],
+        withFooter(church, `Thank you ${first}! We have received your tithe of ${cedis(amount)} for ${monthLabel}. God bless you.`),
+        { kind: "tithe", topic: memberId, audience: payer.fullName },
+      );
+    } catch {
+      // Messaging problems must never block recording
+    }
+  }
+
   return done();
 }
 

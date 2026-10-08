@@ -172,9 +172,24 @@ async function LostSheep({ church, page = 1, pageSize = 50 }: { church: Church; 
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Inactive Members" value={sheep.length} tone="text-red-600" />
-        <Stat label="Available Volunteers" value={volunteers} tone="text-emerald-600" />
-        <Stat label="Pending Visits" value={pending || "—"} tone="text-amber-600" />
+        <Stat
+          label="Inactive Members"
+          value={sheep.length}
+          tone="text-red-600"
+          subtitle={`Absent ${church.absenceThresholdWeeks}+ weeks`}
+        />
+        <Stat
+          label="Available Volunteers"
+          value={volunteers}
+          tone="text-emerald-600"
+          subtitle="Active staff & ministry workers"
+        />
+        <Stat
+          label="Pending Visits"
+          value={pending || "—"}
+          tone="text-amber-600"
+          subtitle="Scheduled pastoral visits"
+        />
       </div>
       <div className="rounded-[2rem] bg-white shadow-xl shadow-slate-200/60 overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-5 border-b border-slate-100">
@@ -233,11 +248,12 @@ async function LostSheep({ church, page = 1, pageSize = 50 }: { church: Church; 
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: React.ReactNode; tone: string }) {
+function Stat({ label, value, tone, subtitle }: { label: string; value: React.ReactNode; tone: string; subtitle?: string }) {
   return (
     <div className="rounded-[1.5rem] bg-white p-5 shadow-sm border border-slate-100">
       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
       <p className={cn("mt-1 text-3xl font-black", tone)}>{value}</p>
+      {subtitle && <p className="mt-1 text-[11px] font-semibold text-slate-400">{subtitle}</p>}
     </div>
   );
 }

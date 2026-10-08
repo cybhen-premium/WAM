@@ -117,10 +117,12 @@ export async function savePreferences(_prev: FormState, f: FormData): Promise<Fo
   await requireModule("settings");
   const { church: c } = await requireAdmin();
   const weeks = Math.min(12, Math.max(1, Math.round(Number(s(f, "absenceThresholdWeeks")) || 3)));
+  const customFooter = s(f, "customFooter");
   await db
     .update(church)
     .set({
       appendFooter: f.get("appendFooter") === "on",
+      customFooter: customFooter ? customFooter : null,
       absenceThresholdWeeks: weeks,
       aiLanguage: ["English", "Twi", "Ga", "Ewe", "French"].includes(s(f, "aiLanguage")) ? s(f, "aiLanguage") : "English",
       aiTone: s(f, "aiTone") || "Warm & Pastoral",

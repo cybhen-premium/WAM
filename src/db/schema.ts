@@ -106,6 +106,7 @@ export const church = pgTable("church", {
   senderIdRequested: text("sender_id_requested"),
   senderIdStatus: text("sender_id_status").notNull().default("none"), // none | pending | approved | rejected
   appendFooter: boolean("append_footer").notNull().default(true),
+  customFooter: text("custom_footer"),
   autoWelcomeSms: boolean("auto_welcome_sms").notNull().default(false),
   // Member care automation (daily birthday / anniversary SMS)
   automationEnabled: boolean("automation_enabled").notNull().default(false),
