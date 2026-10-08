@@ -7,7 +7,8 @@ import { hashPassword } from "better-auth/crypto";
 
 import { cookies, headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { logActivity } from "@/lib/activity";
+import { logActivity, parseClientInfo } from "@/lib/activity";
+import { createNotification } from "@/lib/notifications";
 import { landingHref, moduleForPath, getMyPermissions } from "@/lib/permissions";
 
 /**
@@ -71,6 +72,50 @@ export async function checkLoginStatus(targetNext?: string) {
             actionCode: "auth.login",
             action: "Staff member logged in successfully",
           });
+
+          // If a staff member (not the church owner) logged in, dispatch an in-app notification & email alert to admin
+          const isOwner = row.church.ownerId === user.id;
+          if (!isOwner) {
+            let clientInfo = { device: "Desktop", os: "Other", browser: "Other" };
+            let ipAddress: string | null = null;
+            try {
+              const h = await headers();
+              ipAddress =
+                h.get("cf-connecting-ip")?.trim() ||
+                h.get("x-real-ip")?.trim() ||
+                h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                null;
+              clientInfo = parseClientInfo(h);
+            } catch {}
+
+            const [ownerUser] = await db
+              .select({ email: schema.user.email })
+              .from(schema.user)
+              .where(eq(schema.user.id, row.church.ownerId))
+              .limit(1);
+
+            createNotification({
+              churchId: row.church.id,
+              userId: row.church.ownerId,
+              type: "staff_login",
+              title: `Staff Login: ${user.name || "Staff Member"}`,
+              message: `${user.name || "Staff member"} (${user.email}) logged into ${row.church.name}.`,
+              metadata: {
+                actorName: user.name || "Staff Member",
+                actorEmail: user.email,
+                role: row.role || "Staff",
+                branchName: row.church.name,
+                device: clientInfo.device,
+                os: clientInfo.os,
+                browser: clientInfo.browser,
+                ipAddress,
+              },
+              sendEmailAlert: true,
+              emailTo: ownerUser?.email,
+            }).catch((err) => {
+              console.error("[Login] Failed to create staff login notification:", err);
+            });
+          }
         }
       }
     } else {

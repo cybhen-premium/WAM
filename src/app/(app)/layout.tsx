@@ -3,9 +3,10 @@ import { requireChurch } from "@/lib/session";
 import { getMyPermissions, MODULE_KEYS } from "@/lib/permissions";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
-  const { church, availableBranches } = await requireChurch();
+  const { church, availableBranches, role, user } = await requireChurch();
   // "all" for superadmins, otherwise only the modules assigned to this user.
   const perms = await getMyPermissions();
+  const isAdmin = role === "admin" || perms === "all" || church.ownerId === user.id;
   return (
     <AppShell
       churchName={church.name}
@@ -14,6 +15,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       logoUrl={church.logoUrl ?? undefined}
       smsCredits={church.smsCredits}
       modules={perms === "all" ? MODULE_KEYS : [...perms]}
+      isAdmin={isAdmin}
     >
       {children}
     </AppShell>

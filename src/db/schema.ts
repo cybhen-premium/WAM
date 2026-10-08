@@ -510,3 +510,37 @@ export const activityLog = pgTable(
   (t) => [index("activity_log_church_idx").on(t.churchId), index("activity_log_created_idx").on(t.createdAt)],
 );
 
+/* --------------------------------------------------------- notifications ---- */
+
+/**
+ * System and administrative notifications.
+ * `type`      - "staff_login" | "security" | "system"
+ * `title`     - Short header summary
+ * `message`   - Descriptive text
+ * `read`      - Boolean read state
+ * `metadata`  - Actor details, IP, client info, etc.
+ */
+export const notification = pgTable(
+  "notification",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    type: text("type").notNull().default("staff_login"),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    read: boolean("read").notNull().default(false),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("notification_church_idx").on(t.churchId),
+    index("notification_user_idx").on(t.userId),
+    index("notification_created_idx").on(t.createdAt),
+    index("notification_read_idx").on(t.read),
+  ],
+);
+
+

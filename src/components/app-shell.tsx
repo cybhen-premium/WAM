@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SessionIdleTimeout } from "./session-idle-timeout";
 import { switchActiveBranch } from "@/actions/branch";
+import { NotificationBell } from "./notification-bell";
 
 type Props = {
   churchName: string;
@@ -18,6 +19,7 @@ type Props = {
   availableBranches?: Array<{ id: string; name: string; role: string }>;
   logoUrl?: string;
   smsCredits: number;
+  isAdmin?: boolean;
   /** Modules this user may access — the sidebar only shows these (superadmins get all of them). */
   modules: ModuleKey[];
   children: React.ReactNode;
@@ -29,6 +31,7 @@ export function AppShell({
   availableBranches = [],
   logoUrl,
   smsCredits,
+  isAdmin = false,
   modules,
   children,
 }: Props) {
@@ -474,13 +477,17 @@ export function AppShell({
               </>
             )}
           </div>
-          <button
-            onClick={() => router.refresh()}
-            className="inline-flex items-center justify-center rounded-md h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-accent/10"
-            aria-label="Refresh"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {isAdmin && <NotificationBell />}
+            <button
+              onClick={() => router.refresh()}
+              className="inline-flex items-center justify-center rounded-xl h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              aria-label="Refresh"
+              title="Refresh data"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto bg-[#F8FAFC]">
           <div className="max-w-7xl mx-auto p-4 md:p-6">{children}</div>
