@@ -40,19 +40,14 @@ export function Composer({ credits, audiences }: { credits: number; audiences: A
 
   return (
     <div className="space-y-6 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-[#1e3a8a]">
-            <Megaphone className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Announcements</h1>
-            <p className="text-sm text-slate-500">Broadcast instant updates to your congregation.</p>
-          </div>
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-[#1e3a8a]">
+          <Megaphone className="h-5 w-5" />
         </div>
-        <span className="inline-flex items-center gap-1.5 self-start rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#1e3a8a]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#1e3a8a]" /> Wallet: Unlimited
-        </span>
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Announcements</h1>
+          <p className="text-sm text-slate-500">Broadcast instant updates to your congregation.</p>
+        </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_260px]">
