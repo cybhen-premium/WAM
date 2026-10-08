@@ -100,7 +100,7 @@ export default async function StaffsPage() {
     }));
 
   return (
-    <div className="space-y-6 pb-16 animate-in fade-in duration-500">
+    <div className="space-y-6 pb-6 animate-in fade-in duration-500">
       <StaffsClient
         isAdmin={isAdmin}
         active={active}

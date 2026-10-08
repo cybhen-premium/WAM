@@ -147,14 +147,14 @@ export function AppShell({
   })).filter((cat) => cat.entries.length > 0);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="fixed inset-0 flex h-full w-full overflow-hidden bg-[#F8FAFC]">
       <SessionIdleTimeout />
       {open && (
         <div className="fixed inset-0 z-40 bg-slate-900/60 lg:hidden" onClick={() => setOpen(false)} />
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-60 flex-col bg-[#0C1120] text-white transition-transform duration-300 lg:static lg:translate-x-0 border-r border-white/5",
+          "fixed inset-y-0 left-0 z-50 flex w-60 h-full flex-col bg-[#0C1120] text-white transition-transform duration-300 lg:static lg:translate-x-0 border-r border-white/5",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -397,8 +397,8 @@ export function AppShell({
       )}
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4">
+      <div className="flex flex-1 flex-col h-full min-w-0 overflow-hidden">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button className="lg:hidden text-slate-600 p-1 -ml-1 rounded-lg hover:bg-slate-100 transition-colors" onClick={() => setOpen(true)} aria-label="Open menu">
               <Menu className="h-5 w-5" />

@@ -85,7 +85,7 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
   };
 
   return (
-    <div className="space-y-6 pb-24 px-2 sm:px-4 md:px-8">
+    <div className="space-y-6 pb-6 px-2 sm:px-4 md:px-8">
       <FinanceHeader
         period={period}
         years={years}

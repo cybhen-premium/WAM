@@ -30,7 +30,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const isAdmin = role === "admin";
 
   return (
-    <div className="space-y-6 pb-16 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
+    <div className="space-y-6 pb-6 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white">
           <Settings2 className="h-6 w-6" />

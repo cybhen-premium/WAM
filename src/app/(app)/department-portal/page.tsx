@@ -181,7 +181,7 @@ export default async function DepartmentPortalPage({
   }
 
   return (
-    <div className="space-y-6 pb-16 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
+    <div className="space-y-6 pb-6 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
       <DepartmentPortalClient
         department={activeDept}
         allDepartments={role === "admin" ? allDepartments : []}
