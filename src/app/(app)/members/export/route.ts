@@ -9,6 +9,7 @@ const COLUMNS = [
   ["Email", "email"],
   ["Gender", "gender"],
   ["Ministry", "category"],
+  ["Department", "departmentName"],
   ["Baptized", "baptized"],
   ["Marital Status", "maritalStatus"],
   ["Occupation", "occupation"],
@@ -24,11 +25,20 @@ const COLUMNS = [
 
 export async function GET() {
   const { church } = await requireChurch();
-  const rows = await db
-    .select()
+  const rawRows = await db
+    .select({
+      member: schema.member,
+      departmentName: schema.department.name,
+    })
     .from(schema.member)
+    .leftJoin(schema.department, eq(schema.member.departmentId, schema.department.id))
     .where(eq(schema.member.churchId, church.id))
     .orderBy(asc(schema.member.fullName));
+
+  const rows = rawRows.map((r) => ({
+    ...r.member,
+    departmentName: r.departmentName ?? "",
+  }));
 
   const esc = (v: unknown) => {
     const s = v === null || v === undefined ? "" : typeof v === "boolean" ? (v ? "Yes" : "No") : String(v);

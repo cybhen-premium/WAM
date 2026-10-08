@@ -13,18 +13,22 @@ import {
   Download,
   Eye,
   Filter,
+  Heart,
+  Mail,
+  MapPin,
   Maximize2,
   Pencil,
   Phone,
   Plus,
-
-
   Search,
+  Shield,
+  Sparkles,
   Trash2,
   Upload,
   UserMinus,
   UserPlus,
   UserRoundCheck,
+  Users,
   X,
 } from "lucide-react";
 import type { InferSelectModel } from "drizzle-orm";
@@ -33,9 +37,25 @@ import { Modal, SelectField, TextField, buttonStyles } from "@/components/ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MARITAL_STATUSES, MEMBER_CATEGORIES } from "@/lib/constants";
 import { deleteMember, importMembers, saveMember, setMemberActive } from "./actions";
+import { cn } from "@/lib/utils";
 
 type Member = InferSelectModel<typeof schema.member>;
 type Department = InferSelectModel<typeof schema.department>;
+
+const AVATAR_COLORS = [
+  "from-blue-500 to-indigo-700",
+  "from-purple-500 to-violet-700",
+  "from-emerald-500 to-teal-700",
+  "from-amber-500 to-orange-600",
+  "from-rose-500 to-pink-600",
+  "from-cyan-500 to-blue-600",
+];
+
+function avatarColor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
 
 function initials(name: string) {
   return name
@@ -48,6 +68,10 @@ function initials(name: string) {
 
 function fmtDay(iso: string) {
   return new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function fmtDayShort(iso: string) {
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 function compressImageFile(file: File, maxDimension = 512, quality = 0.85): Promise<string> {
@@ -209,7 +233,314 @@ export function MemberFilters(props: {
   );
 }
 
-/* Interactive Table Cell (Click to view bold profile) ---------------------- */
+/* ===========================================================================
+   MEMBER TABLE ROW (Polished, Enterprise Design)
+=========================================================================== */
+export function MemberTableRow({
+  member,
+  department,
+  departments,
+}: {
+  member: Member;
+  department: Department | null;
+  departments: Department[];
+}) {
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+
+  return (
+    <tr className="group border-b border-slate-100 last:border-0 hover:bg-blue-50/25 transition-colors">
+      {/* 1. Member Profile (Avatar + Full Name + Status) */}
+      <td className="py-3 pl-4 sm:pl-5 pr-2.5">
+        <div className="flex items-center gap-3">
+          {member.photoUrl ? (
+            <button
+              type="button"
+              onClick={() => setZoomImage(member.photoUrl)}
+              className="relative group/photo shrink-0 cursor-zoom-in focus:outline-none"
+              title={`Click to zoom ${member.fullName}'s photo`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={member.photoUrl}
+                alt={member.fullName}
+                className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-slate-100 shadow-sm transition-transform duration-200 group-hover/photo:scale-110 group-hover/photo:ring-blue-500"
+              />
+              <div className="absolute inset-0 rounded-full bg-black/35 opacity-0 group-hover/photo:opacity-100 flex items-center justify-center transition-opacity text-white shadow-xs">
+                <Maximize2 className="h-3 w-3" />
+              </div>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
+              className="shrink-0 focus:outline-none"
+              title={`Click to view ${member.fullName}'s profile`}
+            >
+              <div
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-white text-xs font-black uppercase shadow-sm transition-transform duration-200 hover:scale-105",
+                  avatarColor(member.fullName)
+                )}
+              >
+                {initials(member.fullName)}
+              </div>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setProfileOpen(true)}
+            className="min-w-0 text-left focus:outline-none group/name"
+            title={`Click to view ${member.fullName}'s profile`}
+          >
+            <p className="font-bold text-slate-900 truncate max-w-[190px] leading-tight group-hover/name:text-blue-600 transition-colors">
+              {member.fullName}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {member.baptized ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Baptized
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                  Unbaptized
+                </span>
+              )}
+              {member.occupation && (
+                <span className="text-[11px] text-slate-400 truncate max-w-[110px]">
+                  · {member.occupation}
+                </span>
+              )}
+            </div>
+          </button>
+        </div>
+      </td>
+
+      {/* 2. Ministry */}
+      <td className="py-3 px-2.5 sm:px-3">
+        {member.category !== "General Member" ? (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-purple-50 border border-purple-200/80 px-2.5 py-1 text-xs font-bold text-purple-700 shadow-2xs">
+            <Sparkles className="h-3 w-3 text-purple-600 shrink-0" />
+            <span>{member.category}</span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100/90 border border-slate-200/70 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs">
+            <Shield className="h-3 w-3 text-slate-400 shrink-0" />
+            <span>General Member</span>
+          </span>
+        )}
+      </td>
+
+      {/* 3. Department */}
+      <td className="py-3 px-2.5 sm:px-3">
+        {department ? (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50/90 border border-blue-200/70 px-2.5 py-1 text-xs font-bold text-blue-700 shadow-2xs">
+            <Users className="h-3 w-3 text-blue-500 shrink-0" />
+            <span>{department.name}</span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center text-xs text-slate-400 italic">
+            No Department
+          </span>
+        )}
+      </td>
+
+      {/* 4. Contact Details */}
+      <td className="py-3 px-2.5 sm:px-3">
+        {member.phone ? (
+          <div>
+            <a
+              href={`tel:${member.phone}`}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 hover:text-blue-600 transition-colors"
+            >
+              <Phone className="h-3 w-3 text-slate-400 shrink-0" />
+              <span>{member.phone}</span>
+            </a>
+            {member.email && (
+              <a
+                href={`mailto:${member.email}`}
+                className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-600 truncate max-w-[160px] mt-0.5 block"
+                title={member.email}
+              >
+                <Mail className="h-3 w-3 text-slate-300 shrink-0" />
+                <span>{member.email}</span>
+              </a>
+            )}
+          </div>
+        ) : member.email ? (
+          <a
+            href={`mailto:${member.email}`}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 truncate max-w-[160px]"
+            title={member.email}
+          >
+            <Mail className="h-3 w-3 text-slate-400 shrink-0" />
+            <span>{member.email}</span>
+          </a>
+        ) : (
+          <span className="text-xs text-slate-300 font-medium">—</span>
+        )}
+      </td>
+
+      {/* 5. Location */}
+      <td className="py-3 px-2.5 sm:px-3">
+        {member.address ? (
+          <span
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 max-w-[140px] truncate"
+            title={member.address}
+          >
+            <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <span>{member.address}</span>
+          </span>
+        ) : (
+          <span className="text-xs text-slate-300 font-medium">—</span>
+        )}
+      </td>
+
+      {/* 6. Celebrations & Care */}
+      <td className="py-3 px-2.5 sm:px-3">
+        {member.dateOfBirth || member.weddingAnniversary ? (
+          <div className="flex flex-col gap-1 items-start">
+            {member.dateOfBirth && (
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50/90 border border-amber-200/60 px-2 py-0.5 text-[11px] font-bold text-amber-700 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                <Cake className="h-3 w-3 text-amber-500 shrink-0" />
+                <span>{fmtDayShort(member.dateOfBirth)}</span>
+              </span>
+            )}
+            {member.weddingAnniversary && (
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-pink-50/90 border border-pink-200/60 px-2 py-0.5 text-[11px] font-bold text-pink-700 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                <Heart className="h-3 w-3 fill-pink-500 text-pink-500 shrink-0" />
+                <span>{fmtDayShort(member.weddingAnniversary)}</span>
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-slate-300 font-medium">—</span>
+        )}
+      </td>
+
+      {/* 7. Status */}
+      <td className="py-3 px-2.5 sm:px-3">
+        {member.active ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50/80 border border-emerald-200/80 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Active
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50/80 border border-rose-200/80 px-2.5 py-0.5 text-[11px] font-bold text-rose-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+            Inactive
+          </span>
+        )}
+      </td>
+
+      {/* 8. Actions */}
+      <td className="py-3 pl-2.5 pr-4 sm:pr-5 text-right">
+        <div className="inline-flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="h-8 w-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 text-slate-500 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] inline-flex items-center justify-center cursor-pointer"
+            title="Edit member details"
+            aria-label="Edit member details"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              startTransition(async () => {
+                await setMemberActive(member.id, !member.active);
+                toast.success(member.active ? "Member marked inactive" : "Member reactivated");
+              });
+            }}
+            className="h-8 w-8 rounded-lg border border-slate-200 bg-white hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 text-slate-500 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
+            title={member.active ? "Mark inactive" : "Reactivate"}
+            aria-label={member.active ? "Mark inactive" : "Reactivate"}
+          >
+            {member.active ? <UserMinus className="h-3.5 w-3.5" /> : <UserRoundCheck className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className="h-8 w-8 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] inline-flex items-center justify-center cursor-pointer"
+            title="Delete member record"
+            aria-label="Delete member record"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* Dialogs & Modals */}
+        <ConfirmDialog
+          open={confirmDelete}
+          onClose={() => setConfirmDelete(false)}
+          title={`Delete ${member.fullName}?`}
+          description={`Are you sure you want to delete ${member.fullName}? This will permanently remove their records from the church directory. This action cannot be undone.`}
+          confirmLabel="Delete Member"
+          onConfirm={async () => {
+            await deleteMember(member.id);
+          }}
+          successMessage="Member deleted successfully."
+          errorMessage="Failed to delete member."
+        />
+        <MemberProfileModal
+          open={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          member={member}
+          department={department ?? null}
+          onEdit={() => {
+            setProfileOpen(false);
+            setEditing(true);
+          }}
+          onDelete={() => {
+            setProfileOpen(false);
+            setConfirmDelete(true);
+          }}
+          onZoomImage={(url) => setZoomImage(url)}
+        />
+        <MemberFormModal open={editing} onClose={() => setEditing(false)} member={member} departments={departments} />
+
+        {/* Full Photo Lightbox */}
+        {zoomImage && (
+          <div
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4 animate-in fade-in duration-200"
+            onClick={() => setZoomImage(null)}
+          >
+            <div
+              className="relative max-w-2xl max-h-[90vh] flex flex-col items-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setZoomImage(null)}
+                className="absolute -top-12 right-0 rounded-full bg-white/20 p-2 text-white hover:bg-white/30 transition-colors cursor-pointer"
+                title="Close image"
+              >
+                <X className="h-6 w-6" />
+              </button>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={zoomImage}
+                alt={member.fullName}
+                className="max-h-[80vh] w-auto rounded-3xl object-contain shadow-2xl ring-2 ring-white/20"
+              />
+              <p className="mt-3 text-sm font-bold text-white text-center">{member.fullName}</p>
+            </div>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+/* Interactive Table Cell (Legacy support) ---------------------------------- */
 
 export function MemberProfileCell({
   member,
@@ -337,191 +668,287 @@ export function MemberProfileModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3">
-      <div className="absolute inset-0 bg-black/80 animate-in fade-in-0" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-xs animate-in fade-in-0 duration-200" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
-        className="relative w-[95vw] sm:max-w-[560px] max-h-[92vh] flex flex-col overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-white shadow-2xl animate-in fade-in-0 zoom-in-95"
+        className="relative w-full max-w-[560px] max-h-[90vh] flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200 border border-slate-100 text-left"
       >
-        {/* Banner with sleek navy styling */}
-        <div className="relative shrink-0 h-28 bg-gradient-to-r from-[#1e3a8a] via-[#1e40af] to-[#2563eb] text-white p-4">
+        {/* Top Header Bar */}
+        <div className="sticky top-0 z-20 flex items-center justify-between px-5 py-3.5 bg-white/95 backdrop-blur-md border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-blue-600" />
+            <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">Member Profile</span>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-4 top-4 h-8 w-8 rounded-full bg-black/20 flex items-center justify-center text-white/80 hover:text-white hover:bg-black/30 transition-all"
+            className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
           </button>
-          <div className="flex items-center gap-1.5 opacity-80 text-[10px] font-black uppercase tracking-widest text-blue-200">
-            <span>Member Profile</span>
-          </div>
         </div>
 
-        {/* Hero Photo Section (Appearing Boldly!) */}
-        <div className="relative px-6 pt-0 pb-6 text-center overflow-y-auto flex-1">
-          <div className="-mt-16 mb-3 flex justify-center">
+        {/* Scrollable Content Body */}
+        <div className="overflow-y-auto flex-1 p-5 sm:p-6 space-y-5">
+          {/* Hero Section */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left pb-5 border-b border-slate-100">
+            {/* Avatar */}
             {member.photoUrl ? (
               <div
                 onClick={() => onZoomImage(member.photoUrl!)}
-                className="group relative cursor-pointer"
+                className="group relative cursor-pointer shrink-0"
                 title="Click to view full photo"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={member.photoUrl}
                   alt={member.fullName}
-                  className="h-32 w-32 sm:h-36 sm:w-36 rounded-3xl object-cover ring-4 ring-white shadow-2xl transition-transform duration-200 group-hover:scale-105"
+                  className="h-24 w-24 sm:h-28 sm:w-28 rounded-2xl object-cover ring-4 ring-slate-100 shadow-md transition-transform duration-200 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 rounded-3xl bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
-                  <div className="flex items-center gap-1 bg-black/50 px-2.5 py-1 rounded-full text-[10px] font-bold">
+                <div className="absolute inset-0 rounded-2xl bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                  <div className="flex items-center gap-1 bg-black/60 px-2 py-0.5 rounded-full text-[10px] font-bold">
                     <Maximize2 className="h-3 w-3" /> Zoom
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex h-32 w-32 sm:h-36 sm:w-36 items-center justify-center rounded-3xl bg-blue-50 text-[#1e3a8a] text-3xl font-black ring-4 ring-white shadow-xl">
+              <div
+                className={cn(
+                  "flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-white text-3xl font-black shadow-md ring-4 ring-slate-100",
+                  avatarColor(member.fullName)
+                )}
+              >
                 {initials(member.fullName)}
               </div>
             )}
-          </div>
 
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            {member.fullName}
-          </h2>
-
-          {/* Badges */}
-          <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-            <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-tight text-slate-700">
-              {member.category}
-            </span>
-            {department && (
-              <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-tight text-[#1e3a8a]">
-                {department.name}
-              </span>
-            )}
-            <span
-              className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-tight ${member.active ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
-                }`}
-            >
-              {member.active ? "Active" : "Inactive"}
-            </span>
-          </div>
-
-          {/* Quick Action Buttons */}
-          <div className="flex items-center justify-center gap-2 mt-4">
-            {member.phone && (
-              <a
-                href={`tel:${member.phone}`}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-[#1e3a8a] hover:bg-blue-100 transition-colors"
-              >
-                <Phone className="h-3.5 w-3.5" /> Call
-              </a>
-            )}
-            <button
-              type="button"
-              onClick={onEdit}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#1e3a8a] px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-900 shadow-sm transition-colors"
-            >
-              <Pencil className="h-3.5 w-3.5" /> Edit Profile
-            </button>
-            {onDelete && (
-              <button
-                type="button"
-                onClick={onDelete}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 border border-red-200 px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-100 transition-colors"
-                title="Delete member"
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Delete
-              </button>
-            )}
-          </div>
-
-          {/* Details Grid */}
-          <div className="mt-5 px-1 space-y-3 text-left">
-            {/* Contact details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Phone</span>
-                <p className="text-xs font-bold text-slate-800">{member.phone || "—"}</p>
+            {/* Identity Info & Action Buttons */}
+            <div className="flex-1 min-w-0 space-y-2">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
+                  {member.fullName}
+                </h2>
+                {member.occupation && (
+                  <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                    {member.occupation}
+                  </p>
+                )}
               </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Email</span>
-                <p className="text-xs font-bold text-slate-800 truncate">{member.email || "—"}</p>
+
+              {/* Badges Row */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
+                {/* Ministry */}
+                <span className="inline-flex items-center gap-1 rounded-lg bg-purple-50 border border-purple-200/80 px-2.5 py-1 text-xs font-bold text-purple-700">
+                  <Sparkles className="h-3 w-3 text-purple-600 shrink-0" />
+                  <span>{member.category}</span>
+                </span>
+
+                {/* Department */}
+                {department ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 border border-blue-200/80 px-2.5 py-1 text-xs font-bold text-blue-700">
+                    <Users className="h-3 w-3 text-blue-500 shrink-0" />
+                    <span>{department.name}</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center text-xs text-slate-400 italic px-1">
+                    No Department
+                  </span>
+                )}
+
+                {/* Status */}
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold border",
+                    member.active
+                      ? "bg-emerald-50 border-emerald-200/80 text-emerald-700"
+                      : "bg-rose-50 border-rose-200/80 text-rose-700"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      member.active ? "bg-emerald-500" : "bg-rose-500"
+                    )}
+                  />
+                  <span>{member.active ? "Active" : "Inactive"}</span>
+                </span>
+
+                {/* Baptism */}
+                <span className="inline-flex items-center gap-1 rounded-lg bg-slate-100 border border-slate-200/70 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                  {member.baptized ? "Baptized" : "Unbaptized"}
+                </span>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5 sm:col-span-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Residential Address</span>
-                <p className="text-xs font-bold text-slate-800">{member.address || "—"}</p>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1.5">
+                {member.phone && (
+                  <a
+                    href={`tel:${member.phone}`}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 px-3.5 py-2 text-xs font-bold text-slate-800 transition-colors"
+                  >
+                    <Phone className="h-3.5 w-3.5 text-slate-600" />
+                    <span>Call</span>
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  <span>Edit Profile</span>
+                </button>
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={onDelete}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200/70 px-3.5 py-2 text-xs font-bold text-rose-600 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Personal Details & Milestones */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Ministry</span>
-                <p className="text-xs font-bold text-slate-800">{member.category}</p>
+          {/* Section 1: Contact & Location */}
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+              Contact & Location
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Phone className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Phone</p>
+                  {member.phone ? (
+                    <a href={`tel:${member.phone}`} className="font-bold text-slate-900 hover:text-blue-600 truncate block">
+                      {member.phone}
+                    </a>
+                  ) : (
+                    <p className="font-semibold text-slate-400">—</p>
+                  )}
+                </div>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Gender</span>
-                <p className="text-xs font-bold text-slate-800 capitalize">{member.gender || "—"}</p>
+
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <Mail className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Email</p>
+                  {member.email ? (
+                    <a href={`mailto:${member.email}`} className="font-bold text-slate-900 hover:text-blue-600 truncate block">
+                      {member.email}
+                    </a>
+                  ) : (
+                    <p className="font-semibold text-slate-400">—</p>
+                  )}
+                </div>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Marital Status</span>
-                <p className="text-xs font-bold text-slate-800">{member.maritalStatus || "—"}</p>
+
+              <div className="flex items-center gap-3 sm:col-span-2">
+                <div className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <MapPin className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Residential Address</p>
+                  <p className="font-bold text-slate-900 truncate">
+                    {member.address || "—"}
+                  </p>
+                </div>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Baptism</span>
-                <p className="text-xs font-bold text-slate-800">{member.baptized ? "Baptized" : "Not Baptized"}</p>
+            </div>
+          </div>
+
+          {/* Section 2: Personal & Church Details */}
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+              Personal & Church Details
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div className="p-2.5 rounded-xl bg-white border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Ministry</p>
+                <p className="font-bold text-slate-900 mt-0.5">{member.category}</p>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Birthday</span>
-                <p className="text-xs font-bold text-slate-800">
+              <div className="p-2.5 rounded-xl bg-white border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Department</p>
+                <p className="font-bold text-slate-900 mt-0.5">{department?.name || "None"}</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Gender</p>
+                <p className="font-bold text-slate-900 capitalize mt-0.5">{member.gender || "—"}</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Marital Status</p>
+                <p className="font-bold text-slate-900 mt-0.5">{member.maritalStatus || "—"}</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Birthday</p>
+                <p className="font-bold text-slate-900 mt-0.5">
                   {member.dateOfBirth ? `🎂 ${fmtDay(member.dateOfBirth)}` : "—"}
                 </p>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Anniversary</span>
-                <p className="text-xs font-bold text-slate-800">
+              <div className="p-2.5 rounded-xl bg-white border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Anniversary</p>
+                <p className="font-bold text-slate-900 mt-0.5">
                   {member.weddingAnniversary ? `💍 ${fmtDay(member.weddingAnniversary)}` : "—"}
                 </p>
               </div>
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Joined</span>
-                <p className="text-xs font-bold text-slate-800">
+              <div className="p-2.5 rounded-xl bg-white border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Baptism Status</p>
+                <p className="font-bold text-slate-900 mt-0.5">{member.baptized ? "Baptized" : "Not Baptized"}</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-white border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Date Joined</p>
+                <p className="font-bold text-slate-900 mt-0.5">
                   {member.joinedAt ? fmtDay(member.joinedAt) : "—"}
                 </p>
               </div>
             </div>
+          </div>
 
-            {/* Profession & Gifts */}
-            {(member.occupation || member.skills) && (
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1.5">
+          {/* Section 3: Profession & Skills */}
+          {(member.occupation || member.skills) && (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-2.5">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                Gifts & Profession
+              </p>
+              <div className="space-y-2 text-xs">
                 {member.occupation && (
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Profession / Occupation</span>
-                    <p className="text-xs font-bold text-slate-800">{member.occupation}</p>
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Profession / Occupation</span>
+                    <p className="font-bold text-slate-900 mt-0.5">{member.occupation}</p>
                   </div>
                 )}
                 {member.skills && (
-                  <div className="pt-1 border-t border-slate-200/60">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Skills & Talents (Ministry Gifts)</span>
-                    <p className="text-xs font-medium text-slate-700">{member.skills}</p>
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Ministry Gifts & Talents</span>
+                    <p className="font-medium text-slate-700 mt-0.5">{member.skills}</p>
                   </div>
                 )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Emergency Contact */}
-            {(member.emergencyContactName || member.emergencyContactPhone) && (
-              <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-100 space-y-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">Emergency Contact</span>
-                <p className="text-xs font-bold text-slate-800">
-                  {member.emergencyContactName || "Relative"} {member.emergencyContactPhone ? `· ${member.emergencyContactPhone}` : ""}
-                </p>
-              </div>
-            )}
-          </div>
+          {/* Section 4: Emergency Contact */}
+          {(member.emergencyContactName || member.emergencyContactPhone) && (
+            <div className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-4 space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">
+                Emergency Contact
+              </p>
+              <p className="text-xs font-bold text-slate-900">
+                {member.emergencyContactName || "Relative"}
+                {member.emergencyContactPhone ? ` · ${member.emergencyContactPhone}` : ""}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

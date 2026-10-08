@@ -2,7 +2,7 @@ import { and, asc, count, eq, ilike, or, sql, type SQL } from "drizzle-orm";
 import { UserCheck } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
-import { MembersToolbar, MemberFilters, MemberRowActions, MemberProfileCell } from "./members-client";
+import { MembersToolbar, MemberFilters, MemberTableRow } from "./members-client";
 import { requireModule } from "@/lib/permissions";
 import { TablePagination } from "@/components/table-pagination";
 
@@ -84,71 +84,46 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
         departments={departments}
       />
 
-      <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-x-auto">
-        <table className="w-full min-w-[800px] text-sm">
-          <thead className="bg-slate-50/50 border-b border-slate-100">
-            <tr>
-              {["Member Profile", "Ministry", "Contact", "Location", "Member Care"].map((h, i) => (
-                <th
-                  key={h}
-                  className={`px-4 h-16 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400 ${i === 0 ? "pl-8" : ""}`}
-                >
-                  {h}
-                </th>
-              ))}
-              <th className="px-4 pr-8 h-16 text-right align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
+      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left border-collapse">
+            <thead className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-black uppercase tracking-wider text-slate-400">
               <tr>
-                <td colSpan={6} className="h-64 text-center">
-                  <div className="flex flex-col items-center justify-center text-slate-400">
-                    <UserCheck className="h-10 w-10 mb-3 opacity-20" />
-                    <p className="text-sm font-medium italic">
-                      {q || group ? "No members match your filters." : "The member directory is currently empty."}
-                    </p>
-                  </div>
-                </td>
+                <th className="py-3 pl-4 sm:pl-5 pr-2.5 min-w-[190px]">Member Profile</th>
+                <th className="py-3 px-2.5 sm:px-3 min-w-[120px]">Ministry</th>
+                <th className="py-3 px-2.5 sm:px-3 min-w-[125px]">Department</th>
+                <th className="py-3 px-2.5 sm:px-3 min-w-[120px]">Contact</th>
+                <th className="py-3 px-2.5 sm:px-3 min-w-[100px]">Location</th>
+                <th className="py-3 px-2.5 sm:px-3 min-w-[100px]">Celebrations</th>
+                <th className="py-3 px-2.5 sm:px-3 min-w-[80px]">Status</th>
+                <th className="py-3 pl-2.5 pr-4 sm:pr-5 text-right min-w-[95px]">Actions</th>
               </tr>
-            ) : (
-              rows.map(({ member: m, department: d }) => (
-                <tr key={m.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
-                  <td className="px-4 pl-8 py-3">
-                    <MemberProfileCell member={m} department={d} departments={departments} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1 items-start">
-                      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-tight text-slate-600">
-                        {m.category}
-                      </span>
-                      {d && (
-                        <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-tight text-[#1e3a8a]">
-                          {d.name}
-                        </span>
-                      )}
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="h-64 text-center">
+                    <div className="flex flex-col items-center justify-center text-slate-400">
+                      <UserCheck className="h-10 w-10 mb-3 opacity-20" />
+                      <p className="text-sm font-medium italic">
+                        {q || group ? "No members match your filters." : "The member directory is currently empty."}
+                      </p>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    <p className="font-semibold">{m.phone ?? "—"}</p>
-                    {m.email && <p className="text-xs text-slate-400">{m.email}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-slate-600 max-w-[200px] truncate">{m.address ?? "—"}</td>
-                  <td className="px-4 py-3 text-xs text-slate-500 space-y-0.5">
-                    {m.dateOfBirth && <p>🎂 {fmtDay(m.dateOfBirth)}</p>}
-                    {m.weddingAnniversary && <p>💍 {fmtDay(m.weddingAnniversary)}</p>}
-                    {!m.dateOfBirth && !m.weddingAnniversary && "—"}
-                  </td>
-                  <td className="px-4 pr-8 py-3 text-right">
-                    <MemberRowActions member={m} department={d} departments={departments} />
-                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                rows.map(({ member: m, department: d }) => (
+                  <MemberTableRow
+                    key={m.id}
+                    member={m}
+                    department={d}
+                    departments={departments}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
         <TablePagination
           currentPage={page}
           totalItems={totalFilteredCount}
