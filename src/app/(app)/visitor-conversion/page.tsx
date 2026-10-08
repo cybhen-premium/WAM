@@ -12,7 +12,7 @@ const { member } = schema;
 
 export default async function VisitorConversionPage({ searchParams }: PageProps<"/visitor-conversion">) {
   const { church } = await requireChurch();
-  await requireModule("analytics");
+  await requireModule("visitors");
   const sp = await searchParams;
   const page = Math.max(1, Number(sp?.page) || 1);
   const pageSize = Math.max(1, Number(sp?.pageSize) || 50);

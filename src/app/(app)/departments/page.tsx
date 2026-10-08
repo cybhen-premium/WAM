@@ -19,7 +19,7 @@ function getRecentSunday(): string {
 
 export default async function DepartmentsPage({ searchParams }: PageProps<"/departments">) {
   const { church, role } = await requireChurch();
-  await requireModule("members");
+  await requireModule("departments");
   const sp = await searchParams;
   const page = Math.max(1, Number(sp?.page) || 1);
   const pageSize = Math.max(1, Number(sp?.pageSize) || 50);

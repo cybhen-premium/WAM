@@ -16,7 +16,7 @@ const NON_MEMBER_CATEGORIES = ["Visitor", "Regular Attendee"];
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
 export async function recordDuesPayment(_prev: FormState, form: FormData): Promise<FormState> {
-  await requireModule("care");
+  await requireModule("welfare_dues");
   const { church } = await requireChurch();
   const memberId = String(form.get("memberId") ?? "");
   const amountStr = String(form.get("amount") ?? "");
@@ -98,7 +98,7 @@ export async function recordDuesPayment(_prev: FormState, form: FormData): Promi
 }
 
 export async function updateDuesPayment(_prev: FormState, form: FormData): Promise<FormState> {
-  await requireModule("care");
+  await requireModule("welfare_dues");
   const { church } = await requireChurch();
   const duesId = String(form.get("duesId") ?? "");
   const amountStr = String(form.get("amount") ?? "");
@@ -179,7 +179,7 @@ export async function updateDuesPayment(_prev: FormState, form: FormData): Promi
 }
 
 export async function deleteDuesPayment(duesId: string): Promise<void> {
-  await requireModule("care");
+  await requireModule("welfare_dues");
 
   const [row] = await db
     .select({ id: welfareDues.id, memberId: welfareDues.memberId, amount: welfareDues.amount })
@@ -208,7 +208,7 @@ export async function deleteDuesPayment(duesId: string): Promise<void> {
 }
 
 export async function updateWelfareTarget(_prev: FormState, form: FormData): Promise<FormState> {
-  await requireModule("care");
+  await requireModule("welfare_dues");
   const { church } = await requireChurch();
   const targetStr = String(form.get("target") ?? "");
   const target = parseFloat(targetStr);

@@ -58,7 +58,7 @@ export const NAV_CATEGORIES: NavCategory[] = [
       },
       {
         type: "item",
-        item: { href: "/departments", module: "members", label: "Departments", icon: Building2 },
+        item: { href: "/departments", module: "departments", label: "Departments", icon: Building2 },
       },
       {
         type: "item",
@@ -70,7 +70,7 @@ export const NAV_CATEGORIES: NavCategory[] = [
       },
       {
         type: "item",
-        item: { href: "/visitor-conversion", module: "analytics", label: "Visitors", icon: TrendingUp },
+        item: { href: "/visitor-conversion", module: "visitors", label: "Visitors", icon: TrendingUp },
       },
       {
         type: "item",
@@ -91,15 +91,15 @@ export const NAV_CATEGORIES: NavCategory[] = [
       },
       {
         type: "item",
-        item: { href: "/welfare-dues", module: "care", label: "Welfare Dues", icon: CreditCard },
+        item: { href: "/welfare-dues", module: "welfare_dues", label: "Welfare Dues", icon: CreditCard },
       },
       {
         type: "item",
-        item: { href: "/giving-analytics", module: "analytics", label: "Giving Analytics", icon: ChartColumn },
+        item: { href: "/giving-analytics", module: "giving_analytics", label: "Giving Analytics", icon: ChartColumn },
       },
       {
         type: "item",
-        item: { href: "/growth", module: "analytics", label: "Growth Trends", icon: TrendingUp },
+        item: { href: "/growth", module: "growth", label: "Growth Trends", icon: TrendingUp },
       },
     ],
   },
@@ -108,11 +108,11 @@ export const NAV_CATEGORIES: NavCategory[] = [
     entries: [
       {
         type: "item",
-        item: { href: "/welfare", module: "care", label: "Member Care", icon: HeartHandshake },
+        item: { href: "/welfare", module: "welfare", label: "Member Care", icon: HeartHandshake },
       },
       {
         type: "item",
-        item: { href: "/announcements", module: "messaging", label: "Announcements", icon: Megaphone },
+        item: { href: "/announcements", module: "announcements", label: "Announcements", icon: Megaphone },
       },
       {
         type: "item",

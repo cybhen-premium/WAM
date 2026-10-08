@@ -22,7 +22,7 @@ export type RefineStyle = keyof typeof STYLES;
 
 /** AI rewrite of the message body. Costs 1 credit. */
 export async function refineMessage(style: RefineStyle, topic: string, body: string): Promise<{ text?: string; error?: string }> {
-  await requireModule("messaging");
+  await requireModule("announcements");
   const { church } = await requireChurch();
   if (!body.trim()) return { error: "Write a few notes first." };
   try {
@@ -54,7 +54,7 @@ async function audiencePhones(church: Awaited<ReturnType<typeof requireChurch>>[
 }
 
 export async function sendAnnouncement(topic: string, body: string, audience: string, audienceLabel: string) {
-  await requireModule("messaging");
+  await requireModule("announcements");
   const { church } = await requireChurch();
   if (!body.trim()) return { error: "Message body is empty." };
 

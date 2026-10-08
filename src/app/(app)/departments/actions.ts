@@ -13,7 +13,7 @@ const { department } = schema;
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
 export async function saveDepartment(_prev: FormState, form: FormData): Promise<FormState> {
-  await requireModule("members");
+  await requireModule("departments");
   const { church } = await requireChurch();
   const name = String(form.get("name") ?? "").trim();
   if (!name) return { error: "Department name is required." };
@@ -46,7 +46,7 @@ export async function saveDepartment(_prev: FormState, form: FormData): Promise<
 }
 
 export async function deleteDepartment(id: string) {
-  await requireModule("members");
+  await requireModule("departments");
   const { church } = await requireChurch();
   await db.delete(department).where(and(eq(department.id, id), eq(department.churchId, church.id)));
   logActivity({
@@ -63,7 +63,7 @@ export async function assignDepartmentAccount(
   _prev: FormState,
   form: FormData,
 ): Promise<FormState> {
-  await requireModule("members");
+  await requireModule("departments");
   const { church, role } = await requireChurch();
   if (role !== "admin") return { error: "Only admins can assign department accounts." };
 

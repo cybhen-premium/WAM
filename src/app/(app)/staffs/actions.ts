@@ -274,34 +274,62 @@ export async function updateStaff(
 
 export async function changeTwoFactorMethod(staffId: string, method: string) {
   await requireModule("staffs");
-  const { church: c } = await requireAdmin();
-  if (!["none", "email", "sms", "totp"].includes(method)) return;
-  
-  await db.update(staff).set({ twoFactorMethod: method })
-    .where(and(eq(staff.id, staffId), eq(staff.churchId, c.id)));
+  await requireAdmin();
+  if (!["none", "email", "sms", "totp", "auth_app"].includes(method)) {
+    return { ok: false, error: "Invalid 2FA method." };
+  }
+  const canonicalMethod = method === "auth_app" ? "totp" : method;
+
+  const [targetStaff] = await db
+    .select({ id: staff.id, userId: staff.userId, email: staff.email })
+    .from(staff)
+    .where(eq(staff.id, staffId))
+    .limit(1);
+
+  if (!targetStaff) return { ok: false, error: "Staff member not found." };
+
+  if (targetStaff.userId) {
+    await db
+      .update(staff)
+      .set({ twoFactorMethod: canonicalMethod })
+      .where(eq(staff.userId, targetStaff.userId));
+  } else {
+    await db
+      .update(staff)
+      .set({ twoFactorMethod: canonicalMethod })
+      .where(eq(staff.email, targetStaff.email));
+  }
+
   logActivity({
     module: "staffs",
-    action: `Changed 2FA method to ${method}`,
-    metadata: { staffId, method },
+    action: `Changed 2FA method to ${canonicalMethod}`,
+    metadata: { staffId, method: canonicalMethod },
   });
-    
+
   revalidatePath("/staffs");
+  return { ok: true, method: canonicalMethod };
 }
 
 export async function removeStaff(staffId: string) {
   await requireModule("staffs");
   const { church: c, user: me } = await requireAdmin();
   const [row] = await db.select().from(staff)
-    .where(and(eq(staff.id, staffId), eq(staff.churchId, c.id))).limit(1);
+    .where(eq(staff.id, staffId)).limit(1);
   if (!row || row.userId === me.id) return;
 
   // Delete staff row first (FK constraints), then wipe the auth records so the
   // user can no longer log in at all.
-  await db.delete(staff).where(eq(staff.id, staffId));
-
   if (row.userId) {
+    const userStaffRows = await db.select({ id: staff.id }).from(staff).where(eq(staff.userId, row.userId));
+    for (const sRow of userStaffRows) {
+      await db.delete(staffModule).where(eq(staffModule.staffId, sRow.id));
+    }
+    await db.delete(staff).where(eq(staff.userId, row.userId));
     await db.delete(account).where(eq(account.userId, row.userId));
     await db.delete(user).where(eq(user.id, row.userId));
+  } else {
+    await db.delete(staffModule).where(eq(staffModule.staffId, staffId));
+    await db.delete(staff).where(eq(staff.email, row.email));
   }
   logActivity({
     module: "staffs",
@@ -317,10 +345,14 @@ export async function updateStaffStatus(staffId: string, status: "active" | "pen
   await requireModule("staffs");
   const { church: c, user: me } = await requireAdmin();
   const [row] = await db.select().from(staff)
-    .where(and(eq(staff.id, staffId), eq(staff.churchId, c.id))).limit(1);
+    .where(eq(staff.id, staffId)).limit(1);
   if (!row || row.userId === me.id) return;
   
-  await db.update(staff).set({ status }).where(eq(staff.id, staffId));
+  if (row.userId) {
+    await db.update(staff).set({ status }).where(eq(staff.userId, row.userId));
+  } else {
+    await db.update(staff).set({ status }).where(eq(staff.email, row.email));
+  }
   
   if (status === "suspended") {
     const { sendEmail } = await import("@/lib/auth");
@@ -358,19 +390,30 @@ export async function updateStaffStatus(staffId: string, status: "active" | "pen
 
 export async function setStaffModules(staffId: string, modules: string[]) {
   await requireModule("staffs");
-  const { church: c } = await requireAdmin();
-  const [target] = await db.select({ id: staff.id, role: staff.role }).from(staff)
-    .where(and(eq(staff.id, staffId), eq(staff.churchId, c.id))).limit(1);
+  await requireAdmin();
+  const [target] = await db
+    .select({ id: staff.id, role: staff.role, churchId: staff.churchId, userId: staff.userId, email: staff.email })
+    .from(staff)
+    .where(eq(staff.id, staffId))
+    .limit(1);
   if (!target || target.role === "admin") return;
 
   const wanted = MODULE_KEYS.filter((k) => modules.includes(k));
-  await db.delete(staffModule)
-    .where(and(eq(staffModule.churchId, c.id), eq(staffModule.staffId, staffId)));
-  if (wanted.length) {
-    await db.insert(staffModule).values(
-      wanted.map((module) => ({ churchId: c.id, staffId, module })),
-    );
+
+  // Find all branch staff rows for this user or email
+  const staffRows = target.userId
+    ? await db.select({ id: staff.id, churchId: staff.churchId }).from(staff).where(eq(staff.userId, target.userId))
+    : await db.select({ id: staff.id, churchId: staff.churchId }).from(staff).where(eq(staff.email, target.email));
+
+  for (const s of staffRows) {
+    await db.delete(staffModule).where(eq(staffModule.staffId, s.id));
+    if (wanted.length) {
+      await db.insert(staffModule).values(
+        wanted.map((module) => ({ churchId: s.churchId, staffId: s.id, module })),
+      );
+    }
   }
+
   logActivity({
     module: "staffs",
     action: "Updated staff module permissions",
@@ -391,7 +434,7 @@ export async function resetStaffPassword(staffId: string, customPassword?: strin
       userId: staff.userId,
     })
     .from(staff)
-    .where(and(eq(staff.id, staffId), eq(staff.churchId, c.id)))
+    .where(eq(staff.id, staffId))
     .limit(1);
 
   if (!targetStaff) {

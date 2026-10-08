@@ -14,7 +14,7 @@ const shortCedis = (n: number) => `₵${new Intl.NumberFormat("en-GH", { maximum
 
 export default async function GrowthPage() {
   const { church } = await requireChurch();
-  await requireModule("analytics");
+  await requireModule("growth");
 
   const [[{ total }], months] = await Promise.all([
     db.select({ total: count() }).from(member).where(and(eq(member.churchId, church.id), sql`${member.category} not in ('Visitor', 'Regular Attendee')`)),

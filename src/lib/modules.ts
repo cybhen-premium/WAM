@@ -6,17 +6,23 @@
  */
 export const MODULES = {
   dashboard: { label: "Dashboard", routes: ["/dashboard"] },
-  members: { label: "Members", routes: ["/members", "/departments"] },
-  akwaaba: { label: "Akwaaba", routes: ["/akwaaba"] },
-  sob: { label: "SOB", routes: ["/sob"] },
-  tithes: { label: "Tithes Tracker", routes: ["/tithes"] },
-  finances: { label: "Finances", routes: ["/finances"] },
-  analytics: { label: "Analytics & Visitors", routes: ["/analytics", "/giving-analytics", "/growth", "/visitor-conversion"] },
-  care: { label: "Member Care & Welfare", routes: ["/welfare", "/welfare-dues"] },
-  messaging: { label: "Messages & Announcements", routes: ["/message-center", "/announcements"] },
-  staffs: { label: "Staffs", routes: ["/staffs"] },
-  settings: { label: "Settings", routes: ["/settings"] },
+  members: { label: "Members", routes: ["/members"] },
+  departments: { label: "Departments", routes: ["/departments"] },
   department_portal: { label: "Department Portal", routes: ["/department-portal"] },
+  akwaaba: { label: "Akwaaba Intake", routes: ["/akwaaba"] },
+  visitors: { label: "Visitors", routes: ["/visitor-conversion"] },
+  sob: { label: "School of Baptism", routes: ["/sob"] },
+  tithes: { label: "Tithes Tracker", routes: ["/tithes"] },
+  finances: { label: "Finance & Accounts", routes: ["/finances"] },
+  welfare_dues: { label: "Welfare Dues", routes: ["/welfare-dues"] },
+  giving_analytics: { label: "Giving Analytics", routes: ["/giving-analytics"] },
+  growth: { label: "Growth Trends", routes: ["/growth"] },
+  welfare: { label: "Member Care", routes: ["/welfare"] },
+  announcements: { label: "Announcements", routes: ["/announcements"] },
+  messaging: { label: "SMS Messages", routes: ["/message-center"] },
+  analytics: { label: "Analytics & Activity", routes: ["/analytics"] },
+  staffs: { label: "Staff Management", routes: ["/staffs"] },
+  settings: { label: "System Settings", routes: ["/settings"] },
 } as const;
 
 export type ModuleKey = keyof typeof MODULES;
@@ -46,6 +52,19 @@ export function moduleForPath(pathname: string): ModuleKey | null {
 export const isSuperAdmin = (role: string) => role === "admin";
 
 /** True when a module list (the signed-in user's) covers this module. */
-export function hasModule(assigned: readonly string[] | "all", module: ModuleKey): boolean {
-  return assigned === "all" || assigned.includes(module);
+export function hasModule(assigned: readonly string[] | "all", module: ModuleKey | string): boolean {
+  if (assigned === "all") return true;
+  if (assigned.includes(module)) return true;
+  // Legacy aliases
+  if ((module === "welfare" || module === "welfare_dues") && assigned.includes("care")) return true;
+  if (module === "care" && (assigned.includes("welfare") || assigned.includes("welfare_dues"))) return true;
+  if (module === "departments" && assigned.includes("members")) return true;
+  if (module === "announcements" && assigned.includes("messaging")) return true;
+  if (
+    (module === "visitors" || module === "giving_analytics" || module === "growth") &&
+    assigned.includes("analytics")
+  ) {
+    return true;
+  }
+  return false;
 }

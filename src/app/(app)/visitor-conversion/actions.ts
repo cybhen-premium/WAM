@@ -13,7 +13,7 @@ import { logActivity } from "@/lib/activity";
  * The final member category is decided later, when SOB lesson 4 (Baptised) graduates them.
  */
 export async function moveToSob(memberId: string) {
-  await requireModule("analytics");
+  await requireModule("visitors");
   const { church } = await requireChurch();
 
   const updated = await db

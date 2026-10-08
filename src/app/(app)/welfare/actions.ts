@@ -12,7 +12,7 @@ import { logActivity } from "@/lib/activity";
 export type FormState = { error?: string; ok?: boolean; message?: string } | undefined;
 
 export async function saveAutomation(_prev: FormState, f: FormData): Promise<FormState> {
-  await requireModule("care");
+  await requireModule("welfare");
   const { church } = await requireChurch();
   const birthday = String(f.get("birthdayTemplate") ?? "").trim();
   const anniversary = String(f.get("anniversaryTemplate") ?? "").trim();
@@ -38,7 +38,7 @@ export async function saveAutomation(_prev: FormState, f: FormData): Promise<For
 
 /** Lost Sheep → "Schedule Visit": records a pastoral visit. */
 export async function scheduleVisit(memberId: string) {
-  await requireModule("care");
+  await requireModule("welfare");
   const { church } = await requireChurch();
   const [m] = await db
     .select({ id: schema.member.id })
@@ -58,7 +58,7 @@ export async function scheduleVisit(memberId: string) {
 
 /** Sends a "we miss you" SMS to the given at-risk members (or all of them when ids is empty). */
 export async function reachOut(ids: string[]): Promise<FormState> {
-  await requireModule("care");
+  await requireModule("welfare");
   const { church } = await requireChurch();
   const rows = await db
     .select({ fullName: schema.member.fullName, phone: schema.member.phone })

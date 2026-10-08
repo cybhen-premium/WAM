@@ -23,7 +23,7 @@ const TABS = [
 
 export default async function WelfareDuesPage({ searchParams }: PageProps<"/welfare-dues">) {
   const { church } = await requireChurch();
-  await requireModule("care");
+  await requireModule("welfare_dues");
   const sp = await searchParams;
   const tab = TABS.find((t) => t.id === sp.tab)?.id ?? "contributions";
 

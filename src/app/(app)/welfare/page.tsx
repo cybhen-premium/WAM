@@ -22,7 +22,7 @@ const TABS = [
 
 export default async function WelfarePage({ searchParams }: PageProps<"/welfare">) {
   const { church } = await requireChurch();
-  await requireModule("care");
+  await requireModule("welfare");
   const sp = await searchParams;
   const tab = TABS.find((t) => t.id === sp.tab)?.id ?? "overview";
   const page = Math.max(1, Number(sp?.page) || 1);

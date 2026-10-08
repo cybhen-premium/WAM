@@ -54,7 +54,7 @@ export const getMyPermissions = cache(async (): Promise<Permissions> => {
 });
 
 /** True when the signed-in user may use this module. */
-export async function can(module: ModuleKey): Promise<boolean> {
+export async function can(module: ModuleKey | string): Promise<boolean> {
   const user = await getUser();
   if (user) {
     const row = await getChurchForUser(user.id);
@@ -63,7 +63,20 @@ export async function can(module: ModuleKey): Promise<boolean> {
     }
   }
   const perms = await getMyPermissions();
-  return perms === "all" || perms.has(module);
+  if (perms === "all") return true;
+  if (perms.has(module as ModuleKey)) return true;
+  // Legacy alias fallbacks
+  if ((module === "welfare" || module === "welfare_dues") && perms.has("care" as any)) return true;
+  if (module === "care" && (perms.has("welfare" as any) || perms.has("welfare_dues" as any))) return true;
+  if (module === "departments" && perms.has("members")) return true;
+  if (module === "announcements" && perms.has("messaging")) return true;
+  if (
+    (module === "visitors" || module === "giving_analytics" || module === "growth") &&
+    perms.has("analytics")
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /** Server guard for a page or a server action — 404s when the user has no access. */

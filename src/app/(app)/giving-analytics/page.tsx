@@ -14,7 +14,7 @@ const { transaction } = schema;
 
 export default async function GivingAnalyticsPage() {
   const { church } = await requireChurch();
-  await requireModule("analytics");
+  await requireModule("giving_analytics");
   const income = and(eq(transaction.churchId, church.id), eq(transaction.type, "income"), notInArray(transaction.category, [...WELFARE_CATEGORIES]));
 
   const [[totals], months] = await Promise.all([
