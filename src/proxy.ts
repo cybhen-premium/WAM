@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
-// Optimistic check only: bounce visitors without a session cookie to /login.
-// Real authorization happens in getCurrentChurch() on the server.
+// Edge security check: bounce visitors without a session cookie to /login.
+// Detailed multi-tenant authorization happens on the server via requireChurch() & requireModule().
 export function proxy(request: NextRequest) {
   if (!getSessionCookie(request)) {
     const url = new URL("/login", request.url);
@@ -14,18 +14,13 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/members/:path*",
-    "/finances/:path*",
-    "/giving-analytics/:path*",
-    "/growth/:path*",
-
-    "/welfare/:path*",
-    "/announcements/:path*",
-    "/message-center/:path*",
-    "/visitor-conversion/:path*",
-    "/settings/:path*",
-
-    "/print/:path*",
+    /*
+     * Match all request paths except:
+     * - api (API endpoints, Better Auth, webhooks, cron)
+     * - _next/static, _next/image (Next.js assets)
+     * - favicon.ico, images and public static files
+     * - public auth routes: login, signup, two-factor, setup-2fa, forgot-password, force-password-change
+     */
+    "/((?!api|_next/static|_next/image|favicon\\.ico|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico)$|login|signup|two-factor|setup-2fa|forgot-password|force-password-change).*)",
   ],
 };

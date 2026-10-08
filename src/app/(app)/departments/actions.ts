@@ -195,10 +195,11 @@ export async function removeDepartmentAccount(deptId: string) {
     .limit(1);
 
   if (existing) {
-    if (existing.userId) {
+    await db.delete(schema.staffModule).where(eq(schema.staffModule.staffId, existing.id));
+    await db.delete(schema.staff).where(eq(schema.staff.id, existing.id));
+    if (existing.userId && existing.userId !== church.ownerId) {
+      await db.delete(schema.account).where(eq(schema.account.userId, existing.userId));
       await db.delete(schema.user).where(eq(schema.user.id, existing.userId));
-    } else {
-      await db.delete(schema.staff).where(eq(schema.staff.id, existing.id));
     }
   }
 

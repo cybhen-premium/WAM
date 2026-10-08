@@ -18,7 +18,7 @@ export type IntegrationConfig = { provider: string; common: Record<string, strin
 export function isPlatformAdmin(email: string | null | undefined) {
   const admins = (process.env.PLATFORM_ADMIN_EMAILS ?? "")
     .split(",")
-    .map((e) => e.trim().toLowerCase())
+    .map((e) => e.trim().toLowerCase().replace(/^["']|["']$/g, ""))
     .filter(Boolean);
   return !!email && admins.includes(email.toLowerCase());
 }

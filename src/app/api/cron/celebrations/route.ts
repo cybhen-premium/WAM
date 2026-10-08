@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { fillTemplate, isToday } from "@/lib/pastoral";
@@ -5,13 +6,21 @@ import { sendSms, withFooter } from "@/lib/sms";
 
 const { church, member, messageLog } = schema;
 
+function isAuthorized(authHeader: string | null): boolean {
+  const secret = process.env.CRON_SECRET?.trim().replace(/^["']|["']$/g, "");
+  if (!secret || !authHeader) return false;
+  const expected = `Bearer ${secret}`;
+  if (authHeader.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected));
+}
+
 /**
  * Sends today's birthday and anniversary SMS for every church with automation switched on.
  * Called by Vercel Cron (see vercel.ts), which sends `Authorization: Bearer $CRON_SECRET`.
  * Safe to re-run: members already messaged today are skipped.
  */
 export async function GET(request: Request) {
-  if (!process.env.CRON_SECRET || request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorized(request.headers.get("authorization"))) {
     return new Response("Unauthorized", { status: 401 });
   }
 

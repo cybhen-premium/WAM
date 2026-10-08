@@ -31,7 +31,7 @@ export async function recordDuesPayment(_prev: FormState, form: FormData): Promi
   const [memberRow] = await db
     .select({ category: member.category, fullName: member.fullName })
     .from(member)
-    .where(eq(member.id, memberId))
+    .where(and(eq(member.id, memberId), eq(member.churchId, church.id)))
     .limit(1);
   if (!memberRow) return { error: "Member not found." };
   if (NON_MEMBER_CATEGORIES.includes(memberRow.category)) {
@@ -158,12 +158,12 @@ export async function updateDuesPayment(_prev: FormState, form: FormData): Promi
   await db
     .update(welfareDues)
     .set({ amount: amount.toString(), date: dateStr + "T00:00:00.000Z" })
-    .where(eq(welfareDues.id, duesId));
+    .where(and(eq(welfareDues.id, duesId), eq(welfareDues.churchId, church.id)));
 
   const [m] = await db
     .select({ fullName: member.fullName })
     .from(member)
-    .where(eq(member.id, row.memberId))
+    .where(and(eq(member.id, row.memberId), eq(member.churchId, church.id)))
     .limit(1);
 
   logActivity({
@@ -180,20 +180,23 @@ export async function updateDuesPayment(_prev: FormState, form: FormData): Promi
 
 export async function deleteDuesPayment(duesId: string): Promise<void> {
   await requireModule("welfare_dues");
+  const { church } = await requireChurch();
 
   const [row] = await db
     .select({ id: welfareDues.id, memberId: welfareDues.memberId, amount: welfareDues.amount })
     .from(welfareDues)
-    .where(eq(welfareDues.id, duesId))
+    .where(and(eq(welfareDues.id, duesId), eq(welfareDues.churchId, church.id)))
     .limit(1);
   if (!row) return;
 
-  await db.delete(welfareDues).where(eq(welfareDues.id, duesId));
+  await db
+    .delete(welfareDues)
+    .where(and(eq(welfareDues.id, duesId), eq(welfareDues.churchId, church.id)));
 
   const [m] = await db
     .select({ fullName: member.fullName })
     .from(member)
-    .where(eq(member.id, row.memberId))
+    .where(and(eq(member.id, row.memberId), eq(member.churchId, church.id)))
     .limit(1);
 
   logActivity({

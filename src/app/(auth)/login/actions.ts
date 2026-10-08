@@ -2,7 +2,7 @@
 
 import { requireUser, getChurchForUser, getUserBranches } from "@/lib/session";
 import { db, schema } from "@/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ilike } from "drizzle-orm";
 import { hashPassword } from "better-auth/crypto";
 
 import { cookies, headers } from "next/headers";
@@ -23,14 +23,12 @@ export async function resolveLoginEmail(identifier: string): Promise<string> {
     return trimmed.toLowerCase();
   }
 
-  // Look up by username in user table
-  const users = await db
-    .select({ email: schema.user.email, name: schema.user.name })
-    .from(schema.user);
-
-  const matched = users.find(
-    (u) => (u.name ?? "").toLowerCase() === trimmed.toLowerCase(),
-  );
+  // Look up specific user by username (case-insensitive)
+  const [matched] = await db
+    .select({ email: schema.user.email })
+    .from(schema.user)
+    .where(ilike(schema.user.name, trimmed))
+    .limit(1);
 
   return matched?.email ? matched.email.toLowerCase() : trimmed.toLowerCase();
 }
@@ -208,7 +206,7 @@ export async function selectBranchForSession(branchId: string) {
     path: "/",
     maxAge: 60 * 60 * 24 * 30, // 30 days
     sameSite: "lax",
-    httpOnly: false,
+    httpOnly: true,
   });
 
   return { ok: true, branchId, branchName: match.church.name };

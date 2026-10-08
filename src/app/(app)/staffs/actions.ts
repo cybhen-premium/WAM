@@ -104,25 +104,20 @@ export async function createStaff(
       updatedAt: now,
     });
   } else {
-    // User already exists in user table: update name and ensure temporary password is set
-    await db.update(user).set({
-      name: username,
-      passwordChangeRequired: true,
-      updatedAt: now,
-    }).where(eq(user.id, finalUserId));
+    // Prevent modifying church owner credentials through staff creation
+    if (finalUserId === c.ownerId) {
+      return { error: "The church owner account cannot be modified via staff creation." };
+    }
 
+    // Existing user: preserve their existing password and login credentials.
+    // Only ensure they have a credential account record if missing.
     const [existingAccount] = await db
       .select({ id: account.id })
       .from(account)
       .where(and(eq(account.userId, finalUserId), eq(account.providerId, "credential")))
       .limit(1);
 
-    if (existingAccount) {
-      await db.update(account).set({
-        password: hashed,
-        updatedAt: now,
-      }).where(eq(account.id, existingAccount.id));
-    } else {
+    if (!existingAccount) {
       const accountId = crypto.randomUUID().replace(/-/g, "");
       await db.insert(account).values({
         id: accountId,
@@ -196,6 +191,10 @@ export async function updateStaff(
   if (existingStaff.email !== emailRaw) {
     const [dup] = await db.select().from(user).where(eq(user.email, emailRaw)).limit(1);
     if (dup) return { error: "Another user is using that email." };
+  }
+
+  if (existingStaff.userId === c.ownerId && role !== "admin") {
+    return { error: "The church owner must remain an Administrator." };
   }
 
   if (existingStaff.userId) {
@@ -315,7 +314,7 @@ export async function removeStaff(staffId: string) {
   const { church: c, user: me } = await requireAdmin();
   const [row] = await db.select().from(staff)
     .where(eq(staff.id, staffId)).limit(1);
-  if (!row || row.userId === me.id) return;
+  if (!row || row.userId === me.id || row.userId === c.ownerId) return;
 
   // Delete staff row first (FK constraints), then wipe the auth records so the
   // user can no longer log in at all.
@@ -346,7 +345,7 @@ export async function updateStaffStatus(staffId: string, status: "active" | "pen
   const { church: c, user: me } = await requireAdmin();
   const [row] = await db.select().from(staff)
     .where(eq(staff.id, staffId)).limit(1);
-  if (!row || row.userId === me.id) return;
+  if (!row || row.userId === me.id || row.userId === c.ownerId) return;
   
   if (row.userId) {
     await db.update(staff).set({ status }).where(eq(staff.userId, row.userId));
@@ -439,6 +438,10 @@ export async function resetStaffPassword(staffId: string, customPassword?: strin
 
   if (!targetStaff) {
     return { ok: false, error: "Staff member not found." };
+  }
+
+  if (targetStaff.userId === c.ownerId) {
+    return { ok: false, error: "The church owner's password cannot be reset from staff management." };
   }
 
   const temporaryPassword = (customPassword ?? "").trim() || "WAMCHURCH@26";
