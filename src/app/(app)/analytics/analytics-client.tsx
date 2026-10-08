@@ -35,7 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useTablePagination } from "@/components/table-pagination";
 import { toast } from "sonner";
-import { clearActivityLogs } from "./actions";
+import { clearActivityLogs, resetDemoAnalytics } from "./actions";
 
 export type ActivityItem = {
   id: string;
@@ -209,6 +209,68 @@ export function AnalyticsClient({
     toast.success(`Exported ${activeTab} report as CSV.`);
   }
 
+  // Filter traffic days by selected timeRange (Last 7 days, Last 30 days, Last 90 days, All time)
+  const displayedDays = useMemo(() => {
+    if (timeRange === "Last 7 days") return data.trafficDays.slice(-7);
+    if (timeRange === "Last 30 days") return data.trafficDays.slice(-30);
+    if (timeRange === "Last 90 days") return data.trafficDays.slice(-90);
+    return data.trafficDays.slice(-30);
+  }, [data.trafficDays, timeRange]);
+
+  const currentTotalViews = useMemo(() => {
+    return displayedDays.reduce((acc, cur) => acc + cur.views, 0);
+  }, [displayedDays]);
+
+  const currentAvgPerDay = useMemo(() => {
+    return Math.round(currentTotalViews / displayedDays.length) || (currentTotalViews > 0 ? 1 : 0);
+  }, [currentTotalViews, displayedDays]);
+
+  // Dynamic X-Axis ticks based on displayed days
+  const xAxisTicks = useMemo(() => {
+    if (displayedDays.length <= 7) {
+      return displayedDays.map((d) => d.label);
+    }
+    const count = Math.min(10, displayedDays.length);
+    const step = Math.max(1, Math.floor(displayedDays.length / count));
+    const ticks: string[] = [];
+    for (let i = 0; i < displayedDays.length; i += step) {
+      ticks.push(displayedDays[i].label);
+    }
+    const lastLabel = displayedDays[displayedDays.length - 1]?.label;
+    if (lastLabel && !ticks.includes(lastLabel)) {
+      ticks.push(lastLabel);
+    }
+    return ticks;
+  }, [displayedDays]);
+
+  // Dynamic Y-Axis ticks & domain based on max value in displayed days
+  const maxVal = useMemo(() => {
+    const max = Math.max(
+      ...displayedDays.map((d) => (chartMetric === "views" ? d.views : d.visitors)),
+      4
+    );
+    return Math.ceil(max * 1.15);
+  }, [displayedDays, chartMetric]);
+
+  const yAxisTicks = useMemo(() => {
+    const step = Math.max(1, Math.ceil(maxVal / 4));
+    return [0, step, step * 2, step * 3, step * 4];
+  }, [maxVal]);
+
+  async function handleResetDemo() {
+    setClearing(true);
+    try {
+      await resetDemoAnalytics();
+      toast.success("Sample analytics restored.");
+      setShowClearModal(false);
+      router.refresh();
+    } catch {
+      toast.error("Failed to restore sample data.");
+    } finally {
+      setClearing(false);
+    }
+  }
+
   // Filter activities by search query in Activity Tracker
   const filteredActivities = useMemo(() => {
     if (!searchQuery.trim()) return activitiesList;
@@ -328,23 +390,45 @@ export function AnalyticsClient({
       {/* ======================================================== */}
       {activeView === "overview" ? (
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Left: Blue Icon, Title, Subtitle, and View Switcher Dropdown */}
-          <div className="flex items-center gap-3.5">
-            <div className="h-11 w-11 rounded-2xl bg-[#1d68f5] flex items-center justify-center text-white shadow-sm shrink-0">
-              {/* Pixel-perfect 3-rounded-bars icon matching Image 1 */}
-              <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="3.5" y="11" width="3.5" height="10" rx="1.75" />
-                <rect x="10.25" y="3" width="3.5" height="18" rx="1.75" />
-                <rect x="17" y="7" width="3.5" height="14" rx="1.75" />
-              </svg>
+          {/* Left: Blue Icon, Title, Subtitle, and View Switcher */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="h-11 w-11 rounded-2xl bg-[#1d68f5] flex items-center justify-center text-white shadow-sm shrink-0">
+                {/* Pixel-perfect 3-rounded-bars icon matching Image 1 */}
+                <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="3.5" y="11" width="3.5" height="10" rx="1.75" />
+                  <rect x="10.25" y="3" width="3.5" height="18" rx="1.75" />
+                  <rect x="17" y="7" width="3.5" height="14" rx="1.75" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
+                  Analytics
+                </h1>
+                <p className="text-[13px] text-slate-500 font-normal mt-1 leading-snug">
+                  Monitor real-time activity, navigation patterns, downloads, and engagement across the platform.
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
-                Analytics
-              </h1>
-              <p className="text-[13px] text-slate-500 font-normal mt-1 leading-snug">
-                Monitor real-time activity, navigation patterns, downloads, and engagement across the platform.
-              </p>
+
+            {/* Segmented View Switcher: [ Overview ] [ Activity Tracker ] */}
+            <div className="inline-flex items-center rounded-xl bg-slate-100 p-1 border border-slate-200/60 self-start sm:self-center shrink-0">
+              <button
+                type="button"
+                onClick={() => switchView("overview")}
+                className="px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 bg-white text-blue-600 shadow-2xs font-extrabold"
+              >
+                <BarChart2 className="h-3.5 w-3.5" />
+                Overview
+              </button>
+              <button
+                type="button"
+                onClick={() => switchView("activity")}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-slate-600 hover:text-slate-900"
+              >
+                <Activity className="h-3.5 w-3.5" />
+                Activity Tracker
+              </button>
             </div>
           </div>
 
@@ -452,6 +536,26 @@ export function AnalyticsClient({
               </p>
             </div>
           </div>
+
+          {/* Segmented View Switcher: [ Overview ] [ Activity Tracker ] */}
+          <div className="inline-flex items-center rounded-xl bg-slate-100 p-1 border border-slate-200/60 self-start sm:self-center shrink-0">
+            <button
+              type="button"
+              onClick={() => switchView("overview")}
+              className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-slate-600 hover:text-slate-900"
+            >
+              <BarChart2 className="h-3.5 w-3.5" />
+              Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => switchView("activity")}
+              className="px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer flex items-center gap-1.5 bg-white text-blue-600 shadow-2xs font-extrabold"
+            >
+              <Activity className="h-3.5 w-3.5" />
+              Activity Tracker
+            </button>
+          </div>
         </div>
       )}
 
@@ -468,10 +572,10 @@ export function AnalyticsClient({
                 TOTAL VIEWS
               </span>
               <div className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
-                {data.totalViews.toLocaleString()}
+                {currentTotalViews.toLocaleString()}
               </div>
               <p className="mt-2 text-xs text-slate-400 font-normal">
-                All time page views
+                {timeRange === "Last 30 days" ? "Last 30 days page views" : `${timeRange} page views`}
               </p>
             </div>
 
@@ -524,7 +628,7 @@ export function AnalyticsClient({
                   Traffic Overview
                 </h3>
                 <p className="text-xs text-slate-500 font-medium mt-1">
-                  Total: <span className="font-bold text-slate-700">{data.totalViews}</span> &nbsp;&nbsp; Avg/day: <span className="font-bold text-slate-700">{data.avgPerDay}</span>
+                  Total: <span className="font-bold text-slate-700">{currentTotalViews}</span> &nbsp;&nbsp; Avg/day: <span className="font-bold text-slate-700">{currentAvgPerDay}</span>
                 </p>
               </div>
 
@@ -561,7 +665,7 @@ export function AnalyticsClient({
             <div className="h-[290px] w-full min-h-[290px] pt-4">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={data.trafficDays}
+                  data={displayedDays}
                   margin={{ top: 20, right: 10, left: 0, bottom: 0 }}
                 >
                   <defs>
@@ -581,19 +685,7 @@ export function AnalyticsClient({
                     dataKey="label"
                     tickLine={false}
                     axisLine={false}
-                    ticks={[
-                      "Sep 3",
-                      "Sep 6",
-                      "Sep 9",
-                      "Sep 12",
-                      "Sep 15",
-                      "Sep 18",
-                      "Sep 21",
-                      "Sep 24",
-                      "Sep 27",
-                      "Sep 30",
-                      "Oct 2",
-                    ]}
+                    ticks={xAxisTicks}
                     tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 500 }}
                   />
 
@@ -601,12 +693,8 @@ export function AnalyticsClient({
                     allowDecimals={false}
                     tickLine={false}
                     axisLine={false}
-                    ticks={
-                      chartMetric === "views"
-                        ? [0, 17, 34, 51, 68]
-                        : [0, 2, 4, 6]
-                    }
-                    domain={chartMetric === "views" ? [0, 68] : [0, 6]}
+                    ticks={yAxisTicks}
+                    domain={[0, yAxisTicks[4]]}
                     tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 500 }}
                     width={36}
                   />
@@ -1022,27 +1110,37 @@ export function AnalyticsClient({
                 : "Are you sure you want to permanently clear all audit activity records? This action cannot be undone and will reset the audit history."}
             </p>
 
-            <div className="mt-6 flex items-center justify-end gap-2.5">
+            <div className="mt-6 flex items-center justify-between gap-2.5">
               <button
                 type="button"
-                onClick={() => setShowClearModal(false)}
+                onClick={handleResetDemo}
                 disabled={clearing}
-                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer disabled:opacity-50"
               >
-                Cancel
+                Restore Demo Data
               </button>
-              <button
-                type="button"
-                onClick={handleClearLogs}
-                disabled={clearing}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                {clearing
-                  ? "Clearing..."
-                  : activeView === "overview"
-                  ? "Yes, Clear Data"
-                  : "Yes, Clear Logs"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowClearModal(false)}
+                  disabled={clearing}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearLogs}
+                  disabled={clearing}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  {clearing
+                    ? "Clearing..."
+                    : activeView === "overview"
+                    ? "Yes, Clear Data"
+                    : "Yes, Clear Logs"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
