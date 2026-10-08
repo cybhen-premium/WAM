@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
@@ -95,9 +95,13 @@ export default async function AnalyticsPage(props: {
       clearedAt
         ? and(
             eq(schema.activityLog.churchId, church.id),
+            ne(schema.activityLog.actionCode, "page.view"),
             sql`${schema.activityLog.createdAt} > ${clearedAt.toISOString()}`
           )
-        : eq(schema.activityLog.churchId, church.id)
+        : and(
+            eq(schema.activityLog.churchId, church.id),
+            ne(schema.activityLog.actionCode, "page.view")
+          )
     )
     .orderBy(desc(schema.activityLog.createdAt))
     .limit(300);

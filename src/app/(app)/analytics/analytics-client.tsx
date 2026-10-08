@@ -86,8 +86,7 @@ export type AnalyticsData = {
 type TabKey = keyof AnalyticsBreakdowns;
 
 const TAB_CONFIG: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: "pages", label: "Pages", icon: FileText },
-  { key: "routes", label: "Routes", icon: Link2 },
+  { key: "routes", label: "Feature Modules", icon: Link2 },
   { key: "countries", label: "Countries", icon: Globe },
   { key: "devices", label: "Devices", icon: Laptop },
   { key: "operatingSystems", label: "Operating Systems", icon: HardDrive },
@@ -147,7 +146,7 @@ export function AnalyticsClient({
   const [timeRange, setTimeRange] = useState("Last 30 days");
   const [rangeDropdownOpen, setRangeDropdownOpen] = useState(false);
   const [chartMetric, setChartMetric] = useState<"views" | "visitors">("views");
-  const [activeTab, setActiveTab] = useState<TabKey>("pages");
+  const [activeTab, setActiveTab] = useState<TabKey>("routes");
   const [searchQuery, setSearchQuery] = useState("");
   const [showClearModal, setShowClearModal] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -271,11 +270,14 @@ export function AnalyticsClient({
     }
   }
 
-  // Filter activities by search query in Activity Tracker
+  // Filter activities by search query in Activity Tracker (excluding mundane page navigations)
   const filteredActivities = useMemo(() => {
-    if (!searchQuery.trim()) return activitiesList;
+    const list = activitiesList.filter(
+      (item) => item.actionCode !== "page.view" && !item.action.toLowerCase().startsWith("navigated to")
+    );
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();
-    return activitiesList.filter((item) => {
+    return list.filter((item) => {
       const code = (item.actionCode || getDisplayActionCode(item)).toLowerCase();
       const user = item.actorName.toLowerCase();
       const email = (item.actorEmail || "").toLowerCase();

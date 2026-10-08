@@ -119,15 +119,6 @@ export function AppShell({
     }
   }, []);
 
-  // Background real-time page traffic logger
-  useEffect(() => {
-    if (pathname && !pathname.startsWith("/login") && !pathname.startsWith("/api")) {
-      import("@/app/(app)/analytics/actions")
-        .then((m) => m.recordPageView(pathname))
-        .catch(() => {});
-    }
-  }, [pathname]);
-
   // Track which nav groups are open; starts fully collapsed
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 

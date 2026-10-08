@@ -64,27 +64,8 @@ export async function recordLogoutAction() {
   }
 }
 
-export async function recordPageView(path: string) {
-  try {
-    const session = await requireChurch();
-    const cleanPath = path.split("?")[0] || "/";
-    if (cleanPath.startsWith("/api") || cleanPath.startsWith("/login")) {
-      return { ok: false };
-    }
-    const segment = cleanPath.replace(/^\//, "").split("/")[0] || "dashboard";
-    await logActivity({
-      churchId: session.church.id,
-      userId: session.user.id,
-      actorName: session.user.name || session.user.email,
-      actorEmail: session.user.email,
-      module: segment,
-      actionCode: "page.view",
-      action: `Navigated to ${cleanPath}`,
-      metadata: { path: cleanPath },
-    });
-    return { ok: true };
-  } catch {
-    return { ok: false };
-  }
+export async function recordPageView(_path: string) {
+  // Page navigations are intentionally not logged to avoid cluttering the activity tracker
+  return { ok: true };
 }
 
