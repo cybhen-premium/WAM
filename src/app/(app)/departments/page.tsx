@@ -150,7 +150,7 @@ export default async function DepartmentsPage({ searchParams }: PageProps<"/depa
       </div>
 
       <div className="rounded-2xl border border-slate-100 bg-white shadow-xs overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-slate-50/50 border-b border-slate-100">
             <tr>
               <th className="px-4 pl-8 h-16 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">

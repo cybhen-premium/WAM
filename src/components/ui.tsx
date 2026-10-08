@@ -52,21 +52,21 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "relative w-[95vw] overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-white shadow-2xl animate-in fade-in-0 zoom-in-95",
+          "relative w-[95vw] max-h-[92vh] flex flex-col overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-white shadow-2xl animate-in fade-in-0 zoom-in-95",
           wide ? "sm:max-w-[800px]" : compact ? "sm:max-w-[360px]" : "sm:max-w-[600px]",
         )}
       >
-        <div className="relative p-5 md:p-6 pb-4 bg-[#1e3a8a] text-white">
+        <div className="relative shrink-0 p-5 md:p-6 pb-4 bg-[#1e3a8a] text-white">
           <div className="flex items-center gap-3">
             {Icon && (
-              <div className="p-2 bg-white/10 rounded-xl">
+              <div className="p-2 bg-white/10 rounded-xl shrink-0">
                 <Icon className="h-5 w-5 md:h-6 md:w-6 text-white" />
               </div>
             )}
-            <div>
-              <h2 className="tracking-tight text-lg md:text-xl font-black">{title}</h2>
+            <div className="min-w-0 pr-6">
+              <h2 className="tracking-tight text-lg md:text-xl font-black truncate">{title}</h2>
               {subtitle && (
-                <p className="text-blue-200 text-[9px] md:text-[10px] font-black uppercase tracking-widest mt-0.5">{subtitle}</p>
+                <p className="text-blue-200 text-[9px] md:text-[10px] font-black uppercase tracking-widest mt-0.5 truncate">{subtitle}</p>
               )}
             </div>
           </div>
@@ -79,7 +79,7 @@ export function Modal({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className={cn("overflow-y-auto", compact ? "p-4 md:p-5" : "max-h-[70vh] px-5 md:px-8 py-5 md:py-6")}>{children}</div>
+        <div className={cn("overflow-y-auto flex-1", compact ? "p-4 md:p-5" : "px-5 md:px-8 py-5 md:py-6")}>{children}</div>
       </div>
     </div>
   );

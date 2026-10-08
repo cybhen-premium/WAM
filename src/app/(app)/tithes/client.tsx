@@ -26,16 +26,16 @@ export function TithesToolbar({
   const [adding, setAdding] = useState(false);
 
   return (
-    <div className="flex items-center gap-2 w-full lg:w-auto">
+    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto">
       <Link
         href={`/print/tithes?month=${period}&only=tithers`}
         target="_blank"
-        className={buttonStyles.outline}
+        className={`${buttonStyles.outline} flex-1 sm:flex-initial`}
       >
         <Printer className="h-4 w-4" /> Print Tithers
       </Link>
       
-      <button onClick={() => setAdding(true)} className={`${buttonStyles.primary} w-full sm:w-auto bg-green-600 hover:bg-green-700`}>
+      <button onClick={() => setAdding(true)} className={`${buttonStyles.primary} flex-1 sm:flex-initial bg-green-600 hover:bg-green-700`}>
         <Plus /> Record Tithe
       </button>
 

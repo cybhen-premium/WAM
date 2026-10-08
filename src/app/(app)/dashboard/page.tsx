@@ -169,30 +169,30 @@ export default async function DashboardPage() {
 
         <div className="space-y-3">
           <div className="rounded-lg border bg-card text-card-foreground shadow-sm animate-fade-in">
-            <div className="p-6 pb-3">
+            <div className="p-4 sm:p-6 pb-3">
               <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base">
                 <Users className="h-4 w-4 text-primary" />
                 Staff Overview
               </h3>
             </div>
-            <div className="p-6 pt-0">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10 border border-success/20">
-                  <div className="p-2 rounded-full bg-success/20">
+            <div className="p-4 sm:p-6 pt-0">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="flex items-center gap-2.5 sm:gap-3 p-3 rounded-lg bg-success/10 border border-success/20">
+                  <div className="p-2 rounded-full bg-success/20 shrink-0">
                     <UserCheck className="h-4 w-4 text-success" />
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold">{activeStaff}</p>
-                    <p className="text-xs text-muted-foreground">Active Staff</p>
+                  <div className="min-w-0">
+                    <p className="text-xl sm:text-2xl font-bold">{activeStaff}</p>
+                    <p className="text-xs text-muted-foreground truncate">Active Staff</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-warning/10 border border-warning/20">
-                  <div className="p-2 rounded-full bg-warning/20">
+                <div className="flex items-center gap-2.5 sm:gap-3 p-3 rounded-lg bg-warning/10 border border-warning/20">
+                  <div className="p-2 rounded-full bg-warning/20 shrink-0">
                     <Clock className="h-4 w-4 text-warning" />
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold">{pendingStaff}</p>
-                    <p className="text-xs text-muted-foreground">Pending Invites</p>
+                  <div className="min-w-0">
+                    <p className="text-xl sm:text-2xl font-bold">{pendingStaff}</p>
+                    <p className="text-xs text-muted-foreground truncate">Pending Invites</p>
                   </div>
                 </div>
               </div>
@@ -200,30 +200,30 @@ export default async function DashboardPage() {
           </div>
 
           <div className="rounded-lg border bg-card text-card-foreground border-orange-200 bg-gradient-to-br from-orange-50/50 to-white shadow-sm overflow-hidden">
-            <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4">
+            <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pb-3 sm:pb-4">
               <div className="space-y-1">
-                <h3 className="font-semibold tracking-tight flex items-center gap-2 text-lg text-orange-700">
-                  <TriangleAlert className="h-5 w-5 text-orange-500" />
+                <h3 className="font-semibold tracking-tight flex items-center gap-2 text-base sm:text-lg text-orange-700">
+                  <TriangleAlert className="h-5 w-5 text-orange-500 shrink-0" />
                   <span className="font-black uppercase tracking-tight">At-Risk Members</span>
                 </h3>
                 <p className="text-[10px] font-bold text-orange-600/60 uppercase">Absent for {church.absenceThresholdWeeks}+ weeks</p>
               </div>
               <Link
                 href="/message-center?audience=at-risk"
-                className="inline-flex items-center justify-center text-sm border bg-background h-9 rounded-md px-3 border-orange-200 text-orange-700 hover:bg-orange-50 font-bold"
+                className="inline-flex items-center justify-center text-xs sm:text-sm border bg-background h-8 sm:h-9 rounded-md px-3 border-orange-200 text-orange-700 hover:bg-orange-50 font-bold shrink-0"
               >
                 Reach Out All
               </Link>
             </div>
-            <div className="p-6 pt-0 space-y-3">
+            <div className="p-4 sm:p-6 pt-0 space-y-2.5">
               {atRisk.length === 0 ? (
                 <div className="text-center py-8 border-2 border-dashed border-orange-100 rounded-2xl">
                   <p className="text-sm text-muted-foreground">All members are active!</p>
                 </div>
               ) : (
                 atRisk.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between rounded-lg bg-white border border-orange-100 px-3 py-2">
-                    <div className="flex items-center gap-2 truncate pr-2">
+                  <div key={m.id} className="flex items-center justify-between rounded-lg bg-white border border-orange-100 px-3 py-2 gap-2">
+                    <div className="flex items-center gap-2 truncate pr-2 min-w-0">
                       <span className="text-sm font-bold text-slate-800 truncate">
                         {m.fullName}
                       </span>
@@ -321,16 +321,16 @@ function CelebrationCard(props: {
 }) {
   return (
     <div className={`rounded-lg border bg-card ${props.border} bg-gradient-to-br ${props.from} to-white w-full shadow-sm overflow-hidden`}>
-      <div className="p-6 pb-2">
+      <div className="p-4 sm:p-6 pb-2">
         <h3 className={`font-semibold tracking-tight flex items-center gap-2 text-base sm:text-lg ${props.text}`}>
-          <div className={`${props.iconBg} p-2 rounded-full`}>{props.icon}</div>
+          <div className={`${props.iconBg} p-2 rounded-full shrink-0`}>{props.icon}</div>
           <span className="font-black uppercase tracking-tight">{props.title}</span>
           <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold text-white ml-2 ${props.badge}`}>
             {props.people.length}
           </span>
         </h3>
       </div>
-      <div className="p-6 pt-0 space-y-3">
+      <div className="p-4 sm:p-6 pt-0 space-y-2.5">
         {props.people.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-6 text-slate-400">
             <Sparkles className="h-6 w-6 mb-2 opacity-20" />
@@ -338,11 +338,11 @@ function CelebrationCard(props: {
           </div>
         ) : (
           props.people.map((p) => (
-            <div key={p.id} className="flex items-center justify-between rounded-lg bg-white/80 border border-white px-3 py-2">
-              <span className="text-sm font-bold text-slate-800">
+            <div key={p.id} className="flex items-center justify-between rounded-lg bg-white/80 border border-white px-3 py-2 gap-2">
+              <span className="text-sm font-bold text-slate-800 truncate">
                 {p.fullName}
               </span>
-              {p.phone && <span className="text-xs text-slate-500">{p.phone}</span>}
+              {p.phone && <span className="text-xs text-slate-500 shrink-0 font-medium">{p.phone}</span>}
             </div>
           ))
         )}

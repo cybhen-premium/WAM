@@ -162,7 +162,7 @@ export function MemberFilters(props: {
     "h-11 md:h-10 w-full appearance-none rounded-xl bg-white shadow-sm pl-3 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-blue-100";
 
   return (
-    <div className="flex flex-col md:flex-row gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
+    <div className="flex flex-col lg:flex-row gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
       <div className="relative flex-grow">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
         <input
@@ -172,8 +172,8 @@ export function MemberFilters(props: {
           className="w-full pl-9 h-11 md:h-10 text-xs rounded-xl bg-white shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-100"
         />
       </div>
-      <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
-        <div className="relative w-full sm:w-[160px]">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3 w-full lg:w-auto shrink-0">
+        <div className="relative flex-1 sm:flex-none sm:w-[150px]">
           <select value={props.group} onChange={(e) => update("group", e.target.value)} className={select} aria-label="Ministry">
             <option value="">All Ministries</option>
             {GROUP_FILTERS.map((c) => (
@@ -182,7 +182,7 @@ export function MemberFilters(props: {
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
         </div>
-        <div className="relative w-full sm:w-[160px]">
+        <div className="relative flex-1 sm:flex-none sm:w-[150px]">
           <select value={props.departmentId} onChange={(e) => update("departmentId", e.target.value)} className={select} aria-label="Department">
             <option value="">All Departments</option>
             {props.departments.map((d) => (
@@ -191,7 +191,7 @@ export function MemberFilters(props: {
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
         </div>
-        <div className="relative w-full sm:w-[180px]">
+        <div className="relative flex-1 sm:flex-none sm:w-[170px]">
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           <select
             value={props.status}
@@ -342,10 +342,10 @@ export function MemberProfileModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative w-[95vw] sm:max-w-[560px] overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-white shadow-2xl animate-in fade-in-0 zoom-in-95"
+        className="relative w-[95vw] sm:max-w-[560px] max-h-[92vh] flex flex-col overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-white shadow-2xl animate-in fade-in-0 zoom-in-95"
       >
         {/* Banner with sleek navy styling */}
-        <div className="relative h-28 bg-gradient-to-r from-[#1e3a8a] via-[#1e40af] to-[#2563eb] text-white p-4">
+        <div className="relative shrink-0 h-28 bg-gradient-to-r from-[#1e3a8a] via-[#1e40af] to-[#2563eb] text-white p-4">
           <button
             type="button"
             onClick={onClose}
@@ -360,7 +360,7 @@ export function MemberProfileModal({
         </div>
 
         {/* Hero Photo Section (Appearing Boldly!) */}
-        <div className="relative px-6 pt-0 pb-6 text-center">
+        <div className="relative px-6 pt-0 pb-6 text-center overflow-y-auto flex-1">
           <div className="-mt-16 mb-3 flex justify-center">
             {member.photoUrl ? (
               <div
@@ -439,7 +439,7 @@ export function MemberProfileModal({
           </div>
 
           {/* Details Grid */}
-          <div className="mt-5 max-h-[46vh] overflow-y-auto px-1 space-y-3 text-left">
+          <div className="mt-5 px-1 space-y-3 text-left">
             {/* Contact details */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">

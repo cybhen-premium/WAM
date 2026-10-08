@@ -72,7 +72,7 @@ export function SobToolbar({ lessons = [] }: { lessons?: ClientSobLesson[] }) {
   return (
     <div className="flex flex-col sm:flex-row gap-2.5">
       {/* Search */}
-      <div className="relative flex-1 max-w-xs">
+      <div className="relative flex-1 w-full sm:max-w-xs">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
         <input
           type="text"
@@ -84,11 +84,11 @@ export function SobToolbar({ lessons = [] }: { lessons?: ClientSobLesson[] }) {
       </div>
 
       {/* Filter dropdown */}
-      <div className="relative">
+      <div className="relative w-full sm:w-auto">
         <select
           value={currentFilter}
           onChange={(e) => handleFilter(e.target.value)}
-          className="h-10 appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-sm font-bold text-slate-700 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 cursor-pointer transition-colors"
+          className="h-10 w-full sm:w-auto appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-8 text-sm font-bold text-slate-700 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 cursor-pointer transition-colors"
         >
           {filterOptions.map((o) => (
             <option key={o.value} value={o.value}>

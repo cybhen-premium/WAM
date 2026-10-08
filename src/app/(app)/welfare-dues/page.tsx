@@ -263,12 +263,13 @@ async function ContributionsTab({
           sub="members behind"
           tone="text-red-500"
           icon={Users}
+          className="col-span-2 sm:col-span-1"
         />
       </div>
 
       {/* Member table */}
       <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[700px] text-sm">
           <thead className="bg-slate-50/50 border-b border-slate-100">
             <tr>
               <th className="px-4 pl-8 h-14 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
@@ -373,6 +374,7 @@ function SummaryCard({
   tone,
   icon: Icon,
   href,
+  className,
 }: {
   label: string;
   value: string;
@@ -380,9 +382,10 @@ function SummaryCard({
   tone: string;
   icon: typeof TrendingUp;
   href?: string;
+  className?: string;
 }) {
   const content = (
-    <div className={cn("rounded-2xl bg-white border border-slate-100 shadow-sm p-4 transition-all h-full", href && "hover:border-pink-200 hover:shadow-md cursor-pointer")}>
+    <div className={cn("rounded-2xl bg-white border border-slate-100 shadow-sm p-4 transition-all h-full", href && "hover:border-pink-200 hover:shadow-md cursor-pointer", className)}>
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <Icon className={`h-3.5 w-3.5 ${tone}`} />
@@ -395,5 +398,5 @@ function SummaryCard({
     </div>
   );
 
-  return href ? <Link href={href} className="block">{content}</Link> : content;
+  return href ? <Link href={href} className={cn("block", className)}>{content}</Link> : content;
 }

@@ -297,25 +297,25 @@ function CreateStaffView({
   return (
     <div className="w-full max-w-2xl mx-auto rounded-3xl bg-[#F5F7FB] shadow-md border border-slate-100 animate-in fade-in zoom-in-95 duration-300">
       {/* -- Header -- */}
-        <div className="flex items-center gap-4 px-8 pt-8 pb-2">
+        <div className="flex items-center gap-4 px-4 sm:px-8 pt-6 sm:pt-8 pb-2">
           <button onClick={onClose} className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800 transition-colors">
             <ArrowLeft className="h-4 w-4" /> Back
           </button>
         </div>
-        <div className="flex items-center gap-4 px-8 pb-6">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg">
-            <Shield className="h-7 w-7 text-white" />
+        <div className="flex items-center gap-4 px-4 sm:px-8 pb-6">
+          <div className="flex h-12 sm:h-14 w-12 sm:w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 shadow-lg shrink-0">
+            <Shield className="h-6 sm:h-7 w-6 sm:w-7 text-white" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900">
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900">
             {isEditing ? "Edit Staff Account" : "New Staff Account"}
           </h2>
         </div>
 
         {/* -- Step tabs -- */}
-        <div className="mx-6 mb-6 grid grid-cols-2 rounded-2xl overflow-hidden border border-slate-200 bg-white">
+        <div className="mx-4 sm:mx-6 mb-6 grid grid-cols-2 rounded-2xl overflow-hidden border border-slate-200 bg-white">
           <button
             onClick={() => setStep(1)}
-            className={cn("py-3.5 text-sm font-bold transition-all",
+            className={cn("py-3 sm:py-3.5 text-xs sm:text-sm font-bold transition-all",
               step === 1 ? "bg-blue-50 text-blue-700" : "text-slate-400 hover:text-slate-600")}
           >
             1. Account Details
@@ -323,7 +323,7 @@ function CreateStaffView({
           <button
             onClick={() => step1Valid && setStep(2)}
             disabled={!step1Valid}
-            className={cn("py-3.5 text-sm font-bold transition-all",
+            className={cn("py-3 sm:py-3.5 text-xs sm:text-sm font-bold transition-all",
               step === 2 ? "bg-blue-50 text-blue-700" : "text-slate-400 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50")}
           >
             2. Custom Permissions
@@ -350,10 +350,10 @@ function CreateStaffView({
 
           {/* === STEP 1: Account Details === */}
           {step === 1 && (
-            <div className="mx-6 mb-6 rounded-2xl bg-white border border-slate-100 p-6 space-y-5">
+            <div className="mx-4 sm:mx-6 mb-6 rounded-2xl bg-white border border-slate-100 p-4 sm:p-6 space-y-5">
 
               {/* Full Name + Username */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-bold text-slate-700">Full Name <span className="text-red-500">*</span></span>
                   <input
@@ -534,12 +534,12 @@ function CreateStaffView({
 
           {/* === STEP 2: Custom Permissions === */}
           {step === 2 && (
-            <div className="mx-6 mb-6 rounded-2xl bg-white border border-slate-100 overflow-hidden">
+            <div className="mx-4 sm:mx-6 mb-6 rounded-2xl bg-white border border-slate-100 overflow-hidden">
               {/* Sub-header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-100">
                 <div className="flex items-center gap-3">
                   <button type="button" onClick={() => setStep(1)}
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 transition-colors">
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 transition-colors shrink-0">
                     <ArrowLeft className="h-4 w-4 text-slate-600" />
                   </button>
                   <div>
@@ -547,7 +547,7 @@ function CreateStaffView({
                     <p className="text-xs text-slate-400">Override role defaults with specific permissions for this user</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 self-end sm:self-auto">
                   <button type="button" onClick={selectAll}
                     className="text-xs font-bold text-blue-600 hover:underline">Select All</button>
                   <span className="text-slate-300">·</span>
@@ -557,8 +557,8 @@ function CreateStaffView({
               </div>
 
               {/* Permission grid */}
-              <div className="max-h-[380px] overflow-y-auto p-6">
-                <div className="grid grid-cols-2 gap-3">
+              <div className="max-h-[380px] overflow-y-auto p-4 sm:p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {MODULE_KEYS.map((key) => {
                     const on = selectedModules.has(key);
                     return (

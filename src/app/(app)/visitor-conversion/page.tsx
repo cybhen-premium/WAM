@@ -140,28 +140,30 @@ export default async function VisitorConversionPage({ searchParams }: PageProps<
           {cohorts.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No cohort data available. Add visitors to see analytics.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  <th className="py-2">Cohort</th>
-                  <th className="py-2 text-right">Visitors</th>
-                  <th className="py-2 text-right">Converted</th>
-                  <th className="py-2 text-right">Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cohorts.map((c) => (
-                  <tr key={c.month} className="border-t border-slate-100">
-                    <td className="py-2 font-bold text-slate-700">
-                      {new Date(c.month + "-01T00:00:00").toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
-                    </td>
-                    <td className="py-2 text-right">{c.visitors}</td>
-                    <td className="py-2 text-right">{c.converted}</td>
-                    <td className="py-2 text-right font-black text-[#1e3a8a]">{Math.round((c.converted / c.visitors) * 100)}%</td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[400px] text-sm">
+                <thead>
+                  <tr className="text-left text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    <th className="py-2">Cohort</th>
+                    <th className="py-2 text-right">Visitors</th>
+                    <th className="py-2 text-right">Converted</th>
+                    <th className="py-2 text-right">Rate</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {cohorts.map((c) => (
+                    <tr key={c.month} className="border-t border-slate-100">
+                      <td className="py-2 font-bold text-slate-700">
+                        {new Date(c.month + "-01T00:00:00").toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+                      </td>
+                      <td className="py-2 text-right">{c.visitors}</td>
+                      <td className="py-2 text-right">{c.converted}</td>
+                      <td className="py-2 text-right font-black text-[#1e3a8a]">{Math.round((c.converted / c.visitors) * 100)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>

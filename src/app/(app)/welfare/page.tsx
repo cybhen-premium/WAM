@@ -37,18 +37,18 @@ export default async function WelfarePage({ searchParams }: PageProps<"/welfare"
         </p>
       </div>
 
-      <nav className="grid w-full max-w-xl grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1.5">
+      <nav className="grid w-full max-w-xl grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 sm:p-1.5">
         {TABS.map(({ id, label, icon: Icon }) => (
           <Link
             key={id}
             href={id === "overview" ? "/welfare" : `/welfare?tab=${id}`}
             scroll={false}
             className={cn(
-              "flex items-center justify-center gap-2 rounded-xl h-10 text-xs font-bold transition-all",
+              "flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl h-9 sm:h-10 text-[11px] sm:text-xs font-bold transition-all",
               tab === id ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800",
             )}
           >
-            <Icon className="h-4 w-4" /> {label}
+            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> {label}
           </Link>
         ))}
       </nav>
@@ -92,10 +92,10 @@ async function Overview({ church }: { church: Church }) {
   const day = (d: string | null) => (d ? new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "");
 
   return (
-    <div className="grid gap-5 md:grid-cols-3">
+    <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
       <OverviewCard label="At Risk" tone="text-red-600 bg-red-50" icon={TrendingDown} empty="No at risk this month" rows={atRisk.map((m) => ({ ...m, note: `Last seen ${day(m.date)}` }))} />
       <OverviewCard label="Birthdays" tone="text-amber-600 bg-amber-50" icon={Cake} empty="No birthdays this month" rows={birthdays.map((m) => ({ ...m, note: day(m.date) }))} />
-      <OverviewCard label="Anniversaries" tone="text-pink-600 bg-pink-50" icon={Heart} empty="No anniversaries this month" rows={anniversaries.map((m) => ({ ...m, note: day(m.date) }))} />
+      <OverviewCard label="Anniversaries" tone="text-pink-600 bg-pink-50" icon={Heart} empty="No anniversaries this month" rows={anniversaries.map((m) => ({ ...m, note: day(m.date) }))} className="sm:col-span-2 lg:col-span-1" />
     </div>
   );
 }
@@ -106,10 +106,11 @@ function OverviewCard(props: {
   icon: typeof Heart;
   empty: string;
   rows: { id: string; fullName: string; note: string }[];
+  className?: string;
 }) {
   const Icon = props.icon;
   return (
-    <div className="rounded-[2rem] bg-white p-6 shadow-xl shadow-slate-200/60 min-h-[240px]">
+    <div className={cn("rounded-[2rem] bg-white p-6 shadow-xl shadow-slate-200/60 min-h-[240px]", props.className)}>
       <div className="flex items-start justify-between">
         <div>
           <span className={cn("rounded-full px-2.5 py-1 text-[9px] font-black uppercase", props.tone)}>{props.label}</span>

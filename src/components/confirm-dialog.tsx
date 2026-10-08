@@ -59,7 +59,7 @@ export function ConfirmDialog({
         </button>
 
         {/* Body */}
-        <div className="px-8 pt-10 pb-8 text-center">
+        <div className="px-5 sm:px-8 pt-8 sm:pt-10 pb-6 sm:pb-8 text-center">
           {/* Icon */}
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
             <AlertTriangle className="h-8 w-8 text-red-600" />

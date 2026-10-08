@@ -48,7 +48,7 @@ export default async function GivingAnalyticsPage() {
         <p className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">Automated Financial Insights</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
         <Card label="Total Revenue" value={cedis(total)} icon={<DollarSign className="h-3.5 w-3.5 opacity-50" />} dark />
         <Card label="This Month" value={cedis(thisMonth)} icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-600 opacity-60" />} />
         <Card label="Monthly Average" value={cedis(monthlyAvg)} icon={<CalendarDays className="h-3.5 w-3.5 text-blue-600 opacity-60" />} />

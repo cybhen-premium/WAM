@@ -398,25 +398,25 @@ export function AppShell({
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
-          <div className="flex items-center gap-3">
-            <button className="lg:hidden text-slate-600" onClick={() => setOpen(true)} aria-label="Open menu">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button className="lg:hidden text-slate-600 p-1 -ml-1 rounded-lg hover:bg-slate-100 transition-colors" onClick={() => setOpen(true)} aria-label="Open menu">
               <Menu className="h-5 w-5" />
             </button>
             {availableBranches.length > 1 ? (
-              <div className="relative">
+              <div className="relative min-w-0">
                 <button
                   type="button"
                   onClick={() => setBranchMenuOpen((v) => !v)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 px-3 py-1.5 text-xs font-black uppercase tracking-tight text-slate-800 transition-all cursor-pointer shadow-2xs"
+                  className="inline-flex items-center gap-1.5 sm:gap-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 px-2 sm:px-3 py-1.5 text-xs font-black uppercase tracking-tight text-slate-800 transition-all cursor-pointer shadow-2xs max-w-full"
                   title="Click to switch church branch"
                 >
                   <Church className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                  <span className="max-w-[170px] sm:max-w-[320px] truncate">{churchName}</span>
+                  <span className="max-w-[110px] min-[380px]:max-w-[160px] sm:max-w-[320px] truncate">{churchName}</span>
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
                   <ChevronDown
                     className={cn(
-                      "h-3.5 w-3.5 text-slate-400 transition-transform duration-200",
+                      "h-3.5 w-3.5 text-slate-400 transition-transform duration-200 shrink-0",
                       branchMenuOpen && "rotate-180"
                     )}
                   />
@@ -425,7 +425,7 @@ export function AppShell({
                 {branchMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setBranchMenuOpen(false)} />
-                    <div className="absolute left-0 top-full mt-2 w-72 rounded-2xl bg-white p-2 shadow-2xl border border-slate-100 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute left-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white p-2 shadow-2xl border border-slate-100 z-50 animate-in fade-in zoom-in-95 duration-150">
                       <div className="px-3 py-2 border-b border-slate-100 mb-1">
                         <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
                           Switch Sanctuary Branch
@@ -471,13 +471,13 @@ export function AppShell({
                 )}
               </div>
             ) : (
-              <>
-                <span className="text-[11px] font-black uppercase tracking-tight text-slate-900">{churchName}</span>
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              </>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[11px] font-black uppercase tracking-tight text-slate-900 truncate max-w-[130px] min-[380px]:max-w-[200px] sm:max-w-none">{churchName}</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+              </div>
             )}
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             {isAdmin && <NotificationBell />}
             <button
               onClick={() => router.refresh()}
@@ -490,7 +490,7 @@ export function AppShell({
           </div>
         </header>
         <main className="flex-1 overflow-y-auto bg-[#F8FAFC]">
-          <div className="max-w-7xl mx-auto p-4 md:p-6">{children}</div>
+          <div className="max-w-7xl mx-auto p-3 sm:p-4 md:p-6">{children}</div>
         </main>
       </div>
     </div>

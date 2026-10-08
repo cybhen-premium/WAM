@@ -268,7 +268,7 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
                       {cedis(total)} · {tithers} tither{tithers === 1 ? "" : "s"}
                     </p>
                   </div>
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[680px] text-sm">
                     <thead className="bg-slate-50/50 border-b border-slate-100">
                       <tr>
                         <th className="px-4 pl-8 h-14 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400 min-w-[200px]">

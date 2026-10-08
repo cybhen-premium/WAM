@@ -21,6 +21,7 @@ import { registerPerson, setPersonActive, deletePerson } from "./actions";
 import { Modal, TextField, SelectField, buttonStyles } from "@/components/ui";
 import { MARITAL_STATUSES, MEMBER_CATEGORIES } from "@/lib/constants";
 import { useSetUrlParam } from "@/components/use-url-param";
+import { cn } from "@/lib/utils";
 
 const FILTER_OPTIONS = [
   { value: "visiting", label: "Visiting" },
@@ -53,8 +54,8 @@ export function PeriodDropdown({ currentPeriod, years }: { currentPeriod: string
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <div className="relative w-[200px]">
+    <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto">
+      <div className="relative w-full sm:w-[140px] md:w-[180px]">
         <select
           value={selYear}
           onChange={(e) => updatePeriod(e.target.value)}
@@ -67,7 +68,7 @@ export function PeriodDropdown({ currentPeriod, years }: { currentPeriod: string
         </select>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
       </div>
-      <div className="relative w-[200px]">
+      <div className="relative w-full sm:w-[140px] md:w-[180px]">
         <select
           value={selMonth}
           onChange={(e) => updatePeriod(e.target.value ? `${selYear}-${e.target.value}` : selYear)}
@@ -99,13 +100,13 @@ export function AkwaabaHeader({ printHref, departments = [] }: { printHref: stri
         </p>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
         {/* One click prints the people received (the report page itself has the month / section
             controls, and it splits visitors and staying into their own sections). */}
-        <Link href={printHref} target="_blank" className={buttonStyles.outline}>
+        <Link href={printHref} target="_blank" className={cn(buttonStyles.outline, "flex-1 sm:flex-initial justify-center")}>
           <Printer className="h-4 w-4" /> Print
         </Link>
-        <button onClick={() => setAdding(true)} className={buttonStyles.primary}>
+        <button onClick={() => setAdding(true)} className={cn(buttonStyles.primary, "flex-1 sm:flex-initial justify-center")}>
           <Plus /> Register Person
         </button>
         <PersonFormModal open={adding} onClose={() => setAdding(false)} departments={departments} />

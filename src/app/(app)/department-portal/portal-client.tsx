@@ -673,11 +673,11 @@ export function DepartmentPortalClient({
       {/* ----------------- TAB 2: DEPARTMENT MEMBERS ----------------- */}
       {activeTab === "members" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <h2 className="text-lg font-black text-slate-900 tracking-tight">
               {department.name} Directory ({members.length})
             </h2>
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <input
                 type="text"
@@ -689,8 +689,8 @@ export function DepartmentPortalClient({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-100 bg-white shadow-xs overflow-hidden">
-            <table className="w-full text-left text-xs">
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-xs overflow-x-auto">
+            <table className="w-full text-left text-xs min-w-[560px]">
               <thead className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-black uppercase tracking-widest text-slate-400">
                 <tr>
                   <th className="py-3 pl-6">Member Name</th>

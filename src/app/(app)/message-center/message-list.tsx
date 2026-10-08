@@ -92,7 +92,7 @@ export function MessageList({ logs }: { logs: MessageLogItem[] }) {
   return (
     <>
       {/* Top action / selection bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3.5 border-b border-slate-100 bg-slate-50/70">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3.5 border-b border-slate-100 bg-slate-50/70">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -147,7 +147,7 @@ export function MessageList({ logs }: { logs: MessageLogItem[] }) {
             <li
               key={l.id}
               className={cn(
-                "group px-6 py-4 transition-colors flex items-start gap-4",
+                "group px-4 sm:px-6 py-4 transition-colors flex items-start gap-3 sm:gap-4",
                 isSelected ? "bg-blue-50/40" : "hover:bg-slate-50/60"
               )}
             >

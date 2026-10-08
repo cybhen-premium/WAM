@@ -194,7 +194,7 @@ export async function ContributionTab({
             <h3 className="text-sm font-black text-slate-900">{title}</h3>
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{cedis(stats.total)} total</span>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-3">
+          <div className="mt-4 grid grid-cols-1 min-[420px]:grid-cols-3 gap-2 sm:gap-3">
             <Stat label={kind === "tithes" ? "Active Tithers" : "Active Contributors"} value={contributors} tone="text-green-600" />
             <Stat label="Non-Contributors" value={nonContributors} tone="text-orange-600" />
             <Stat label="Participation" value={`${participation}%`} tone="text-blue-700" />
