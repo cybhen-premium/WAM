@@ -191,3 +191,69 @@ export async function updateTithe(_prev: FormState, form: FormData): Promise<For
   });
   return { ok: true };
 }
+
+/** Deletes a recorded tithe and syncs the financial transaction ledger. */
+export async function deleteTithe(titheId: string): Promise<FormState> {
+  await requireModule("tithes");
+  const { church } = await requireChurch();
+
+  if (!titheId) return { error: "Tithe ID is required." };
+
+  const [existing] = await db
+    .select({
+      id: tithe.id,
+      memberId: tithe.memberId,
+      week: tithe.week,
+      month: tithe.month,
+      amount: tithe.amount,
+    })
+    .from(tithe)
+    .where(and(eq(tithe.id, titheId), eq(tithe.churchId, church.id)))
+    .limit(1);
+
+  if (!existing) return { error: "Tithe not found." };
+
+  try {
+    await db
+      .delete(tithe)
+      .where(and(eq(tithe.id, titheId), eq(tithe.churchId, church.id)));
+
+    // Also remove from transaction ledger if exists
+    try {
+      await db
+        .delete(transaction)
+        .where(
+          and(
+            eq(transaction.churchId, church.id),
+            eq(transaction.type, "income"),
+            eq(transaction.category, TITHE),
+            eq(transaction.memberId, existing.memberId),
+            eq(transaction.description, `Week ${existing.week}, ${existing.month}`),
+          ),
+        );
+    } catch {
+      // Best-effort sync
+    }
+
+    revalidatePath("/tithes");
+    revalidatePath("/dashboard");
+    revalidatePath("/finances");
+
+    logActivity({
+      module: "tithes",
+      action: `Deleted tithe of ₵${existing.amount} for Week ${existing.week}, ${existing.month}`,
+      metadata: {
+        titheId,
+        memberId: existing.memberId,
+        amount: existing.amount,
+        week: existing.week,
+        month: existing.month,
+      },
+    });
+
+    return { ok: true };
+  } catch {
+    return { error: "Failed to delete tithe. Please try again." };
+  }
+}
+

@@ -3,12 +3,14 @@
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useFormAction } from "@/components/use-form-action";
-import { Plus, Wallet, Printer, ChevronDown, Search, X, Pencil } from "lucide-react";
+import { Plus, Wallet, Printer, ChevronDown, Search, X, Pencil, Trash2 } from "lucide-react";
 import { Modal, SelectField, TextField, buttonStyles } from "@/components/ui";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { toast } from "sonner";
 import { weekOptions } from "@/lib/weeks";
 import { cedis } from "@/lib/utils";
 import Link from "next/link";
-import { recordTithe, updateTithe } from "./actions";
+import { recordTithe, updateTithe, deleteTithe } from "./actions";
 
 /* Header buttons ----------------------------------------------------------- */
 
@@ -200,9 +202,13 @@ export function TitheActions({
   /** This member's tithes in the viewed month (oldest week first) — what the Edit button opens. */
   tithes?: TitheEntry[];
 }) {
+  const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [picked, setPicked] = useState<TitheEntry | null>(null);
+
+  const [choosingDelete, setChoosingDelete] = useState(false);
+  const [toDelete, setToDelete] = useState<TitheEntry | null>(null);
 
   const memberList = members ?? [{ id: memberId, name: memberName }];
 
@@ -210,6 +216,20 @@ export function TitheActions({
   function beginEdit() {
     if (tithes.length === 1) setPicked(tithes[0]);
     else setChoosing(true);
+  }
+
+  function beginDelete() {
+    if (tithes.length === 1) setToDelete(tithes[0]);
+    else setChoosingDelete(true);
+  }
+
+  async function handleConfirmDelete() {
+    if (!toDelete) return;
+    const res = await deleteTithe(toDelete.id);
+    if (res?.error) {
+      throw new Error(res.error);
+    }
+    router.refresh();
   }
 
   return (
@@ -221,9 +241,19 @@ export function TitheActions({
         Record Tithe
       </button>
       {tithes.length > 0 && (
-        <button onClick={beginEdit} className={buttonStyles.ghost} title="Edit" aria-label="Edit">
-          <Pencil />
-        </button>
+        <>
+          <button onClick={beginEdit} className={buttonStyles.ghost} title="Edit Tithe" aria-label="Edit Tithe">
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={beginDelete}
+            className={cn(buttonStyles.ghost, "text-slate-400 hover:text-red-600 hover:bg-red-50")}
+            title="Delete Tithe"
+            aria-label="Delete Tithe"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </>
       )}
 
       <TitheModal open={adding} onClose={() => setAdding(false)} members={memberList} preselectedMemberId={memberId} month={month} />
@@ -231,9 +261,24 @@ export function TitheActions({
         open={choosing}
         onClose={() => setChoosing(false)}
         tithes={tithes}
+        title="Edit Tithe"
+        subtitle="Which week's tithe?"
+        icon={Pencil}
         onPick={(t) => {
           setChoosing(false);
           setPicked(t);
+        }}
+      />
+      <TithePickModal
+        open={choosingDelete}
+        onClose={() => setChoosingDelete(false)}
+        tithes={tithes}
+        title="Delete Tithe"
+        subtitle="Which week's tithe would you like to delete?"
+        icon={Trash2}
+        onPick={(t) => {
+          setChoosingDelete(false);
+          setToDelete(t);
         }}
       />
       <TitheEditModal
@@ -241,6 +286,20 @@ export function TitheActions({
         onClose={() => setPicked(null)}
         tithe={picked ? { ...picked, memberId } : { id: "", memberId, week: 1, month: month ?? "", amount: "" }}
         members={memberList}
+        onDelete={(t) => {
+          setPicked(null);
+          setToDelete(t);
+        }}
+      />
+      <ConfirmDialog
+        open={toDelete !== null}
+        onClose={() => setToDelete(null)}
+        title="Delete Tithe Record"
+        description={`Are you sure you want to delete ${memberName}'s tithe of ${toDelete ? cedis(toDelete.amount) : ""} for Week ${toDelete?.week} (${toDelete?.month})? This will also remove the transaction from the financial ledger.`}
+        confirmLabel="Delete Tithe"
+        onConfirm={handleConfirmDelete}
+        successMessage="Tithe record deleted successfully."
+        errorMessage="Failed to delete tithe record."
       />
     </div>
   );
@@ -364,16 +423,22 @@ function TithePickModal({
   onClose,
   tithes,
   onPick,
+  title = "Edit Tithe",
+  subtitle = "Which week's tithe?",
+  icon: Icon = Pencil,
 }: {
   open: boolean;
   onClose: () => void;
   tithes: TitheEntry[];
   onPick: (tithe: TitheEntry) => void;
+  title?: string;
+  subtitle?: string;
+  icon?: typeof Pencil;
 }) {
   const sundays = new Map(weekOptions(tithes[0]?.month ?? "").map((w) => [w.week, w.label]));
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit Tithe" subtitle="Which week's tithe?" icon={Pencil} compact>
+    <Modal open={open} onClose={onClose} title={title} subtitle={subtitle} icon={Icon} compact>
       <div className="space-y-2 pb-2">
         {tithes.map((t) => {
           const sunday = sundays.get(t.week);
@@ -382,7 +447,7 @@ function TithePickModal({
               key={t.id}
               type="button"
               onClick={() => onPick(t)}
-              className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-green-500 hover:bg-green-50"
+              className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition-colors hover:border-green-500 hover:bg-green-50 cursor-pointer"
             >
               <span className="text-sm font-bold text-slate-700">
                 Week {t.week}
@@ -406,11 +471,13 @@ function TitheEditModal({
   onClose,
   tithe,
   members,
+  onDelete,
 }: {
   open: boolean;
   onClose: () => void;
   tithe: { id: string; memberId: string; week: number; month: string; amount: string };
   members: { id: string; name: string }[];
+  onDelete?: (tithe: TitheEntry) => void;
 }) {
   const [state, action, pending] = useFormAction(updateTithe, onClose);
 
@@ -441,9 +508,26 @@ function TitheEditModal({
 
         {state?.error && <p className="text-sm font-semibold text-red-600">{state.error}</p>}
 
-        <button type="submit" disabled={pending} className={cn(buttonStyles.submit, "bg-green-600 hover:bg-green-700")}>
-          {pending ? "Saving…" : "Save Changes"}
-        </button>
+        <div className="flex items-center justify-between pt-2">
+          {onDelete && tithe.id ? (
+            <button
+              type="button"
+              onClick={() => onDelete(tithe)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 hover:underline cursor-pointer"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Delete Tithe</span>
+            </button>
+          ) : <div />}
+
+          <button
+            type="submit"
+            disabled={pending}
+            className={cn(buttonStyles.submit, "w-auto px-6 h-11 bg-green-600 hover:bg-green-700")}
+          >
+            {pending ? "Saving…" : "Save Changes"}
+          </button>
+        </div>
       </form>
     </Modal>
   );

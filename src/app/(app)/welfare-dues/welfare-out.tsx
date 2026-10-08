@@ -10,6 +10,7 @@ import { DeleteButton } from "@/components/controls";
 import { deleteTransaction } from "@/app/(app)/finances/actions";
 import { PeriodSelector } from "./client";
 import { TablePagination } from "@/components/table-pagination";
+import { MemberAvatar } from "@/components/member-avatar";
 
 const { transaction, member, welfareDues } = schema;
 
@@ -119,7 +120,7 @@ export async function WelfareOutTab({
 
     // 6. Transaction rows for the selected period
     db
-      .select({ t: transaction, memberName: member.fullName })
+      .select({ t: transaction, memberName: member.fullName, photoUrl: member.photoUrl })
       .from(transaction)
       .leftJoin(member, eq(member.id, transaction.memberId))
       .where(and(inPeriod(churchId, period), isWelfare))
@@ -327,10 +328,13 @@ export async function WelfareOutTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {rows.slice((page - 1) * pageSize, page * pageSize).map(({ t, memberName }) => (
+                {rows.slice((page - 1) * pageSize, page * pageSize).map(({ t, memberName, photoUrl }) => (
                   <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-4 pl-6 py-3.5">
-                      <p className="font-bold text-slate-900">{memberName ?? "—"}</p>
+                      <div className="flex items-center gap-2.5">
+                        <MemberAvatar name={memberName ?? "Beneficiary"} photoUrl={photoUrl} size="sm" />
+                        <p className="font-bold text-slate-900 truncate">{memberName ?? "—"}</p>
+                      </div>
                     </td>
                     <td className="px-4 py-3.5 text-xs font-semibold text-slate-500 whitespace-nowrap">
                       {fmtDate(t.occurredOn)}

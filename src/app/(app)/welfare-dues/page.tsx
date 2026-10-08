@@ -10,6 +10,7 @@ import { requireModule } from "@/lib/permissions";
 import { inPeriod } from "@/lib/finance";
 import { WELFARE_SUPPORT, WELFARE_MONTHLY_TARGET } from "@/lib/constants";
 import { TablePagination } from "@/components/table-pagination";
+import { MemberAvatar } from "@/components/member-avatar";
 
 export const metadata = { title: "Welfare Dues" };
 
@@ -38,7 +39,12 @@ export default async function WelfareDuesPage({ searchParams }: PageProps<"/welf
   const periodFilter = rawPeriod + "%";
 
   const members = await db
-    .select({ id: schema.member.id, fullName: schema.member.fullName, category: schema.member.category })
+    .select({
+      id: schema.member.id,
+      fullName: schema.member.fullName,
+      photoUrl: schema.member.photoUrl,
+      category: schema.member.category,
+    })
     .from(schema.member)
     .where(
       and(
@@ -114,7 +120,7 @@ async function ContributionsTab({
   pageSize,
 }: {
   churchId: string;
-  members: { id: string; fullName: string; category: string }[];
+  members: { id: string; fullName: string; photoUrl?: string | null; category: string }[];
   periodFilter: string;
   rawPeriod: string;
   isYear: boolean;
@@ -308,8 +314,13 @@ async function ContributionsTab({
                     className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors"
                   >
                     <td className="px-4 pl-8 py-3.5">
-                      <p className="font-bold text-slate-900">{m.fullName}</p>
-                      <p className="text-[10px] font-bold uppercase text-slate-400">{m.category}</p>
+                      <div className="flex items-center gap-3">
+                        <MemberAvatar name={m.fullName} photoUrl={m.photoUrl} size="md" />
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 truncate leading-tight">{m.fullName}</p>
+                          <p className="text-[10px] font-bold uppercase text-slate-400 truncate mt-0.5">{m.category}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="space-y-1">

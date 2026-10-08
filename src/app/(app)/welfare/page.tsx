@@ -8,6 +8,7 @@ import { smsProviderConfigured } from "@/lib/sms";
 import { cn, fmtDate } from "@/lib/utils";
 import { AutomationForm, LostSheepActions, ReachOutAllButton } from "./welfare-client";
 import { TablePagination } from "@/components/table-pagination";
+import { MemberAvatar } from "@/components/member-avatar";
 import { requireModule } from "@/lib/permissions";
 
 export const metadata = { title: "Member Care" };
@@ -75,7 +76,7 @@ type Church = Awaited<ReturnType<typeof requireChurch>>["church"];
 
 async function Overview({ church }: { church: Church }) {
   const mine = eq(member.churchId, church.id);
-  const pick = { id: member.id, fullName: member.fullName, phone: member.phone };
+  const pick = { id: member.id, fullName: member.fullName, photoUrl: member.photoUrl, phone: member.phone };
   const [atRisk, birthdays, anniversaries] = await Promise.all([
     db.select({ ...pick, date: member.lastAttendedAt }).from(member).where(atRiskWhere(church)).orderBy(asc(member.lastAttendedAt)),
     db
@@ -105,7 +106,7 @@ function OverviewCard(props: {
   tone: string;
   icon: typeof Heart;
   empty: string;
-  rows: { id: string; fullName: string; note: string }[];
+  rows: { id: string; fullName: string; photoUrl?: string | null; note: string }[];
   className?: string;
 }) {
   const Icon = props.icon;
@@ -123,10 +124,13 @@ function OverviewCard(props: {
       {props.rows.length === 0 ? (
         <p className="mt-10 text-center text-[10px] font-black uppercase tracking-widest text-slate-300">{props.empty}</p>
       ) : (
-        <ul className="mt-4 space-y-1.5">
+        <ul className="mt-4 space-y-2">
           {props.rows.slice(0, 6).map((r) => (
-            <li key={r.id} className="flex justify-between text-sm">
-              <span className="font-bold text-slate-700 truncate">{r.fullName}</span>
+            <li key={r.id} className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <MemberAvatar name={r.fullName} photoUrl={r.photoUrl} size="xs" />
+                <span className="font-bold text-slate-700 truncate">{r.fullName}</span>
+              </div>
               <span className="text-xs text-slate-400 shrink-0">{r.note}</span>
             </li>
           ))}
@@ -143,6 +147,7 @@ async function LostSheep({ church, page = 1, pageSize = 50 }: { church: Church; 
       .select({
         id: member.id,
         fullName: member.fullName,
+        photoUrl: member.photoUrl,
         phone: member.phone,
         lastAttendedAt: member.lastAttendedAt,
         category: member.category,
@@ -191,22 +196,25 @@ async function LostSheep({ church, page = 1, pageSize = 50 }: { church: Church; 
             <ul className="divide-y divide-slate-50">
               {sheep.slice((page - 1) * pageSize, page * pageSize).map((m) => (
                 <li key={m.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-bold text-slate-900">{m.fullName}</p>
-                      {m.departmentName && (
-                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-black uppercase text-[#1e3a8a]">
-                          {m.departmentName}
+                  <div className="flex items-center gap-3.5">
+                    <MemberAvatar name={m.fullName} photoUrl={m.photoUrl} size="md" />
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-bold text-slate-900">{m.fullName}</p>
+                        {m.departmentName && (
+                          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-black uppercase text-[#1e3a8a]">
+                            {m.departmentName}
+                          </span>
+                        )}
+                        <span className="rounded-full bg-red-50 px-2 py-0.5 text-[9px] font-black uppercase text-red-600">
+                          Risk Member (Missed 3+ weeks)
                         </span>
-                      )}
-                      <span className="rounded-full bg-red-50 px-2 py-0.5 text-[9px] font-black uppercase text-red-600">
-                        Risk Member (Missed 3+ weeks)
-                      </span>
+                      </div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
+                        {m.category} · last seen {m.lastAttendedAt ? fmtDate(m.lastAttendedAt) : "never"}
+                        {m.phone ? ` · ${m.phone}` : ""}
+                      </p>
                     </div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-0.5">
-                      {m.category} · last seen {m.lastAttendedAt ? fmtDate(m.lastAttendedAt) : "never"}
-                      {m.phone ? ` · ${m.phone}` : ""}
-                    </p>
                   </div>
                   <LostSheepActions memberId={m.id} scheduled={scheduled.has(m.id)} hasPhone={!!m.phone} />
                 </li>

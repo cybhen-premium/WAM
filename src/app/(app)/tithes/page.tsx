@@ -7,6 +7,7 @@ import { weekColumns } from "@/lib/weeks";
 import { TithesToolbar, TithePeriodDropdown, TitheActions, TitheSearch } from "./client";
 import { requireModule } from "@/lib/permissions";
 import { TablePagination } from "@/components/table-pagination";
+import { MemberAvatar } from "@/components/member-avatar";
 
 export const metadata = { title: "Tithes Tracker" };
 
@@ -72,7 +73,12 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
 
   // Tithes are for members only — visitors / regular attendees are still in the Akwaaba → SOB journey.
   const members = await db
-    .select({ id: schema.member.id, fullName: schema.member.fullName, category: schema.member.category })
+    .select({
+      id: schema.member.id,
+      fullName: schema.member.fullName,
+      photoUrl: schema.member.photoUrl,
+      category: schema.member.category,
+    })
     .from(schema.member)
     .where(
       and(
@@ -302,8 +308,13 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
                             className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors"
                           >
                             <td className="px-4 pl-8 py-3.5">
-                              <p className="font-bold text-slate-900">{m.fullName}</p>
-                              <p className="text-[10px] font-bold uppercase text-slate-400">{m.category}</p>
+                              <div className="flex items-center gap-3">
+                                <MemberAvatar name={m.fullName} photoUrl={m.photoUrl} size="md" />
+                                <div className="min-w-0">
+                                  <p className="font-bold text-slate-900 truncate leading-tight">{m.fullName}</p>
+                                  <p className="text-[10px] font-bold uppercase text-slate-400 truncate mt-0.5">{m.category}</p>
+                                </div>
+                              </div>
                             </td>
                             {weekCols.map(({ week }) => (
                               <td key={week} className="px-4 py-3.5 text-center">
