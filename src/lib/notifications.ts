@@ -1,8 +1,45 @@
 import "server-only";
 
+import { headers } from "next/headers";
 import { desc, eq, and, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { sendEmail } from "@/lib/auth";
+
+export async function resolveAppUrl(fallbackOrigin?: string | null): Promise<string> {
+  if (fallbackOrigin && fallbackOrigin.trim()) {
+    return fallbackOrigin.trim().replace(/\/+$/, "");
+  }
+
+  // 1. Dynamically detect from incoming request headers
+  try {
+    const h = await headers();
+    const host = h.get("x-forwarded-host") || h.get("host");
+    if (host) {
+      const proto =
+        h.get("x-forwarded-proto") ||
+        (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+      return `${proto}://${host}`.replace(/\/+$/, "");
+    }
+  } catch {
+    // Outside active request context
+  }
+
+  // 2. Check environment variables
+  const envUrl =
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : undefined) ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
+    process.env.BETTER_AUTH_URL;
+
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, "");
+  }
+
+  return "http://localhost:3000";
+}
 
 export type NotificationItem = {
   id: string;
@@ -25,6 +62,7 @@ export type CreateNotificationOptions = {
   metadata?: Record<string, unknown>;
   sendEmailAlert?: boolean;
   emailTo?: string;
+  appUrl?: string;
 };
 
 /**
@@ -85,6 +123,9 @@ export async function createNotification(opts: CreateNotificationOptions) {
           dateStyle: "full",
           timeStyle: "medium",
         });
+
+        const appUrl = await resolveAppUrl(opts.appUrl);
+        const manageStaffUrl = `${appUrl}/staffs`;
 
         const emailSubject = `🔔 Staff Login Alert: ${staffName} (${role})`;
 
@@ -156,7 +197,7 @@ export async function createNotification(opts: CreateNotificationOptions) {
       </table>
 
       <div class="btn-container">
-        <a href="http://localhost:3000/staffs" class="btn">Manage Staff & Permissions</a>
+        <a href="${manageStaffUrl}" class="btn">Manage Staff & Permissions</a>
       </div>
 
       <div class="footer-note">

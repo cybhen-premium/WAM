@@ -78,6 +78,7 @@ export async function checkLoginStatus(targetNext?: string) {
           if (!isOwner) {
             let clientInfo = { device: "Desktop", os: "Other", browser: "Other" };
             let ipAddress: string | null = null;
+            let appUrl: string | undefined = undefined;
             try {
               const h = await headers();
               ipAddress =
@@ -86,6 +87,14 @@ export async function checkLoginStatus(targetNext?: string) {
                 h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
                 null;
               clientInfo = parseClientInfo(h);
+
+              const host = h.get("x-forwarded-host") || h.get("host");
+              if (host) {
+                const proto =
+                  h.get("x-forwarded-proto") ||
+                  (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+                appUrl = `${proto}://${host}`;
+              }
             } catch {}
 
             const [ownerUser] = await db
@@ -112,6 +121,7 @@ export async function checkLoginStatus(targetNext?: string) {
               },
               sendEmailAlert: true,
               emailTo: ownerUser?.email,
+              appUrl,
             }).catch((err) => {
               console.error("[Login] Failed to create staff login notification:", err);
             });
