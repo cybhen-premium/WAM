@@ -9,6 +9,15 @@ import { isSuperAdmin, moduleForPath, MODULES, MODULE_KEYS, type ModuleKey } fro
 
 export { MODULES, MODULE_KEYS, moduleForPath, isSuperAdmin, hasModule, type ModuleKey } from "@/lib/modules";
 
+/**
+ * Returns true if this church branch has centralized administration
+ * (settings and staff management are handled exclusively by the super admin at headquarters).
+ */
+export function isBranchWithDisabledAdmin(churchName?: string | null): boolean {
+  if (!churchName) return false;
+  return churchName.toLowerCase().includes("holy spirit");
+}
+
 /** "all" = superadmin (every module). Otherwise the set of assigned module keys. */
 export type Permissions = "all" | Set<ModuleKey>;
 
@@ -20,17 +29,39 @@ export const getMyPermissions = cache(async (): Promise<Permissions> => {
   if (row.departmentId) {
     return new Set<ModuleKey>(["department_portal"]);
   }
-  if (isSuperAdmin(row.role)) return "all";
+
+  const isHolySpirit = isBranchWithDisabledAdmin(row.church.name);
+
+  if (isSuperAdmin(row.role)) {
+    if (isHolySpirit) {
+      // In Holy Spirit Citadel, exclude staffs and settings even for superadmin
+      return new Set(MODULE_KEYS.filter((k) => k !== "staffs" && k !== "settings"));
+    }
+    return "all";
+  }
 
   const rows = await db
     .select({ module: schema.staffModule.module })
     .from(schema.staffModule)
     .where(eq(schema.staffModule.staffId, row.staffId));
-  return new Set(rows.map((r) => r.module).filter((m): m is ModuleKey => m in MODULES));
+  const assigned = rows.map((r) => r.module).filter((m): m is ModuleKey => m in MODULES);
+
+  if (isHolySpirit) {
+    return new Set(assigned.filter((k) => k !== "staffs" && k !== "settings"));
+  }
+
+  return new Set(assigned);
 });
 
 /** True when the signed-in user may use this module. */
 export async function can(module: ModuleKey): Promise<boolean> {
+  const user = await getUser();
+  if (user) {
+    const row = await getChurchForUser(user.id);
+    if (row && isBranchWithDisabledAdmin(row.church.name) && (module === "staffs" || module === "settings")) {
+      return false;
+    }
+  }
   const perms = await getMyPermissions();
   return perms === "all" || perms.has(module);
 }
@@ -52,14 +83,22 @@ export async function requirePath(pathname: string): Promise<void> {
  */
 export async function landingHref(): Promise<string> {
   const user = await getUser();
+  let isHolySpirit = false;
   if (user) {
     const row = await getChurchForUser(user.id);
-    if (row?.departmentId) return "/department-portal";
+    if (row) {
+      if (row.departmentId) return "/department-portal";
+      isHolySpirit = isBranchWithDisabledAdmin(row.church.name);
+    }
   }
   if (await can("dashboard")) return "/dashboard";
   const perms = await getMyPermissions();
   if (perms === "all") return "/dashboard";
-  const first = MODULE_KEYS.find((k) => perms.has(k));
+  const first = MODULE_KEYS.find((k) => {
+    if (isHolySpirit && (k === "staffs" || k === "settings")) return false;
+    return perms.has(k);
+  });
   return first ? MODULES[first].routes[0] : "/dashboard";
 }
+
 

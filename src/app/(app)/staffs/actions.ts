@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
-import { requireModule } from "@/lib/permissions";
+import { requireModule, isBranchWithDisabledAdmin } from "@/lib/permissions";
 import { MODULE_KEYS } from "@/lib/modules";
 import { hashPassword } from "better-auth/crypto";
 import { logActivity } from "@/lib/activity";
@@ -14,6 +14,9 @@ const { staff, staffModule, user, account } = schema;
 async function requireAdmin() {
   const ctx = await requireChurch();
   if (ctx.role !== "admin") throw new Error("Only admins can manage staff.");
+  if (isBranchWithDisabledAdmin(ctx.church.name)) {
+    throw new Error("Staff management is handled exclusively from the Salvation Citadel headquarters.");
+  }
   return ctx;
 }
 
@@ -210,6 +213,52 @@ export async function updateStaff(
       );
     }
   }
+
+  // Sync branch assignments if provided
+  const branchIdsRaw = f.getAll("branchIds") as string[];
+  if (branchIdsRaw.length > 0 && existingStaff.userId) {
+    const targetBranches = new Set(branchIdsRaw);
+    const currentRows = await db
+      .select({ id: staff.id, churchId: staff.churchId })
+      .from(staff)
+      .where(eq(staff.userId, existingStaff.userId));
+    const currentBranchIds = new Set(currentRows.map((r) => r.churchId));
+
+    // Remove from unselected branches
+    for (const row of currentRows) {
+      if (!targetBranches.has(row.churchId)) {
+        await db.delete(staffModule).where(eq(staffModule.staffId, row.id));
+        await db.delete(staff).where(eq(staff.id, row.id));
+      }
+    }
+
+    // Add to newly selected branches
+    for (const bId of targetBranches) {
+      if (!currentBranchIds.has(bId)) {
+        const [inserted] = await db
+          .insert(staff)
+          .values({
+            churchId: bId,
+            userId: existingStaff.userId,
+            email: emailRaw,
+            role,
+            status: existingStaff.status,
+            twoFactorMethod: existingStaff.twoFactorMethod,
+          })
+          .returning({ id: staff.id });
+
+        if (role !== "admin" && modulesRaw.length > 0) {
+          const wanted = MODULE_KEYS.filter((k) => modulesRaw.includes(k));
+          if (wanted.length > 0) {
+            await db.insert(staffModule).values(
+              wanted.map((module) => ({ churchId: bId, staffId: inserted.id, module })),
+            );
+          }
+        }
+      }
+    }
+  }
+
   logActivity({
     module: "staffs",
     action: `Updated staff profile for "${name}"`,

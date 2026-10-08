@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plug, Settings2, SlidersHorizontal, User } from "lucide-react";
 import { requireChurch } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { getIntegrationForAdmin, isPlatformAdmin } from "@/lib/platform";
 import { IntegrationForm } from "./integration-form";
 import { BrandingForm, PreferencesForm, ProfileForm, SenderIdForm, SuperAdmin2FAForm, WelcomeToggle } from "./settings-client";
-import { requireModule } from "@/lib/permissions";
+import { requireModule, isBranchWithDisabledAdmin } from "@/lib/permissions";
 
 export const metadata = { title: "Settings & Management" };
 
@@ -18,6 +19,9 @@ const TABS = [
 
 export default async function SettingsPage({ searchParams }: PageProps<"/settings">) {
   const { church, role, user } = await requireChurch();
+  if (isBranchWithDisabledAdmin(church.name)) {
+    redirect("/dashboard");
+  }
   await requireModule("settings");
   const sp = await searchParams;
   const platformAdmin = isPlatformAdmin(user.email);

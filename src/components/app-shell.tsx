@@ -53,7 +53,12 @@ export function AppShell({
       }
       toast.success(`Switched branch to ${res.branchName}`);
       setBranchMenuOpen(false);
-      window.location.reload();
+      const isHolySpirit = (res.branchName ?? "").toLowerCase().includes("holy spirit");
+      if (isHolySpirit && (pathname.startsWith("/staffs") || pathname.startsWith("/settings"))) {
+        window.location.href = "/dashboard";
+      } else {
+        window.location.reload();
+      }
     } catch {
       toast.error("Error switching branch");
       setSwitchingBranch(false);

@@ -1,28 +1,34 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
-import { requireModule } from "@/lib/permissions";
+import { requireModule, isBranchWithDisabledAdmin } from "@/lib/permissions";
 import { StaffsClient } from "./staffs-client";
 
 export const metadata = { title: "Staff Management" };
 
 export default async function StaffsPage() {
   const { church, role, user, availableBranches } = await requireChurch();
+  if (isBranchWithDisabledAdmin(church.name)) {
+    redirect("/dashboard");
+  }
   await requireModule("staffs");
 
   const isAdmin = role === "admin";
+  const branchIds = availableBranches.map((b) => b.id);
+  const targetBranchIds = branchIds.length > 0 ? branchIds : [church.id];
 
-  const [rows, assignments, allUserBranches] = await Promise.all([
+  const [rawRows, assignments, allUserBranches] = await Promise.all([
     db
       .select({ s: schema.staff, name: schema.user.name })
       .from(schema.staff)
       .leftJoin(schema.user, eq(schema.user.id, schema.staff.userId))
-      .where(eq(schema.staff.churchId, church.id))
+      .where(inArray(schema.staff.churchId, targetBranchIds))
       .orderBy(desc(schema.staff.createdAt)),
     db
       .select({ staffId: schema.staffModule.staffId, module: schema.staffModule.module })
       .from(schema.staffModule)
-      .where(eq(schema.staffModule.churchId, church.id)),
+      .where(inArray(schema.staffModule.churchId, targetBranchIds)),
     db
       .select({
         userId: schema.staff.userId,
@@ -38,6 +44,17 @@ export default async function StaffsPage() {
   const byStaff = new Map<string, string[]>();
   for (const a of assignments) {
     byStaff.set(a.staffId, [...(byStaff.get(a.staffId) ?? []), a.module]);
+  }
+
+  // Deduplicate rows by user so staff assigned to multiple branches only appear once
+  const rows: typeof rawRows = [];
+  const seenUsers = new Set<string>();
+  for (const r of rawRows) {
+    const key = r.s.userId || r.s.email;
+    if (!seenUsers.has(key)) {
+      seenUsers.add(key);
+      rows.push(r);
+    }
   }
 
   // Group branches by userId

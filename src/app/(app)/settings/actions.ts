@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
-import { requireModule } from "@/lib/permissions";
+import { requireModule, isBranchWithDisabledAdmin } from "@/lib/permissions";
 import { MODULE_KEYS } from "@/lib/modules";
 import { logActivity } from "@/lib/activity";
 
@@ -18,6 +18,9 @@ const opt = (f: FormData, k: string) => s(f, k) || null;
 async function requireAdmin() {
   const ctx = await requireChurch();
   if (ctx.role !== "admin") throw new Error("Only admins can change settings.");
+  if (isBranchWithDisabledAdmin(ctx.church.name)) {
+    throw new Error("Settings are managed exclusively from the Salvation Citadel headquarters.");
+  }
   return ctx;
 }
 
