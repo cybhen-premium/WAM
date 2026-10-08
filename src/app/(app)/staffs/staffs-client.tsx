@@ -3,11 +3,21 @@
 import React, { useState, useTransition, useActionState, useEffect } from "react";
 import {
   ArrowLeft, ArrowUpDown, BanIcon, Check, CheckCircle, ChevronDown,
-  Edit2, Eye, EyeOff, Filter, Plus, Search, Shield, Trash2, X, XCircle, Users, Church
+  Edit2, Eye, EyeOff, Filter, Plus, Search, Shield, Trash2, X, XCircle, Users, Church,
+  KeyRound,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { MODULES, MODULE_KEYS } from "@/lib/modules";
-import { changeTwoFactorMethod, createStaff, removeStaff, updateStaff, setStaffModules, updateStaffStatus } from "./actions";
+import {
+  changeTwoFactorMethod,
+  createStaff,
+  removeStaff,
+  updateStaff,
+  setStaffModules,
+  updateStaffStatus,
+  resetStaffPassword,
+} from "./actions";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useTablePagination } from "@/components/table-pagination";
 
@@ -544,6 +554,9 @@ export function StaffsClient({
   const [showCreate, setShowCreate] = useState(false);
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [resetStaffTarget, setResetStaffTarget] = useState<(ActiveStaff | PendingStaff) | null>(null);
+  const [customResetPassword, setCustomResetPassword] = useState("WAMCHURCH@26");
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   // Combine active + pending into one list
   const allStaff = [
@@ -791,6 +804,21 @@ export function StaffsClient({
                               </button>
                             )}
 
+                            {/* Reset Password */}
+                            {isAdmin && !s.self && (
+                              <button
+                                type="button"
+                                title="Reset Temporary Password"
+                                onClick={() => {
+                                  setResetStaffTarget(s);
+                                  setCustomResetPassword("WAMCHURCH@26");
+                                }}
+                                className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-400 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-colors"
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </button>
+                            )}
+
                             {/* Edit */}
                             <button type="button" title="Edit"
                               onClick={() => setEditingStaffId(s.id)}
@@ -859,6 +887,88 @@ export function StaffsClient({
         successMessage="Staff member removed successfully."
         errorMessage="Failed to remove staff member."
       />
+
+      {/* Reset Password Modal */}
+      {resetStaffTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                  <KeyRound className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Reset Staff Password</h3>
+                  <p className="text-xs text-slate-500 font-medium">{resetStaffTarget.email}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResetStaffTarget(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-4">
+              <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                Enter a temporary password for this staff member. They will be able to log in immediately and will be prompted to choose their own password upon first sign-in.
+              </p>
+
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-bold text-slate-700">Temporary Password</span>
+                <input
+                  value={customResetPassword}
+                  onChange={(e) => setCustomResetPassword(e.target.value)}
+                  placeholder="WAMCHURCH@26"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-amber-200 focus:border-amber-400 tracking-wider transition-all"
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setResetStaffTarget(null)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={resettingPassword || !customResetPassword.trim()}
+                onClick={async () => {
+                  setResettingPassword(true);
+                  try {
+                    const res = await resetStaffPassword(resetStaffTarget.id, customResetPassword);
+                    if (!res.ok) {
+                      toast.error(res.error || "Failed to reset password.");
+                      setResettingPassword(false);
+                      return;
+                    }
+                    const pwd = res.password ?? customResetPassword;
+                    try {
+                      await navigator.clipboard.writeText(pwd);
+                      toast.success(`Password reset to "${pwd}" and copied to clipboard!`);
+                    } catch {
+                      toast.success(`Password reset to "${pwd}" successfully!`);
+                    }
+                    setResetStaffTarget(null);
+                  } catch {
+                    toast.error("An error occurred while resetting password.");
+                  } finally {
+                    setResettingPassword(false);
+                  }
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 px-5 py-2.5 text-xs font-black uppercase tracking-wider text-slate-950 shadow-sm active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {resettingPassword ? "Resetting..." : "Reset Password & Copy"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

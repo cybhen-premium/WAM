@@ -38,7 +38,7 @@ export type NavCategory = {
   entries: NavEntry[];
 };
 
-/** Categorized sidebar navigation arranged exactly in requested order */
+/** Categorized sidebar navigation arranged cleanly and cohesively */
 export const NAV_CATEGORIES: NavCategory[] = [
   {
     title: "OVERVIEW",
@@ -62,7 +62,11 @@ export const NAV_CATEGORIES: NavCategory[] = [
       },
       {
         type: "item",
-        item: { href: "/akwaaba", module: "akwaaba", label: "Akwaaba", icon: HandHeart },
+        item: { href: "/department-portal", module: "department_portal", label: "Department Portal", icon: Building2 },
+      },
+      {
+        type: "item",
+        item: { href: "/akwaaba", module: "akwaaba", label: "Akwaaba Intake", icon: HandHeart },
       },
       {
         type: "item",
@@ -70,21 +74,12 @@ export const NAV_CATEGORIES: NavCategory[] = [
       },
       {
         type: "item",
-        item: { href: "/sob", module: "sob", label: "SOB", icon: GraduationCap },
+        item: { href: "/sob", module: "sob", label: "School of Baptism", icon: GraduationCap },
       },
     ],
   },
   {
-    title: "DEPARTMENT",
-    entries: [
-      {
-        type: "item",
-        item: { href: "/department-portal", module: "department_portal", label: "Department Portal", icon: Building2 },
-      },
-    ],
-  },
-  {
-    title: "FINANCE & GROWTH",
+    title: "FINANCE & GIVING",
     entries: [
       {
         type: "item",
@@ -92,7 +87,7 @@ export const NAV_CATEGORIES: NavCategory[] = [
       },
       {
         type: "item",
-        item: { href: "/finances", module: "finances", label: "Finance", icon: DollarSign },
+        item: { href: "/finances", module: "finances", label: "Finance & Accounts", icon: DollarSign },
       },
       {
         type: "item",
@@ -104,34 +99,29 @@ export const NAV_CATEGORIES: NavCategory[] = [
       },
       {
         type: "item",
-        item: { href: "/growth", module: "analytics", label: "Growth", icon: TrendingUp },
+        item: { href: "/growth", module: "analytics", label: "Growth Trends", icon: TrendingUp },
       },
     ],
   },
   {
-    title: "MEMBER CARE",
+    title: "CARE & COMMUNICATIONS",
     entries: [
       {
         type: "item",
         item: { href: "/welfare", module: "care", label: "Member Care", icon: HeartHandshake },
       },
-    ],
-  },
-  {
-    title: "COMMUNICATIONS",
-    entries: [
       {
         type: "item",
-        item: { href: "/announcements", module: "messaging", label: "Announce", icon: Megaphone },
+        item: { href: "/announcements", module: "messaging", label: "Announcements", icon: Megaphone },
       },
       {
         type: "item",
-        item: { href: "/message-center", module: "messaging", label: "Messages", icon: MessageSquare },
+        item: { href: "/message-center", module: "messaging", label: "SMS Messages", icon: MessageSquare },
       },
     ],
   },
   {
-    title: "ADMINISTRATION & ACCESS",
+    title: "ADMINISTRATION",
     entries: [
       {
         type: "group",
@@ -146,17 +136,12 @@ export const NAV_CATEGORIES: NavCategory[] = [
         },
       },
       {
-        type: "group",
-        group: {
-          label: "Staffs",
-          icon: UserCog,
-          module: "staffs",
-          children: [{ href: "/staffs", label: "Manage Staffs" }],
-        },
+        type: "item",
+        item: { href: "/staffs", module: "staffs", label: "Staff Management", icon: UserCog },
       },
       {
         type: "item",
-        item: { href: "/settings", module: "settings", label: "Settings", icon: Settings },
+        item: { href: "/settings", module: "settings", label: "System Settings", icon: Settings },
       },
     ],
   },

@@ -134,6 +134,30 @@ export function ProfileForm({ church }: { church: Church }) {
   );
 }
 
+function ColorPicker({ name, defaultValue }: { name: string; defaultValue: string }) {
+  const [color, setColor] = useState(defaultValue || "#000000");
+  return (
+    <div className="flex items-center gap-3 h-11 rounded-xl border border-slate-200 bg-slate-50 px-2 overflow-hidden">
+      <input
+        type="color"
+        value={color}
+        onChange={(e) => setColor(e.target.value)}
+        className="h-8 w-10 cursor-pointer rounded-lg border-0 bg-transparent p-0 shrink-0"
+      />
+      <input type="hidden" name={name} value={color} />
+      <span className="text-sm font-mono font-bold text-slate-600 tracking-widest uppercase">{color}</span>
+      <button
+        type="button"
+        onClick={() => setColor(defaultValue || "#000000")}
+        className="ml-auto text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+        title="Reset to saved value"
+      >
+        Reset
+      </button>
+    </div>
+  );
+}
+
 export function BrandingForm({ church }: { church: Church }) {
   const [state, action, pending] = useFormAction(saveBranding);
   const [logo, setLogo] = useState(church.logoUrl ?? "");
@@ -180,11 +204,11 @@ export function BrandingForm({ church }: { church: Church }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className={label}>Primary Brand Color</span>
-            <input type="color" name="brandPrimary" defaultValue={church.brandPrimary} className="h-11 w-full rounded-xl border border-slate-100 bg-slate-50 p-1" />
+            <ColorPicker name="brandPrimary" defaultValue={church.brandPrimary ?? "#1e3a8a"} />
           </label>
           <label className="block">
             <span className={label}>Secondary Brand Color</span>
-            <input type="color" name="brandSecondary" defaultValue={church.brandSecondary} className="h-11 w-full rounded-xl border border-slate-100 bg-slate-50 p-1" />
+            <ColorPicker name="brandSecondary" defaultValue={church.brandSecondary ?? "#f59e0b"} />
           </label>
           <label className="block">
             <span className={label}>Receipt Design Template</span>

@@ -74,13 +74,12 @@ export async function createStaff(
   }
 
   let finalUserId = existingUser?.id;
+  const hashed = await hashPassword(password);
+  const now = new Date();
 
   if (!finalUserId) {
-    // Hash password using Better Auth's own scrypt hasher
-    const hashed = await hashPassword(password);
     finalUserId = crypto.randomUUID().replace(/-/g, "");
     const accountId = crypto.randomUUID().replace(/-/g, "");
-    const now = new Date();
 
     await db.insert(user).values({
       id: finalUserId,
@@ -101,6 +100,37 @@ export async function createStaff(
       createdAt: now,
       updatedAt: now,
     });
+  } else {
+    // User already exists in user table: update name and ensure temporary password is set
+    await db.update(user).set({
+      name: username,
+      passwordChangeRequired: true,
+      updatedAt: now,
+    }).where(eq(user.id, finalUserId));
+
+    const [existingAccount] = await db
+      .select({ id: account.id })
+      .from(account)
+      .where(and(eq(account.userId, finalUserId), eq(account.providerId, "credential")))
+      .limit(1);
+
+    if (existingAccount) {
+      await db.update(account).set({
+        password: hashed,
+        updatedAt: now,
+      }).where(eq(account.id, existingAccount.id));
+    } else {
+      const accountId = crypto.randomUUID().replace(/-/g, "");
+      await db.insert(account).values({
+        id: accountId,
+        accountId: finalUserId,
+        providerId: "credential",
+        userId: finalUserId,
+        password: hashed,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
   }
 
   let firstNewStaffId = "";
@@ -300,3 +330,93 @@ export async function setStaffModules(staffId: string, modules: string[]) {
   revalidatePath("/staffs");
   revalidatePath("/", "layout");
 }
+
+export async function resetStaffPassword(staffId: string, customPassword?: string) {
+  await requireModule("staffs");
+  const { church: c } = await requireAdmin();
+
+  const [targetStaff] = await db
+    .select({
+      id: staff.id,
+      email: staff.email,
+      userId: staff.userId,
+    })
+    .from(staff)
+    .where(and(eq(staff.id, staffId), eq(staff.churchId, c.id)))
+    .limit(1);
+
+  if (!targetStaff) {
+    return { ok: false, error: "Staff member not found." };
+  }
+
+  const temporaryPassword = (customPassword ?? "").trim() || "WAMCHURCH@26";
+  const hashed = await hashPassword(temporaryPassword);
+  const now = new Date();
+
+  let targetUserId = targetStaff.userId;
+
+  if (!targetUserId) {
+    const [existingU] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, targetStaff.email))
+      .limit(1);
+
+    if (existingU) {
+      targetUserId = existingU.id;
+    } else {
+      targetUserId = crypto.randomUUID().replace(/-/g, "");
+      await db.insert(user).values({
+        id: targetUserId,
+        name: toUsername(targetStaff.email.split("@")[0]),
+        email: targetStaff.email,
+        emailVerified: true,
+        passwordChangeRequired: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    await db.update(staff).set({ userId: targetUserId }).where(eq(staff.id, targetStaff.id));
+  } else {
+    await db.update(user).set({
+      passwordChangeRequired: true,
+      updatedAt: now,
+    }).where(eq(user.id, targetUserId));
+  }
+
+  const [existingAcc] = await db
+    .select({ id: account.id })
+    .from(account)
+    .where(and(eq(account.userId, targetUserId), eq(account.providerId, "credential")))
+    .limit(1);
+
+  if (existingAcc) {
+    await db.update(account).set({
+      password: hashed,
+      updatedAt: now,
+    }).where(eq(account.id, existingAcc.id));
+  } else {
+    const accountId = crypto.randomUUID().replace(/-/g, "");
+    await db.insert(account).values({
+      id: accountId,
+      accountId: targetUserId,
+      providerId: "credential",
+      userId: targetUserId,
+      password: hashed,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  logActivity({
+    module: "staffs",
+    actionCode: "user.password.reset",
+    action: `Reset temporary password for ${targetStaff.email}`,
+    metadata: { staffId: targetStaff.id, email: targetStaff.email },
+  });
+
+  revalidatePath("/staffs");
+  return { ok: true, password: temporaryPassword };
+}
+

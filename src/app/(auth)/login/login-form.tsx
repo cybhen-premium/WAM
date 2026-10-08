@@ -13,6 +13,7 @@ import {
   getTwoFactorMethodByEmail,
   checkStatusByEmail,
   selectBranchForSession,
+  resolveLoginEmail,
 } from "./actions";
 
 export function LoginForm() {
@@ -31,6 +32,7 @@ export function LoginForm() {
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const [selectingBranch, setSelectingBranch] = useState(false);
+  const [targetRedirectUrl, setTargetRedirectUrl] = useState<string>("/");
 
   async function handleProceedWithBranch() {
     if (!selectedBranchId) return;
@@ -43,7 +45,8 @@ export function LoginForm() {
         return;
       }
       toast.success(`Entered ${res.branchName || "Sanctuary"}`);
-      window.location.href = next.startsWith("/") && !next.startsWith("//") ? next : "/";
+      const dest = targetRedirectUrl.startsWith("/") && !targetRedirectUrl.startsWith("//") ? targetRedirectUrl : "/";
+      window.location.href = dest;
     } catch {
       toast.error("An error occurred while switching branches.");
       setSelectingBranch(false);
@@ -62,18 +65,28 @@ export function LoginForm() {
     const form = new FormData(e.currentTarget);
     setPending(true);
     setError(null);
-    const { data, error } = await authClient.signIn.email({
-      email: String(form.get("email")),
-      password: String(form.get("password")),
+
+    const rawIdentifier = String(form.get("email") || "").trim();
+    const password = String(form.get("password") || "");
+
+    if (!rawIdentifier || !password) {
+      setPending(false);
+      return setError("Please enter your email/username and password");
+    }
+
+    // Resolve username to email if a username was entered
+    const email = await resolveLoginEmail(rawIdentifier);
+
+    const { data, error: signInError } = await authClient.signIn.email({
+      email,
+      password,
     });
     setPending(false);
-    if (error) {
-      return setError("Invalid email or password");
+    if (signInError) {
+      return setError("Invalid email/username or password");
     }
     
     if ((data as any)?.twoFactorRedirect) {
-      const email = String(form.get("email"));
-
       // Block restricted accounts before they ever reach the 2FA page.
       const preStatus = await checkStatusByEmail(email);
       if (preStatus === "deleted" || preStatus === "suspended" || preStatus === "pending") {
@@ -86,25 +99,35 @@ export function LoginForm() {
       }
 
       const method = await getTwoFactorMethodByEmail(email);
-      router.push(`/two-factor?next=${encodeURIComponent(next)}&method=${method}`);
-      return;
+      if (method === "none") {
+        // Orphaned 2FA was cleared by getTwoFactorMethodByEmail; sign in again to obtain a normal session
+        const secondTry = await authClient.signIn.email({ email, password });
+        if (secondTry.error) {
+          return setError("Invalid email/username or password");
+        }
+      } else {
+        router.push(`/two-factor?next=${encodeURIComponent(next)}&method=${method}`);
+        return;
+      }
     }
 
-    const { status, missingTwoFactorSetup, branches } = await checkLoginStatus();
+    const { status, passwordChangeRequired, missingTwoFactorSetup, branches, resolvedNext } =
+      await checkLoginStatus(next);
 
     if (status === "suspended" || status === "pending" || status === "deleted") {
       router.replace(`/login?status=${status}`);
       return;
     }
 
-    const { data: sessionData } = await authClient.getSession();
-    if ((sessionData?.user as any)?.passwordChangeRequired) {
-      router.push(`/force-password-change?next=${encodeURIComponent(next)}`);
+    const dest = resolvedNext || next || "/";
+
+    if (passwordChangeRequired) {
+      router.push(`/force-password-change?next=${encodeURIComponent(dest)}`);
       return;
     }
     
     if (missingTwoFactorSetup) {
-      router.push(`/setup-2fa?next=${encodeURIComponent(next)}`);
+      router.push(`/setup-2fa?next=${encodeURIComponent(dest)}`);
       return;
     }
 
@@ -112,6 +135,7 @@ export function LoginForm() {
     if (branches && branches.length > 1) {
       setAvailableBranches(branches);
       setSelectedBranchId(branches[0].id);
+      setTargetRedirectUrl(dest);
       setShowBranchPicker(true);
       return;
     }
@@ -121,7 +145,7 @@ export function LoginForm() {
     }
     
     toast.success("Signed in successfully!");
-    window.location.href = next.startsWith("/") && !next.startsWith("//") ? next : "/";
+    window.location.href = dest.startsWith("/") && !dest.startsWith("//") ? dest : "/";
   }
   
   async function closeSuspendedModal() {
@@ -244,7 +268,15 @@ export function LoginForm() {
             </div>
           )}
 
-          <Field label="Email" name="email" type="email" required placeholder="you@church.org" icon={<Mail />} autoComplete="email" />
+          <Field
+            label="Email or Username"
+            name="email"
+            type="text"
+            required
+            placeholder="you@church.org or username"
+            icon={<Mail />}
+            autoComplete="username"
+          />
           <div>
             <Field label="Password" name="password" type="password" required placeholder="••••••••" icon={<Lock />} autoComplete="current-password" />
             <div className="mt-2 text-right">
