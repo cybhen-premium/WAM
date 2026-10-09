@@ -694,16 +694,6 @@ export function MemberPortalClient({
                 </span>
                 <p className="text-sm font-bold text-slate-900">{member.joinedAt || "—"}</p>
               </div>
-
-              <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100/80">
-                <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 block mb-1">
-                  Church Branch
-                </span>
-                <p className="text-sm font-bold text-blue-950 flex items-center gap-1.5">
-                  <Church className="h-4 w-4 text-blue-700 shrink-0" />
-                  <span>{church.name}</span>
-                </p>
-              </div>
             </div>
 
             <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-100 flex items-center justify-between gap-4">
