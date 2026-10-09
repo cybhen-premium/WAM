@@ -85,3 +85,48 @@ export async function reachOut(ids: string[]): Promise<FormState> {
   };
 }
 
+/** Responds to a member complaint or inquiry from the Member Care dashboard */
+export async function replyMemberInquiry(
+  inquiryId: string,
+  replyText: string
+): Promise<{ ok: boolean; error?: string }> {
+  await requireModule("welfare");
+  const { church, user } = await requireChurch();
+
+  const [inq] = await db
+    .select()
+    .from(schema.memberInquiry)
+    .where(and(eq(schema.memberInquiry.id, inquiryId), eq(schema.memberInquiry.churchId, church.id)))
+    .limit(1);
+
+  if (!inq) return { ok: false, error: "Inquiry not found" };
+
+  await db
+    .update(schema.memberInquiry)
+    .set({
+      reply: replyText,
+      repliedBy: user.name || "Pastoral Team",
+      repliedAt: new Date(),
+      status: "resolved",
+    })
+    .where(eq(schema.memberInquiry.id, inquiryId));
+
+  // Notify member in their portal
+  await db.insert(schema.memberNotification).values({
+    memberId: inq.memberId,
+    title: `Pastoral Reply: ${inq.subject}`,
+    message: replyText,
+    type: "inquiry_reply",
+    read: false,
+  });
+
+  logActivity({
+    module: "care",
+    action: `Replied to member inquiry: "${inq.subject}"`,
+    metadata: { inquiryId, memberId: inq.memberId },
+  });
+
+  revalidatePath("/welfare");
+  return { ok: true };
+}
+

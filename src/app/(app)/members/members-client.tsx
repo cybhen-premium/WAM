@@ -30,6 +30,8 @@ import {
   UserRoundCheck,
   Users,
   X,
+  KeyRound,
+  Smartphone,
 } from "lucide-react";
 import type { InferSelectModel } from "drizzle-orm";
 import type { schema } from "@/db";
@@ -297,9 +299,16 @@ export function MemberTableRow({
             className="min-w-0 text-left focus:outline-none group/name"
             title={`Click to view ${member.fullName}'s profile`}
           >
-            <p className="font-bold text-slate-900 truncate max-w-[190px] leading-tight group-hover/name:text-blue-600 transition-colors">
-              {member.fullName}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="font-bold text-slate-900 truncate max-w-[190px] leading-tight group-hover/name:text-blue-600 transition-colors">
+                {member.fullName}
+              </p>
+              {member.memberIdCode && (
+                <span className="font-mono text-[9px] font-bold bg-slate-100 border border-slate-200/80 text-slate-600 px-1.5 py-0.2 rounded shrink-0">
+                  {member.memberIdCode}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1.5 mt-0.5">
               {member.baptized ? (
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
@@ -442,6 +451,28 @@ export function MemberTableRow({
       {/* 8. Actions */}
       <td className="py-3 pl-2.5 pr-4 sm:pr-5 text-right">
         <div className="inline-flex items-center justify-end gap-1.5">
+          {member.phone && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                startTransition(async () => {
+                  const { sendPortalInviteSms } = await import("./actions");
+                  const res = await sendPortalInviteSms(member.id);
+                  if (res.ok) {
+                    toast.success(`Portal ID sent via SMS to ${member.fullName}!`);
+                  } else {
+                    toast.error(res.error || "Failed to send Portal SMS");
+                  }
+                });
+              }}
+              className="h-8 w-8 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-slate-500 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
+              title="Send Member Portal ID via SMS"
+              aria-label="Send Member Portal ID via SMS"
+            >
+              <Smartphone className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -812,6 +843,50 @@ export function MemberProfileModal({
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Member Portal Access Card */}
+          <div className="rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50/80 to-indigo-50/50 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-blue-700" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-950">
+                  Member Portal Access
+                </span>
+              </div>
+              <span className="font-mono text-xs font-black text-blue-900 bg-white px-2.5 py-1 rounded-lg border border-blue-200/80 shadow-2xs">
+                ID: {member.memberIdCode || "Generating..."}
+              </span>
+            </div>
+
+            <p className="text-xs text-blue-900/80 leading-relaxed font-medium">
+              Members use this ID to sign into the Member Portal to upload their photo, view monthly tithes and welfare dues, and send pastoral inquiries.
+            </p>
+
+            <div className="flex items-center gap-2 pt-1">
+              {member.phone ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const { sendPortalInviteSms } = await import("./actions");
+                    const res = await sendPortalInviteSms(member.id);
+                    if (res.ok) {
+                      toast.success(`Portal ID sent via SMS to ${member.fullName}!`);
+                    } else {
+                      toast.error(res.error || "Failed to send SMS");
+                    }
+                  }}
+                  className="h-8 px-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-black inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                >
+                  <Smartphone className="h-3.5 w-3.5" />
+                  <span>Send Portal Login SMS</span>
+                </button>
+              ) : (
+                <span className="text-[11px] text-amber-700 font-bold">
+                  (Add phone number to send portal SMS)
+                </span>
+              )}
             </div>
           </div>
 

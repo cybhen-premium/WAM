@@ -8,6 +8,7 @@ import { MEMBER_CATEGORIES } from "@/lib/constants";
 import { sendSms, withFooter } from "@/lib/sms";
 import { requireModule } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
+import { generateMemberIdCode } from "@/lib/member-portal";
 
 const VISITOR = "Visitor";
 const REGULAR_ATTENDEE = "Regular Attendee";
@@ -96,26 +97,52 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
       metadata: { memberId: id, fullName: values.fullName, category: values.category },
     });
   } else {
+    const memberIdCode = await generateMemberIdCode(church.name);
     const [created] = await db
       .insert(member)
-      .values({ ...values, churchId: church.id })
-      .returning({ id: member.id });
-    if (values.category === VISITOR || values.category === REGULAR_ATTENDEE) {
-      // New visitors and regular attendees optionally get a welcome SMS.
+      .values({ ...values, memberIdCode, churchId: church.id })
+      .returning({ id: member.id, memberIdCode: member.memberIdCode });
 
-      if (church.autoWelcomeSms && values.phone) {
-        const first = values.fullName.split(/\s+/)[0];
-        await sendSms(church, [values.phone], withFooter(church, `Hi ${first}, thank you for worshipping with us at ${church.name}! We're glad you came and hope to see you again soon.`), {
-          kind: "welcome",
-          audience: values.fullName,
-        });
+    if (values.phone) {
+      const first = values.fullName.split(/\s+/)[0];
+      if (values.category === VISITOR || values.category === REGULAR_ATTENDEE) {
+        if (church.autoWelcomeSms) {
+          await sendSms(
+            church,
+            [values.phone],
+            withFooter(
+              church,
+              `Hi ${first}, thank you for worshipping with us at ${church.name}! We're glad you came and hope to see you again soon.`
+            ),
+            {
+              kind: "welcome",
+              audience: values.fullName,
+            }
+          );
+        }
+      } else {
+        // Full members receive their Member Portal ID automatically via SMS
+        await sendSms(
+          church,
+          [values.phone],
+          withFooter(
+            church,
+            `Hi ${first}, welcome to ${church.name}! Your unique Member ID is: ${memberIdCode}. Log into your member portal to view your tithes, welfare dues, and update your profile.`
+          ),
+          {
+            kind: "portal_invite",
+            audience: values.fullName,
+            topic: "Member Portal ID",
+          }
+        );
       }
     }
+
     logActivity({
       module: "members",
       actionCode: "members.create",
-      action: `Added member "${values.fullName}"`,
-      metadata: { memberId: created.id, fullName: values.fullName, category: values.category },
+      action: `Added member "${values.fullName}" (ID: ${memberIdCode})`,
+      metadata: { memberId: created.id, fullName: values.fullName, category: values.category, memberIdCode },
     });
   }
   revalidatePath("/members");
@@ -123,6 +150,50 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
   revalidatePath("/visitor-conversion");
 
   revalidatePath("/sob");
+  return { ok: true };
+}
+
+export async function sendPortalInviteSms(memberId: string): Promise<{ ok: boolean; error?: string }> {
+  await requireModule("members");
+  const { church } = await requireChurch();
+  const [m] = await db
+    .select()
+    .from(schema.member)
+    .where(and(eq(schema.member.id, memberId), eq(schema.member.churchId, church.id)))
+    .limit(1);
+
+  if (!m) return { ok: false, error: "Member not found" };
+  if (!m.phone) return { ok: false, error: "Member does not have a registered phone number" };
+
+  let code = m.memberIdCode;
+  if (!code) {
+    code = await generateMemberIdCode(church.name);
+    await db.update(schema.member).set({ memberIdCode: code }).where(eq(schema.member.id, m.id));
+  }
+
+  const first = m.fullName.split(/\s+/)[0];
+  const smsBody = withFooter(
+    church,
+    `Hi ${first}, your Member ID for ${church.name} is: ${code}. You can log into your member portal to view your tithes, welfare dues, and update your profile.`
+  );
+
+  const res = await sendSms(church, [m.phone], smsBody, {
+    kind: "portal_invite",
+    audience: m.fullName,
+    topic: "Member Portal ID",
+  });
+
+  if (res.status === "failed") {
+    return { ok: false, error: res.error || "Failed to send SMS." };
+  }
+
+  logActivity({
+    module: "members",
+    actionCode: "members.portal_sms",
+    action: `Sent Member Portal ID to "${m.fullName}" (${code})`,
+    metadata: { memberId: m.id, code },
+  });
+
   return { ok: true };
 }
 

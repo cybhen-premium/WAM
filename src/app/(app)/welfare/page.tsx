@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { and, asc, count, eq, ne, sql } from "drizzle-orm";
-import { DollarSign, Bot, Cake, Heart, ShieldCheck, TrendingDown, UserMinus } from "lucide-react";
+import { and, asc, count, desc, eq, ne, sql } from "drizzle-orm";
+import { DollarSign, Bot, Cake, Heart, ShieldCheck, TrendingDown, UserMinus, MessageSquare } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { atRiskWhere, isThisMonth } from "@/lib/pastoral";
 import { smsProviderConfigured } from "@/lib/sms";
 import { cn, fmtDate } from "@/lib/utils";
-import { AutomationForm, LostSheepActions, ReachOutAllButton } from "./welfare-client";
+import { AutomationForm, LostSheepActions, ReachOutAllButton, InquiriesPanel } from "./welfare-client";
 import { TablePagination } from "@/components/table-pagination";
 import { MemberAvatar } from "@/components/member-avatar";
 import { requireModule } from "@/lib/permissions";
@@ -18,6 +18,7 @@ const { member, followUp, staff } = schema;
 const TABS = [
   { id: "overview", label: "Overview", icon: Heart },
   { id: "lost-sheep", label: "Lost Sheep", icon: UserMinus },
+  { id: "inquiries", label: "Inquiries & Complaints", icon: MessageSquare },
   { id: "automation", label: "Automation", icon: Bot },
 ] as const;
 
@@ -30,7 +31,7 @@ export default async function WelfarePage({ searchParams }: PageProps<"/welfare"
   const pageSize = Math.max(1, Number(sp?.pageSize) || 50);
 
   return (
-    <div className="space-y-6 pb-12 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
+    <div className="space-y-6 pb-6 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
       <div>
         <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Member Care</h1>
         <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -38,7 +39,7 @@ export default async function WelfarePage({ searchParams }: PageProps<"/welfare"
         </p>
       </div>
 
-      <nav className="grid w-full max-w-xl grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 sm:p-1.5">
+      <nav className="grid w-full max-w-2xl grid-cols-2 sm:grid-cols-4 gap-1 rounded-2xl bg-slate-100 p-1 sm:p-1.5">
         {TABS.map(({ id, label, icon: Icon }) => (
           <Link
             key={id}
@@ -56,6 +57,7 @@ export default async function WelfarePage({ searchParams }: PageProps<"/welfare"
 
       {tab === "overview" && <Overview church={church} />}
       {tab === "lost-sheep" && <LostSheep church={church} page={page} pageSize={pageSize} />}
+      {tab === "inquiries" && <Inquiries church={church} />}
       {tab === "automation" && (
         <AutomationForm
           enabled={church.automationEnabled}
@@ -246,6 +248,32 @@ async function LostSheep({ church, page = 1, pageSize = 50 }: { church: Church; 
       </div>
     </div>
   );
+}
+
+async function Inquiries({ church }: { church: typeof schema.church.$inferSelect }) {
+  const rows = await db
+    .select({
+      inquiry: schema.memberInquiry,
+      member: {
+        id: schema.member.id,
+        fullName: schema.member.fullName,
+        memberIdCode: schema.member.memberIdCode,
+        photoUrl: schema.member.photoUrl,
+        phone: schema.member.phone,
+        category: schema.member.category,
+      },
+    })
+    .from(schema.memberInquiry)
+    .innerJoin(schema.member, eq(schema.memberInquiry.memberId, schema.member.id))
+    .where(eq(schema.memberInquiry.churchId, church.id))
+    .orderBy(desc(schema.memberInquiry.createdAt));
+
+  const formatted = rows.map((r) => ({
+    ...r.inquiry,
+    member: r.member,
+  }));
+
+  return <InquiriesPanel inquiries={formatted} />;
 }
 
 function Stat({ label, value, tone, subtitle }: { label: string; value: React.ReactNode; tone: string; subtitle?: string }) {

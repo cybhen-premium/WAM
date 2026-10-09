@@ -232,6 +232,11 @@ export const member = pgTable(
     akwaabaStatus: text("akwaaba_status"),
     lastAttendedAt: date("last_attended_at"),
     active: boolean("active").notNull().default(true),
+    // Member Portal credentials & unique identification
+    memberIdCode: text("member_id_code").unique(),
+    passwordHash: text("password_hash"),
+    portalActive: boolean("portal_active").notNull().default(false),
+    lastLoginAt: timestamp("last_login_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("member_church_idx").on(t.churchId)],
@@ -541,6 +546,84 @@ export const notification = pgTable(
     index("notification_user_idx").on(t.userId),
     index("notification_created_idx").on(t.createdAt),
     index("notification_read_idx").on(t.read),
+  ],
+);
+
+/* ---------------------------------------------------- member portal ------ */
+
+export const memberOtp = pgTable(
+  "member_otp",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    code: text("code").notNull(),
+    purpose: text("purpose").notNull().default("activation"), // "activation" | "reset"
+    expiresAt: timestamp("expires_at").notNull(),
+    used: boolean("used").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("member_otp_member_idx").on(t.memberId)],
+);
+
+export const memberSession = pgTable(
+  "member_session",
+  {
+    id: text("id").primaryKey(), // secure random session token
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("member_session_member_idx").on(t.memberId)],
+);
+
+export const memberInquiry = pgTable(
+  "member_inquiry",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    subject: text("subject").notNull(),
+    category: text("category").notNull().default("General Inquiry"),
+    message: text("message").notNull(),
+    status: text("status").notNull().default("pending"), // "pending" | "in_progress" | "resolved"
+    reply: text("reply"),
+    repliedBy: text("replied_by"),
+    repliedAt: timestamp("replied_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("member_inquiry_church_idx").on(t.churchId),
+    index("member_inquiry_member_idx").on(t.memberId),
+    index("member_inquiry_status_idx").on(t.status),
+  ],
+);
+
+export const memberNotification = pgTable(
+  "member_notification",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    type: text("type").notNull().default("general"), // "tithe" | "welfare" | "inquiry_reply" | "announcement" | "general"
+    read: boolean("read").notNull().default(false),
+    link: text("link"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("member_notif_member_idx").on(t.memberId),
+    index("member_notif_created_idx").on(t.createdAt),
+    index("member_notif_read_idx").on(t.read),
   ],
 );
 
