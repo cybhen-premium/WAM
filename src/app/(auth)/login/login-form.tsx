@@ -133,8 +133,15 @@ export function LoginForm() {
 
     // Branch selection logic
     if (branches && branches.length > 1) {
-      setAvailableBranches(branches);
-      setSelectedBranchId(branches[0].id);
+      const sortedBranches = [...branches].sort((a, b) => {
+        const aSalvation = /salvation/i.test(a.name);
+        const bSalvation = /salvation/i.test(b.name);
+        if (aSalvation && !bSalvation) return -1;
+        if (!aSalvation && bSalvation) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      setAvailableBranches(sortedBranches);
+      setSelectedBranchId(sortedBranches[0].id);
       setTargetRedirectUrl(dest);
       setShowBranchPicker(true);
       return;

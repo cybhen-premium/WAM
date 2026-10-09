@@ -67,6 +67,16 @@ export type UserBranchInfo = {
   status: string;
 };
 
+function prioritizeSalvation<T extends { church: { name: string } }>(branches: T[]): T[] {
+  return [...branches].sort((a, b) => {
+    const aSalvation = /salvation/i.test(a.church.name);
+    const bSalvation = /salvation/i.test(b.church.name);
+    if (aSalvation && !bSalvation) return -1;
+    if (!aSalvation && bSalvation) return 1;
+    return a.church.name.localeCompare(b.church.name);
+  });
+}
+
 /** All active branches the signed-in user is assigned to. */
 export const getUserBranches = cache(async (userId: string): Promise<UserBranchInfo[]> => {
   try {
@@ -99,17 +109,19 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
         4,
       );
       if (ownedChurches.length > 0) {
-        return ownedChurches.map((c) => ({
-          church: c,
-          role: "admin",
-          staffId: "",
-          departmentId: null,
-          status: "active",
-        }));
+        return prioritizeSalvation(
+          ownedChurches.map((c) => ({
+            church: c,
+            role: "admin",
+            staffId: "",
+            departmentId: null,
+            status: "active",
+          }))
+        );
       }
     }
 
-    return rows;
+    return prioritizeSalvation(rows);
   } catch (err) {
     console.error("[Session] Error fetching user branches:", err);
     return [];

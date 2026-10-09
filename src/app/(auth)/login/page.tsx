@@ -9,7 +9,7 @@ export default async function LoginPage() {
   return (
     <AuthCard
       title="Welcome back"
-      subtitle={`Sign in to ${churchData?.name || "your sanctuary"}`}
+      subtitle="Sign in to World Ark Missions"
       logoUrl={churchData?.logoUrl}
     >
       <Suspense>

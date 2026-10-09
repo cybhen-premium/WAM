@@ -33,7 +33,7 @@ export default async function MemberLoginPage() {
           </div>
           <div>
             <span className="text-xs font-black uppercase tracking-wider text-slate-900 block truncate max-w-[240px]">
-              {churchData?.name || "WAM Sanctuary"}
+              World Ark Missions
             </span>
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">
               Member Portal
@@ -97,7 +97,7 @@ export default async function MemberLoginPage() {
 
       {/* Bottom Footer */}
       <div className="w-full max-w-md mx-auto text-center py-2 text-[11px] text-slate-400 font-medium">
-        © {new Date().getFullYear()} {churchData?.name || "Church Management Platform"} · Member Self-Service
+        © {new Date().getFullYear()} World Ark Missions · Member Self-Service
       </div>
     </div>
   );

@@ -145,17 +145,25 @@ export async function lookupMemberId(identifier: string): Promise<LoginState> {
 
         return {
           step: "select_account",
-          accounts: registeredAccounts.map((m) => {
-            const ch = churchMap.get(m.churchId);
-            return {
-              memberId: m.id,
-              name: m.fullName,
-              code: m.memberIdCode || "—",
-              churchName: ch?.name || "Church Sanctuary",
-              churchLogo: ch?.logoUrl || null,
-              branchPrefix: getBranchPrefix(ch?.name),
-            };
-          }),
+          accounts: registeredAccounts
+            .map((m) => {
+              const ch = churchMap.get(m.churchId);
+              return {
+                memberId: m.id,
+                name: m.fullName,
+                code: m.memberIdCode || "—",
+                churchName: ch?.name || "Church Sanctuary",
+                churchLogo: ch?.logoUrl || null,
+                branchPrefix: getBranchPrefix(ch?.name),
+              };
+            })
+            .sort((a, b) => {
+              const aSalvation = /salvation/i.test(a.churchName);
+              const bSalvation = /salvation/i.test(b.churchName);
+              if (aSalvation && !bSalvation) return -1;
+              if (!aSalvation && bSalvation) return 1;
+              return a.churchName.localeCompare(b.churchName);
+            }),
         };
       }
     }
