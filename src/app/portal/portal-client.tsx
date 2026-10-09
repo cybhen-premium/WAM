@@ -309,10 +309,29 @@ export function MemberPortalClient({
               <button
                 type="button"
                 onClick={() => setNotifOpen(!notifOpen)}
-                className="relative h-9 w-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 transition-colors cursor-pointer"
+                className="group relative h-9 w-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 transition-colors cursor-pointer"
                 aria-label="Notifications"
               >
-                <Bell className="h-4 w-4" />
+                <style>{`
+                  @keyframes member-bell-swing {
+                    0%, 100% { transform: rotate(0deg); }
+                    20% { transform: rotate(18deg); }
+                    40% { transform: rotate(-18deg); }
+                    60% { transform: rotate(12deg); }
+                    80% { transform: rotate(-10deg); }
+                  }
+                  .member-bell-swing {
+                    display: inline-flex;
+                    transform-origin: top center;
+                    animation: member-bell-swing 1.8s ease-in-out infinite;
+                  }
+                  .group:hover .member-bell-swing {
+                    animation-duration: 0.9s;
+                  }
+                `}</style>
+                <span className="member-bell-swing pointer-events-none">
+                  <Bell className="h-4 w-4" />
+                </span>
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-rose-600 text-[10px] font-black text-white flex items-center justify-center animate-pulse">
                     {unreadCount}

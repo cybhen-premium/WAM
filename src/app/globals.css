@@ -97,6 +97,7 @@
 
   --animate-fade-in: fade-in 0.5s ease-out forwards;
   --animate-slide-up: slide-up 0.4s ease-out forwards;
+  --animate-bell-swing: bell-swing 2s ease-in-out infinite;
 
   @keyframes fade-in {
     0% { opacity: 0; }
@@ -105,6 +106,36 @@
   @keyframes slide-up {
     0% { opacity: 0; transform: translateY(10px); }
     100% { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* Notification Bell Swinging Animation */
+.animate-bell-swing {
+  display: inline-flex !important;
+  transform-origin: top center !important;
+  transform-box: fill-box !important;
+  animation: bell-swing 1.8s ease-in-out infinite !important;
+}
+
+button:hover .animate-bell-swing {
+  animation-duration: 0.9s !important;
+}
+
+@keyframes bell-swing {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(18deg);
+  }
+  40% {
+    transform: rotate(-18deg);
+  }
+  60% {
+    transform: rotate(12deg);
+  }
+  80% {
+    transform: rotate(-10deg);
   }
 }
 

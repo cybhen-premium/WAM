@@ -147,7 +147,9 @@ export function NotificationBell() {
         aria-label="View notifications"
         title="Admin Notifications"
       >
-        <Bell className="h-4 w-4" />
+        <span className="inline-flex origin-top animate-bell-swing pointer-events-none">
+          <Bell className="h-4 w-4" />
+        </span>
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-black text-white shadow-sm ring-2 ring-white animate-in zoom-in-50 duration-200">
             {unreadCount > 9 ? "9+" : unreadCount}
