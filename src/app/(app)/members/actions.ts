@@ -8,7 +8,7 @@ import { MEMBER_CATEGORIES } from "@/lib/constants";
 import { sendSms, withFooter } from "@/lib/sms";
 import { requireModule } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
-import { generateMemberIdCode } from "@/lib/member-portal";
+import { generateMemberIdCode, getPortalUrl } from "@/lib/member-portal";
 
 const VISITOR = "Visitor";
 const REGULAR_ATTENDEE = "Regular Attendee";
@@ -121,13 +121,14 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
           );
         }
       } else {
-        // Full members receive their Member Portal ID automatically via SMS
+        // Full members receive their Member Portal ID and portal login link automatically via SMS
+        const portalUrl = getPortalUrl(memberIdCode);
         await sendSms(
           church,
           [values.phone],
           withFooter(
             church,
-            `Hi ${first}, welcome to ${church.name}! Your unique Member ID is: ${memberIdCode}. Log into your member portal to view your tithes, welfare dues, and update your profile.`
+            `Hi ${first}, welcome to ${church.name}! Your unique Member ID is: ${memberIdCode}. Sign into your member portal here: ${portalUrl} to view your tithes, welfare dues, and update your profile.`
           ),
           {
             kind: "portal_invite",
@@ -172,9 +173,10 @@ export async function sendPortalInviteSms(memberId: string): Promise<{ ok: boole
   }
 
   const first = m.fullName.split(/\s+/)[0];
+  const portalUrl = getPortalUrl(code);
   const smsBody = withFooter(
     church,
-    `Hi ${first}, your Member ID for ${church.name} is: ${code}. You can log into your member portal to view your tithes, welfare dues, and update your profile.`
+    `Hi ${first}, your Member ID for ${church.name} is: ${code}. Sign into your member portal here: ${portalUrl} to view your tithes, welfare dues, and update your profile.`
   );
 
   const res = await sendSms(church, [m.phone], smsBody, {

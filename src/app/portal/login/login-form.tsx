@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Church,
   KeyRound,
@@ -27,10 +27,11 @@ import {
 
 export function MemberLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
   const [state, setState] = useState<LoginState>({ step: "initial" });
-  const [memberCode, setMemberCode] = useState("");
+  const [memberCode, setMemberCode] = useState(() => (searchParams.get("id") ?? "").toUpperCase());
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");

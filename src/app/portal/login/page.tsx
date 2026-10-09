@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { Church, ShieldCheck, Heart, User } from "lucide-react";
 import { MemberLoginForm } from "./login-form";
@@ -49,7 +50,9 @@ export default function MemberLoginPage() {
             </p>
           </div>
 
-          <MemberLoginForm />
+          <Suspense fallback={<div className="h-36 rounded-2xl bg-slate-50 animate-pulse" />}>
+            <MemberLoginForm />
+          </Suspense>
         </div>
 
         {/* Security Trust Badge */}

@@ -83,6 +83,23 @@ export async function generateMemberIdCode(churchName?: string): Promise<string>
   return `${prefix}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
 }
 
+/** Resolves the public Member Portal login URL with optional prefilled ID */
+export function getPortalUrl(memberCode?: string): string {
+  const envUrl =
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : undefined) ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
+    process.env.BETTER_AUTH_URL;
+
+  const base = envUrl ? envUrl.replace(/\/+$/, "") : "http://localhost:3000";
+  return memberCode
+    ? `${base}/portal/login?id=${encodeURIComponent(memberCode)}`
+    : `${base}/portal/login`;
+}
+
 /** Secure password hashing using Node scrypt */
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString("hex");
