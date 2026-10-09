@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { and, eq, gt } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { sendSms, withFooter } from "@/lib/sms";
+import { resolveAppUrl } from "@/lib/notifications";
 
 export const MEMBER_SESSION_COOKIE = "wam_member_session";
 
@@ -83,18 +84,11 @@ export async function generateMemberIdCode(churchName?: string): Promise<string>
   return `${prefix}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
 }
 
-/** Resolves the public Member Portal login URL with optional prefilled ID */
-export function getPortalUrl(memberCode?: string): string {
-  const envUrl =
-    process.env.APP_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : undefined) ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
-    process.env.BETTER_AUTH_URL;
 
-  const base = envUrl ? envUrl.replace(/\/+$/, "") : "http://localhost:3000";
+
+/** Resolves the public Member Portal login URL with optional prefilled ID */
+export async function getPortalUrl(memberCode?: string): Promise<string> {
+  const base = await resolveAppUrl();
   return memberCode
     ? `${base}/portal/login?id=${encodeURIComponent(memberCode)}`
     : `${base}/portal/login`;

@@ -122,7 +122,7 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
         }
       } else {
         // Full members receive their Member Portal ID and portal login link automatically via SMS
-        const portalUrl = getPortalUrl(memberIdCode);
+        const portalUrl = await getPortalUrl(memberIdCode);
         await sendSms(
           church,
           [values.phone],
@@ -173,7 +173,7 @@ export async function sendPortalInviteSms(memberId: string): Promise<{ ok: boole
   }
 
   const first = m.fullName.split(/\s+/)[0];
-  const portalUrl = getPortalUrl(code);
+  const portalUrl = await getPortalUrl(code);
   const smsBody = withFooter(
     church,
     `Hi ${first}, your Member ID for ${church.name} is: ${code}. Sign into your member portal here: ${portalUrl} to view your tithes, welfare dues, and update your profile.`
