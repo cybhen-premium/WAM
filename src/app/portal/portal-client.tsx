@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Church,
@@ -126,7 +126,70 @@ export function MemberPortalClient({
   const [pendingPhoto, startPhotoTransition] = useTransition();
   const [pendingInquiry, startInquiryTransition] = useTransition();
   const [pendingLogout, setPendingLogout] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
+  const [secondsRemaining, setSecondsRemaining] = useState(120);
+  const lastActivityRef = useRef(Date.now());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Inactivity session timeout: 15 minutes with a 2-minute countdown warning
+  const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+  const WARNING_BEFORE_TIMEOUT_MS = 2 * 60 * 1000;
+
+  const handleStaySignedIn = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    setShowTimeoutWarning(false);
+    toast.success("Session active. You remain signed in.");
+  }, []);
+
+  const handleTimeoutLogout = useCallback(async () => {
+    setShowTimeoutWarning(false);
+    setPendingLogout(true);
+    await logoutMemberPortal();
+    toast.error("Your session timed out due to inactivity.");
+    router.push("/portal/login?reason=timeout");
+    router.refresh();
+  }, [router]);
+
+  useEffect(() => {
+    const events = ["mousedown", "keydown", "scroll", "touchstart"];
+    const handleUserActivity = () => {
+      // Only refresh activity timestamp if warning modal is not currently waiting for action
+      if (!showTimeoutWarning) {
+        lastActivityRef.current = Date.now();
+      }
+    };
+
+    events.forEach((ev) => window.addEventListener(ev, handleUserActivity, { passive: true }));
+
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastActivityRef.current;
+      const timeLeft = INACTIVITY_TIMEOUT_MS - elapsed;
+
+      if (timeLeft <= 0) {
+        clearInterval(interval);
+        handleTimeoutLogout();
+      } else if (timeLeft <= WARNING_BEFORE_TIMEOUT_MS) {
+        setShowTimeoutWarning(true);
+        setSecondsRemaining(Math.max(1, Math.ceil(timeLeft / 1000)));
+      } else {
+        if (showTimeoutWarning) {
+          setShowTimeoutWarning(false);
+        }
+      }
+    }, 1000);
+
+    return () => {
+      events.forEach((ev) => window.removeEventListener(ev, handleUserActivity));
+      clearInterval(interval);
+    };
+  }, [showTimeoutWarning, handleTimeoutLogout]);
+
+  const formatCountdown = (totalSeconds: number) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
 
   // Selected year filter for tithes
   const currentYear = new Date().getFullYear().toString();
@@ -181,6 +244,7 @@ export function MemberPortalClient({
   }
 
   async function handleLogout() {
+    setShowLogoutConfirm(false);
     setPendingLogout(true);
     await logoutMemberPortal();
     toast.success("Logged out successfully.");
@@ -319,7 +383,7 @@ export function MemberPortalClient({
             <button
               type="button"
               disabled={pendingLogout}
-              onClick={handleLogout}
+              onClick={() => setShowLogoutConfirm(true)}
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-600 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
               title="Sign out of member portal"
             >
@@ -1010,6 +1074,97 @@ export function MemberPortalClient({
               className="max-h-[80vh] w-auto rounded-3xl object-contain shadow-2xl ring-2 ring-white/20"
             />
             <p className="mt-3 text-sm font-bold text-white">{member.fullName}</p>
+          </div>
+        </div>
+      )}
+      {/* Sign Out Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in-0 duration-200">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-100 shadow-inner">
+              <LogOut className="h-6 w-6 stroke-[2.2]" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                Sign Out of Member Portal?
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                Are you sure you want to sign out, {member.fullName.split(" ")[0]}? You will need your Member ID or phone number to sign back in.
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5 pt-1">
+              <button
+                type="button"
+                disabled={pendingLogout}
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 h-11 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={pendingLogout}
+                onClick={handleLogout}
+                className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md shadow-rose-600/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+              >
+                {pendingLogout ? (
+                  <>
+                    <RotateCcw className="h-3.5 w-3.5 animate-spin" />
+                    <span>Signing Out...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Sign Out</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session Inactivity Timeout Warning Modal */}
+      {showTimeoutWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in-0 duration-200">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-amber-200 text-center space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 shadow-inner">
+              <Clock className="h-7 w-7 stroke-[2.2] animate-pulse" />
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-wider mb-1">
+                Inactivity Notice
+              </div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                Session Expiring Soon
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                You have been inactive for a while. For your privacy and security, your dashboard session will automatically close in:
+              </p>
+              <div className="mt-3 py-2 px-4 rounded-xl bg-amber-500/10 border border-amber-500/20 inline-block">
+                <span className="font-mono text-xl font-black text-amber-700 tracking-widest">
+                  {formatCountdown(secondsRemaining)}
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleStaySignedIn}
+                className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-black shadow-md shadow-blue-700/20 active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Stay Signed In</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleTimeoutLogout}
+                className="w-full h-10 inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all cursor-pointer"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Sign Out Now</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

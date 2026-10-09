@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { getMemberSession } from "@/lib/member-portal";
+import { getMemberSession, MEMBER_SESSION_COOKIE } from "@/lib/member-portal";
 import { MemberPortalClient } from "./portal-client";
 
 export const metadata = {
@@ -10,8 +11,13 @@ export const metadata = {
 };
 
 export default async function MemberPortalDashboardPage() {
+  const cookieStore = await cookies();
+  const hadCookie = cookieStore.has(MEMBER_SESSION_COOKIE);
   const session = await getMemberSession();
   if (!session) {
+    if (hadCookie) {
+      redirect("/portal/login?reason=timeout");
+    }
     redirect("/portal/login");
   }
 

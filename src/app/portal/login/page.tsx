@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Church, ShieldCheck, Heart } from "lucide-react";
+import { Church, ShieldCheck, Heart, Clock } from "lucide-react";
 import { MemberLoginForm } from "./login-form";
 import { db } from "@/db";
 
@@ -9,7 +9,13 @@ export const metadata = {
   description: "Access your church member dashboard, tithes, welfare dues, and pastoral support.",
 };
 
-export default async function MemberLoginPage() {
+export default async function MemberLoginPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const isTimedOut = params?.reason === "timeout" || params?.expired === "true";
   const churchData = await db.query.church.findFirst();
 
   return (
@@ -74,6 +80,23 @@ export default async function MemberLoginPage() {
               Sign in with your Member ID or registered phone number to view your contributions, update your photo, and connect with pastoral care.
             </p>
           </div>
+
+          {/* Session Inactivity Timeout Alert */}
+          {isTimedOut && (
+            <div className="mb-5 rounded-2xl bg-amber-500/10 border border-amber-500/25 p-3.5 flex items-start gap-3 text-amber-900 animate-in fade-in duration-200">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-700">
+                <Clock className="h-4 w-4 stroke-[2.2]" />
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-xs font-black uppercase tracking-wider text-amber-950">
+                  Session Expired
+                </p>
+                <p className="text-xs text-amber-800 font-medium mt-0.5 leading-relaxed">
+                  Your member portal session timed out due to inactivity. Please sign in again with your Member ID or phone number.
+                </p>
+              </div>
+            </div>
+          )}
 
           <Suspense fallback={<div className="h-36 rounded-2xl bg-slate-50 animate-pulse" />}>
             <MemberLoginForm
