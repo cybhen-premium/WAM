@@ -79,6 +79,36 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
       metadata: { memberId: values.id, fullName: values.fullName, category: values.category },
     });
   } else {
+    // Check for existing duplicates in this church branch
+    const existing = await db
+      .select({
+        id: member.id,
+        fullName: member.fullName,
+        phone: member.phone,
+        category: member.category,
+      })
+      .from(member)
+      .where(eq(member.churchId, church.id));
+
+    const cleanName = values.fullName.trim().toLowerCase();
+    const phoneDigits = values.phone ? values.phone.replace(/\D/g, "") : "";
+    const phoneCore = phoneDigits.length >= 8 ? phoneDigits.slice(-9) : "";
+
+    for (const m of existing) {
+      const mDigits = m.phone ? m.phone.replace(/\D/g, "") : "";
+      const mCore = mDigits.length >= 8 ? mDigits.slice(-9) : "";
+      if (phoneCore && mCore && phoneCore === mCore) {
+        return {
+          error: `A person with phone number "${values.phone}" already exists in this church branch: ${m.fullName} (${m.category}). Please find them in the directory instead of creating a duplicate.`,
+        };
+      }
+      if (cleanName && m.fullName.trim().toLowerCase() === cleanName) {
+        return {
+          error: `A person named "${m.fullName}" is already registered in this church branch (${m.category}). Please find them in the directory instead of adding a duplicate.`,
+        };
+      }
+    }
+
     // Create new person
     const [created] = await db
       .insert(member)

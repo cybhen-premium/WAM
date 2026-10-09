@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useFormAction } from "@/components/use-form-action";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
+  AlertCircle,
   Briefcase,
   Cake,
   Camera,
@@ -38,7 +39,13 @@ import type { schema } from "@/db";
 import { Modal, SelectField, TextField, buttonStyles } from "@/components/ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { MARITAL_STATUSES, MEMBER_CATEGORIES } from "@/lib/constants";
-import { deleteMember, importMembers, saveMember, setMemberActive } from "./actions";
+import {
+  checkMemberDuplicate,
+  deleteMember,
+  importMembers,
+  saveMember,
+  setMemberActive,
+} from "./actions";
 import { cn } from "@/lib/utils";
 
 type Member = InferSelectModel<typeof schema.member>;
@@ -1148,9 +1155,46 @@ function MemberFormModal({ open, onClose, member, departments }: { open: boolean
   const [photo, setPhoto] = useState(member?.photoUrl ?? "");
   const [compressing, setCompressing] = useState(false);
 
+  const [fullName, setFullName] = useState(member?.fullName ?? "");
+  const [phone, setPhone] = useState(member?.phone ?? "");
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     setPhoto(member?.photoUrl ?? "");
+    setFullName(member?.fullName ?? "");
+    setPhone(member?.phone ?? "");
+    setDuplicateWarning(null);
   }, [member, open]);
+
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (!open) return;
+    const cleanName = fullName.trim();
+    const cleanPhone = phone.trim();
+
+    if (!cleanName && !cleanPhone) {
+      setDuplicateWarning(null);
+      return;
+    }
+
+    timerRef.current = setTimeout(async () => {
+      const res = await checkMemberDuplicate({
+        fullName: cleanName,
+        phone: cleanPhone,
+        excludeId: member?.id,
+      });
+      if (res?.duplicate && res.message) {
+        setDuplicateWarning(res.message);
+      } else {
+        setDuplicateWarning(null);
+      }
+    }, 400);
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [fullName, phone, open, member?.id]);
 
   return (
     <Modal
@@ -1233,9 +1277,44 @@ function MemberFormModal({ open, onClose, member, departments }: { open: boolean
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-          <TextField className="sm:col-span-2" label="Full Name" name="fullName" required placeholder="Enter member's full name" defaultValue={member?.fullName} />
-          <TextField label="Phone Number" name="phone" type="tel" icon={Phone} placeholder="024XXXXXXX" defaultValue={member?.phone ?? ""} />
+          <TextField
+            className="sm:col-span-2"
+            label="Full Name"
+            name="fullName"
+            required
+            placeholder="Enter member's full name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
+          <TextField
+            label="Phone Number"
+            name="phone"
+            type="tel"
+            icon={Phone}
+            placeholder="024XXXXXXX"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
           <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue={member?.gender === "female" ? "Female" : "Male"} />
+
+          {/* Real-Time Duplicate Warning Banner */}
+          {duplicateWarning && (
+            <div className="sm:col-span-2 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 p-3.5 flex items-start gap-3 text-amber-900 animate-in fade-in duration-200">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1 text-xs">
+                <p className="font-black uppercase tracking-wider text-amber-950">
+                  Duplicate Member Detected
+                </p>
+                <p className="font-medium text-amber-800 mt-0.5 leading-relaxed">
+                  {duplicateWarning}
+                </p>
+                <p className="font-bold text-[11px] text-amber-700 mt-1">
+                  Please verify existing member records before saving to prevent duplicate accounts.
+                </p>
+              </div>
+            </div>
+          )}
+
           <SelectField label="Ministry" name="category" options={MEMBER_CATEGORIES} defaultValue={member?.category ?? "General Member"} />
           <SelectField
             label="Department"
@@ -1275,6 +1354,9 @@ function ImportModal({ open, onClose }: { open: boolean; onClose: () => void }) 
           Baptized, Marital Status, Occupation, Address, Date Of Birth, Wedding Anniversary (dates as YYYY-MM-DD).
           The file from <b>Export</b> can be re-imported as-is.
         </p>
+        <div className="rounded-xl bg-blue-50 border border-blue-200/60 p-3 text-xs text-blue-900 font-medium">
+          💡 <b>Duplicate Protection:</b> Any rows matching existing members by phone number, name, or email will be automatically skipped to prevent duplicate records.
+        </div>
         <input
           type="file"
           name="file"

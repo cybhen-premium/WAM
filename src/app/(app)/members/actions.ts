@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { MEMBER_CATEGORIES } from "@/lib/constants";
@@ -16,6 +16,120 @@ const REGULAR_ATTENDEE = "Regular Attendee";
 const { member } = schema;
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
+
+export type DuplicateMatch = {
+  type: "phone" | "name" | "email";
+  member: {
+    id: string;
+    fullName: string;
+    phone: string | null;
+    email: string | null;
+    memberIdCode: string | null;
+    category: string;
+  };
+  message: string;
+};
+
+/** Look up whether a member with the same phone, name, or email already exists in this church branch */
+export async function findDuplicateMember({
+  churchId,
+  fullName,
+  phone,
+  email,
+  excludeId,
+}: {
+  churchId: string;
+  fullName: string;
+  phone?: string | null;
+  email?: string | null;
+  excludeId?: string | null;
+}): Promise<DuplicateMatch | null> {
+  const existingMembers = await db
+    .select({
+      id: schema.member.id,
+      fullName: schema.member.fullName,
+      phone: schema.member.phone,
+      email: schema.member.email,
+      memberIdCode: schema.member.memberIdCode,
+      category: schema.member.category,
+      active: schema.member.active,
+    })
+    .from(schema.member)
+    .where(
+      excludeId
+        ? and(eq(schema.member.churchId, churchId), ne(schema.member.id, excludeId))
+        : eq(schema.member.churchId, churchId)
+    );
+
+  const cleanName = fullName.trim().toLowerCase();
+  const phoneDigits = phone ? phone.replace(/\D/g, "") : "";
+  const phoneCore = phoneDigits.length >= 8 ? phoneDigits.slice(-9) : "";
+  const cleanEmail = email ? email.trim().toLowerCase() : "";
+
+  for (const m of existingMembers) {
+    // 1. Phone collision: both have phone numbers
+    if (phoneCore && m.phone) {
+      const mDigits = m.phone.replace(/\D/g, "");
+      const mCore = mDigits.length >= 8 ? mDigits.slice(-9) : "";
+      if (mCore && (mCore === phoneCore || mDigits === phoneDigits)) {
+        return {
+          type: "phone",
+          member: m,
+          message: `A member with phone number "${phone}" already exists in this church branch: ${m.fullName} (${m.memberIdCode ? `Member ID: ${m.memberIdCode}` : m.category}).`,
+        };
+      }
+    }
+
+    // 2. Full Name collision: exact case-insensitive match
+    if (cleanName && m.fullName.trim().toLowerCase() === cleanName) {
+      return {
+        type: "name",
+        member: m,
+        message: `A member named "${m.fullName}" already exists in this church branch (${m.memberIdCode ? `Member ID: ${m.memberIdCode}` : m.category}${m.phone ? `, Phone: ${m.phone}` : ""}).`,
+      };
+    }
+
+    // 3. Email collision: exact case-insensitive match
+    if (cleanEmail && m.email && m.email.trim().toLowerCase() === cleanEmail) {
+      return {
+        type: "email",
+        member: m,
+        message: `A member with email "${m.email}" already exists in this church branch: ${m.fullName} (${m.memberIdCode ? `Member ID: ${m.memberIdCode}` : m.category}).`,
+      };
+    }
+  }
+
+  return null;
+}
+
+/** Server action for real-time duplicate checking from the frontend modal */
+export async function checkMemberDuplicate(data: {
+  fullName: string;
+  phone?: string | null;
+  email?: string | null;
+  excludeId?: string | null;
+}): Promise<{ duplicate: boolean; message?: string } | null> {
+  try {
+    await requireModule("members");
+    const { church } = await requireChurch();
+    if (!data.fullName.trim() && !data.phone?.trim()) {
+      return { duplicate: false };
+    }
+    const dup = await findDuplicateMember({
+      churchId: church.id,
+      fullName: data.fullName,
+      phone: data.phone,
+      email: data.email,
+      excludeId: data.excludeId,
+    });
+    if (dup) {
+      return { duplicate: true, message: dup.message };
+    }
+    return { duplicate: false };
+  } catch {
+    return null;
+  }
+}
 
 function readMember(form: FormData) {
   const s = (k: string) => String(form.get(k) ?? "").trim();
@@ -51,6 +165,24 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
   if (!values.fullName) return { error: "Full name is required." };
 
   const id = String(form.get("id") ?? "");
+
+  // Duplicate Check against existing records in this church branch
+  const duplicate = await findDuplicateMember({
+    churchId: church.id,
+    fullName: values.fullName,
+    phone: values.phone,
+    email: values.email,
+    excludeId: id || undefined,
+  });
+
+  if (duplicate) {
+    return {
+      error: id
+        ? duplicate.message
+        : `${duplicate.message} Please edit their existing record instead of adding a duplicate.`,
+    };
+  }
+
   if (id) {
     const [before] = await db
       .select({ category: member.category })
@@ -158,35 +290,46 @@ export async function sendPortalInviteSms(memberId: string): Promise<{ ok: boole
   await requireModule("members");
   const { church } = await requireChurch();
   const [m] = await db
-    .select()
+    .select({
+      id: schema.member.id,
+      fullName: schema.member.fullName,
+      phone: schema.member.phone,
+      memberIdCode: schema.member.memberIdCode,
+    })
     .from(schema.member)
     .where(and(eq(schema.member.id, memberId), eq(schema.member.churchId, church.id)))
     .limit(1);
 
-  if (!m) return { ok: false, error: "Member not found" };
-  if (!m.phone) return { ok: false, error: "Member does not have a registered phone number" };
+  if (!m) return { ok: false, error: "Member not found." };
+  if (!m.phone) return { ok: false, error: "Member does not have a phone number on file." };
 
   let code = m.memberIdCode;
   if (!code) {
     code = await generateMemberIdCode(church.name);
-    await db.update(schema.member).set({ memberIdCode: code }).where(eq(schema.member.id, m.id));
+    await db
+      .update(schema.member)
+      .set({ memberIdCode: code })
+      .where(eq(schema.member.id, m.id));
   }
 
-  const first = m.fullName.split(/\s+/)[0];
   const portalUrl = await getPortalUrl(code);
-  const smsBody = withFooter(
+  const first = m.fullName.split(/\s+/)[0];
+  const smsRes = await sendSms(
     church,
-    `Hi ${first}, your Member ID for ${church.name} is: ${code}. Sign into your member portal here: ${portalUrl} to view your tithes, welfare dues, and update your profile.`
+    [m.phone],
+    withFooter(
+      church,
+      `Hi ${first}, your unique ${church.name} Member ID is: ${code}. Sign into your member portal at: ${portalUrl} to view your tithes, welfare dues, and pastoral support.`
+    ),
+    {
+      kind: "portal_invite",
+      audience: m.fullName,
+      topic: "Member Portal ID",
+    }
   );
 
-  const res = await sendSms(church, [m.phone], smsBody, {
-    kind: "portal_invite",
-    audience: m.fullName,
-    topic: "Member Portal ID",
-  });
-
-  if (res.status === "failed") {
-    return { ok: false, error: res.error || "Failed to send SMS." };
+  if (smsRes.status === "failed") {
+    return { ok: false, error: smsRes.error || "Failed to send SMS." };
   }
 
   logActivity({
@@ -234,7 +377,7 @@ export async function deleteMember(id: string) {
   revalidatePath("/dashboard");
 }
 
-/** Import members from a CSV with a header row (same columns as the export). */
+/** Import members from a CSV with duplicate detection and automated Member ID generation. */
 export async function importMembers(_prev: FormState, form: FormData): Promise<FormState> {
   await requireModule("members");
   const { church } = await requireChurch();
@@ -248,7 +391,31 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
     return i >= 0 ? (row[i] ?? "").trim() : "";
   };
 
-  const values = rows
+  // Fetch all existing members in this branch for duplicate detection
+  const existingMembers = await db
+    .select({
+      id: schema.member.id,
+      fullName: schema.member.fullName,
+      phone: schema.member.phone,
+      email: schema.member.email,
+    })
+    .from(schema.member)
+    .where(eq(schema.member.churchId, church.id));
+
+  const existingPhoneCores = new Set<string>();
+  const existingNames = new Set<string>();
+  const existingEmails = new Set<string>();
+
+  for (const m of existingMembers) {
+    if (m.phone) {
+      const d = m.phone.replace(/\D/g, "");
+      if (d.length >= 8) existingPhoneCores.add(d.slice(-9));
+    }
+    if (m.fullName) existingNames.add(m.fullName.trim().toLowerCase());
+    if (m.email) existingEmails.add(m.email.trim().toLowerCase());
+  }
+
+  const rawValues = rows
     .map((row) => {
       const f = new FormData();
       f.set("fullName", col(row, "fullname", "name"));
@@ -268,14 +435,51 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
     })
     .filter((v) => v.fullName);
 
-  if (values.length === 0) return { error: "No rows with a name were found in that file." };
-  await db.insert(member).values(values);
+  if (rawValues.length === 0) return { error: "No rows with a valid name were found in that file." };
+
+  const toInsert: Array<typeof rawValues[number] & { memberIdCode: string }> = [];
+  let skippedDuplicates = 0;
+
+  for (const item of rawValues) {
+    const cleanName = item.fullName.trim().toLowerCase();
+    const phoneDigits = item.phone ? item.phone.replace(/\D/g, "") : "";
+    const phoneCore = phoneDigits.length >= 8 ? phoneDigits.slice(-9) : "";
+    const cleanEmail = item.email ? item.email.trim().toLowerCase() : "";
+
+    const isDup =
+      (phoneCore && existingPhoneCores.has(phoneCore)) ||
+      existingNames.has(cleanName) ||
+      (cleanEmail && existingEmails.has(cleanEmail));
+
+    if (isDup) {
+      skippedDuplicates++;
+      continue;
+    }
+
+    // Add to sets to also prevent duplicate rows within the same CSV file
+    if (phoneCore) existingPhoneCores.add(phoneCore);
+    existingNames.add(cleanName);
+    if (cleanEmail) existingEmails.add(cleanEmail);
+
+    const memberIdCode = await generateMemberIdCode(church.name);
+    toInsert.push({ ...item, memberIdCode });
+  }
+
+  if (toInsert.length === 0) {
+    return {
+      error: `All ${skippedDuplicates} member(s) in this CSV file already exist in this church branch. No duplicates were added.`,
+    };
+  }
+
+  await db.insert(member).values(toInsert);
+
   logActivity({
     module: "members",
     actionCode: "members.import",
-    action: `Imported ${values.length} members from CSV`,
-    metadata: { count: values.length },
+    action: `Imported ${toInsert.length} members from CSV (${skippedDuplicates} duplicate(s) skipped)`,
+    metadata: { count: toInsert.length, skipped: skippedDuplicates },
   });
+
   revalidatePath("/members");
   revalidatePath("/dashboard");
   return { ok: true };
