@@ -17,12 +17,12 @@ export function getBranchPrefix(churchName?: string): string {
   const lower = churchName.toLowerCase();
 
   // Branch 1: Holy Spirit Citadel
-  if (lower.includes("holy spirit") || lower.includes("citadel")) {
+  if (lower.includes("holy spirit")) {
     return "HSC";
   }
 
-  // Branch 2: World Ark Missions (central branch)
-  if (lower.includes("world ark")) {
+  // Branch 2: Salvation Citadel / Central World Ark Missions
+  if (lower.includes("salvation") || lower.includes("world ark")) {
     return "WAM";
   }
 
