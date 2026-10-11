@@ -17,6 +17,8 @@ import {
   updateStaff,
   setStaffModules,
   updateStaffStatus,
+  resendStaffCredentials,
+  resetStaffPassword,
 } from "./actions";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useTablePagination } from "@/components/table-pagination";
@@ -279,7 +281,14 @@ function CreateStaffView({
 
   // Close on success
   useEffect(() => {
-    if (state && "ok" in state && state.ok) onClose();
+    if (state && "ok" in state && state.ok) {
+      if ((state as any).emailSent === false) {
+        toast.warning((state as any).message || "Staff created, but credentials email could not be sent.");
+      } else {
+        toast.success((state as any).message || "Staff created! Login credentials and URL sent to email.");
+      }
+      onClose();
+    }
   }, [state, onClose]);
 
   function toggleModule(key: string) {
@@ -292,7 +301,16 @@ function CreateStaffView({
   function selectAll() { setSelectedModules(new Set(MODULE_KEYS)); }
   function clearAll() { setSelectedModules(new Set()); }
 
-  const step1Valid = fullName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && selectedBranches.size > 0;
+  const emailList = email
+    .split(/[,;\n\r]+/)
+    .map((s: string) => s.trim().toLowerCase())
+    .filter(Boolean);
+
+  const step1Valid =
+    Boolean(fullName.trim()) &&
+    emailList.length > 0 &&
+    emailList.every((e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) &&
+    selectedBranches.size > 0;
 
   return (
     <div className="w-full max-w-2xl mx-auto rounded-3xl bg-[#F5F7FB] shadow-md border border-slate-100 animate-in fade-in zoom-in-95 duration-300">
@@ -374,10 +392,21 @@ function CreateStaffView({
 
               {/* Email */}
               <label className="block">
-                <span className="mb-1.5 block text-sm font-bold text-slate-700">Email Address <span className="text-red-500">*</span></span>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="block text-sm font-bold text-slate-700">
+                    Email Address <span className="text-red-500">*</span>
+                  </span>
+                  {!isEditing && (
+                    <span className="text-[11px] font-medium text-slate-400">
+                      Separate multiple emails with commas
+                    </span>
+                  )}
+                </div>
                 <input
-                  type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder="jane@example.com"
+                  type="text"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={isEditing ? "jane@example.com" : "jane@example.com, john@example.com"}
                   className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all"
                 />
               </label>
@@ -484,21 +513,30 @@ function CreateStaffView({
 
               {/* Temporary Password */}
               {!isEditing && (
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-bold text-slate-700">Temporary Password <span className="text-red-500">*</span></span>
-                  <div className="relative">
-                    <input
-                      type={showPass ? "text" : "password"}
-                      value={password} onChange={(e) => setPassword(e.target.value)}
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-12 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 tracking-widest transition-all"
-                    />
-                    <button type="button" onClick={() => setShowPass((v) => !v)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors">
-                      {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                <div className="space-y-2">
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-bold text-slate-700">Temporary Password <span className="text-red-500">*</span></span>
+                    <div className="relative">
+                      <input
+                        type={showPass ? "text" : "password"}
+                        value={password} onChange={(e) => setPassword(e.target.value)}
+                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-12 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 tracking-widest transition-all"
+                      />
+                      <button type="button" onClick={() => setShowPass((v) => !v)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors">
+                        {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <p className="mt-1.5 text-xs text-slate-400">The user will be required to change this password on their first login.</p>
+                  </label>
+
+                  <div className="rounded-xl bg-blue-50/80 border border-blue-100 p-3 flex items-start gap-2.5">
+                    <Mail className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                    <p className="text-xs text-blue-800 leading-relaxed font-medium">
+                      An email containing the <strong>login portal URL</strong> and default password (<span className="font-mono font-bold">{password}</span>) will be automatically sent upon creation.
+                    </p>
                   </div>
-                  <p className="mt-1.5 text-xs text-slate-400">The user will be required to change this password on their first login.</p>
-                </label>
+                </div>
               )}
 
               {/* Error */}
@@ -1073,6 +1111,28 @@ export function StaffsClient({
                                   className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 active:scale-95 transition-all shadow-sm"
                                 >
                                   <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                </button>
+                              )}
+
+                              {/* Resend credentials button */}
+                              {isAdmin && !s.self && (
+                                <button
+                                  type="button"
+                                  title="Send login URL and default password via email"
+                                  disabled={busy}
+                                  onClick={() => {
+                                    startTransition(async () => {
+                                      const res = await resendStaffCredentials(s.id);
+                                      if (res?.ok) {
+                                        toast.success(res.message || `Credentials sent to ${s.email}`);
+                                      } else {
+                                        toast.error(res?.error || "Failed to send credentials email");
+                                      }
+                                    });
+                                  }}
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 active:scale-95 transition-all shadow-sm"
+                                >
+                                  <Mail className="h-3.5 w-3.5" />
                                 </button>
                               )}
 

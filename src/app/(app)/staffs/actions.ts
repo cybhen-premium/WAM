@@ -1,13 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule, isBranchWithDisabledAdmin } from "@/lib/permissions";
 import { MODULE_KEYS } from "@/lib/modules";
 import { hashPassword } from "better-auth/crypto";
 import { logActivity } from "@/lib/activity";
+import { resolveAppUrl } from "@/lib/notifications";
+import { sendStaffWelcomeEmail } from "@/lib/email";
 
 const { staff, staffModule, user, account } = schema;
 
@@ -30,7 +32,7 @@ function toUsername(name: string): string {
 /* --- Create staff ------------------------------------------------------- */
 
 export type CreateStaffState =
-  | { ok: true; staffId: string }
+  | { ok: true; staffId: string; emailSent?: boolean; message?: string }
   | { error: string }
   | undefined;
 
@@ -52,73 +54,80 @@ export async function createStaff(
   const branchIdsRaw = f.getAll("branchIds") as string[];
   const targetBranchIds = branchIdsRaw.length > 0 ? branchIdsRaw : [c.id];
 
-  if (!name)   return { error: "Full name is required." };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw))
-    return { error: "Enter a valid email address." };
+  if (!name) return { error: "Full name is required." };
 
-  // Check if user already exists
-  const [existingUser] = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(eq(user.email, emailRaw))
-    .limit(1);
+  const emails = emailRaw
+    .split(/[,;\n\r]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
 
-  // Check which of the target branches this user is already in
-  const existingStaffRows = await db
-    .select({ churchId: staff.churchId })
-    .from(staff)
-    .where(eq(staff.email, emailRaw));
+  if (emails.length === 0) return { error: "Enter a valid email address." };
 
-  const existingChurchIds = new Set(existingStaffRows.map((r) => r.churchId));
-  const newChurchIds = targetBranchIds.filter((cid) => !existingChurchIds.has(cid));
-
-  if (newChurchIds.length === 0) {
-    return { error: "A staff record with that email already exists in the selected branch(es)." };
+  const invalidEmails = emails.filter((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+  if (invalidEmails.length > 0) {
+    return { error: `Invalid email address format: ${invalidEmails.join(", ")}` };
   }
 
-  let finalUserId = existingUser?.id;
+  // Fetch branch sanctuary names for the welcome email
+  const branchRows = await db
+    .select({ id: schema.church.id, name: schema.church.name })
+    .from(schema.church)
+    .where(inArray(schema.church.id, targetBranchIds));
+  const branchNames =
+    branchRows.map((b) => b.name.replace("World Ark Missions - ", "")).join(", ") || c.name;
+
+  const appUrl = await resolveAppUrl();
+  const loginUrl = `${appUrl}/login`;
   const hashed = await hashPassword(password);
   const now = new Date();
 
-  if (!finalUserId) {
-    finalUserId = crypto.randomUUID().replace(/-/g, "");
-    const accountId = crypto.randomUUID().replace(/-/g, "");
+  let firstNewStaffId = "";
+  let createdCount = 0;
+  const sentEmails: string[] = [];
+  const failedEmails: string[] = [];
 
-    await db.insert(user).values({
-      id: finalUserId,
-      name: username,
-      email: emailRaw,
-      emailVerified: true,
-      passwordChangeRequired: true,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await db.insert(account).values({
-      id: accountId,
-      accountId: finalUserId,
-      providerId: "credential",
-      userId: finalUserId,
-      password: hashed,
-      createdAt: now,
-      updatedAt: now,
-    });
-  } else {
-    // Prevent modifying church owner credentials through staff creation
-    if (finalUserId === c.ownerId) {
-      return { error: "The church owner account cannot be modified via staff creation." };
-    }
-
-    // Existing user: preserve their existing password and login credentials.
-    // Only ensure they have a credential account record if missing.
-    const [existingAccount] = await db
-      .select({ id: account.id })
-      .from(account)
-      .where(and(eq(account.userId, finalUserId), eq(account.providerId, "credential")))
+  for (const emailItem of emails) {
+    // Check if user already exists
+    const [existingUser] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, emailItem))
       .limit(1);
 
-    if (!existingAccount) {
+    // Check which of the target branches this user is already in
+    const existingStaffRows = await db
+      .select({ churchId: staff.churchId })
+      .from(staff)
+      .where(eq(staff.email, emailItem));
+
+    const existingChurchIds = new Set(existingStaffRows.map((r) => r.churchId));
+    const newChurchIds = targetBranchIds.filter((cid) => !existingChurchIds.has(cid));
+
+    if (newChurchIds.length === 0) {
+      if (emails.length === 1) {
+        return { error: "A staff record with that email already exists in the selected branch(es)." };
+      }
+      continue;
+    }
+
+    let finalUserId = existingUser?.id;
+    const currentUsername = emails.length === 1 ? username : toUsername(emailItem.split("@")[0]);
+    const currentName = emails.length === 1 ? name : (name ? `${name} (${emailItem.split("@")[0]})` : emailItem.split("@")[0]);
+
+    if (!finalUserId) {
+      finalUserId = crypto.randomUUID().replace(/-/g, "");
       const accountId = crypto.randomUUID().replace(/-/g, "");
+
+      await db.insert(user).values({
+        id: finalUserId,
+        name: currentUsername,
+        email: emailItem,
+        emailVerified: true,
+        passwordChangeRequired: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
       await db.insert(account).values({
         id: accountId,
         accountId: finalUserId,
@@ -128,43 +137,110 @@ export async function createStaff(
         createdAt: now,
         updatedAt: now,
       });
-    }
-  }
+    } else {
+      // Prevent modifying church owner credentials through staff creation
+      if (finalUserId === c.ownerId) {
+        if (emails.length === 1) {
+          return { error: "The church owner account cannot be modified via staff creation." };
+        }
+        continue;
+      }
 
-  let firstNewStaffId = "";
+      // Existing user: ensure they have a credential account record
+      const [existingAccount] = await db
+        .select({ id: account.id })
+        .from(account)
+        .where(and(eq(account.userId, finalUserId), eq(account.providerId, "credential")))
+        .limit(1);
 
-  for (const branchId of newChurchIds) {
-    const [newStaff] = await db.insert(staff).values({
-      churchId: branchId,
-      userId: finalUserId,
-      email: emailRaw,
-      role,
-      status: activateNow ? "active" : "pending",
-    }).returning({ id: staff.id });
-
-    if (!firstNewStaffId) firstNewStaffId = newStaff.id;
-
-    // Assign modules (non-admins)
-    if (role !== "admin" && modulesRaw.length > 0) {
-      const wanted = MODULE_KEYS.filter((k) => modulesRaw.includes(k));
-      if (wanted.length > 0) {
-        await db.insert(staffModule).values(
-          wanted.map((module) => ({ churchId: branchId, staffId: newStaff.id, module })),
-        );
+      if (!existingAccount) {
+        const accountId = crypto.randomUUID().replace(/-/g, "");
+        await db.insert(account).values({
+          id: accountId,
+          accountId: finalUserId,
+          providerId: "credential",
+          userId: finalUserId,
+          password: hashed,
+          createdAt: now,
+          updatedAt: now,
+        });
       }
     }
+
+    let currentStaffId = "";
+
+    for (const branchId of newChurchIds) {
+      const [newStaff] = await db.insert(staff).values({
+        churchId: branchId,
+        userId: finalUserId,
+        email: emailItem,
+        role,
+        status: activateNow ? "active" : "pending",
+      }).returning({ id: staff.id });
+
+      if (!firstNewStaffId) firstNewStaffId = newStaff.id;
+      if (!currentStaffId) currentStaffId = newStaff.id;
+
+      // Assign modules (non-admins)
+      if (role !== "admin" && modulesRaw.length > 0) {
+        const wanted = MODULE_KEYS.filter((k) => modulesRaw.includes(k));
+        if (wanted.length > 0) {
+          await db.insert(staffModule).values(
+            wanted.map((module) => ({ churchId: branchId, staffId: newStaff.id, module })),
+          );
+        }
+      }
+    }
+
+    logActivity({
+      module: "staffs",
+      actionCode: "user.create",
+      action: `Created new user ${currentUsername || currentName}`,
+      metadata: { staffId: currentStaffId, email: emailItem, role, status: activateNow ? "active" : "pending" },
+    });
+
+    createdCount++;
+
+    // Send credentials email containing the login URL and the default password
+    try {
+      await sendStaffWelcomeEmail({
+        to: emailItem,
+        name: currentName,
+        username: currentUsername,
+        role,
+        churchName: c.name,
+        branches: branchNames,
+        loginUrl,
+        temporaryPassword: password,
+      });
+      sentEmails.push(emailItem);
+    } catch (emailErr) {
+      console.error(`Failed to send credentials email to ${emailItem}:`, emailErr);
+      failedEmails.push(emailItem);
+    }
   }
 
-  logActivity({
-    module: "staffs",
-    actionCode: "user.create",
-    action: `Created new user ${username || name}`,
-    metadata: { staffId: firstNewStaffId, email: emailRaw, role, status: activateNow ? "active" : "pending" },
-  });
+  if (createdCount === 0) {
+    return { error: "No new staff could be created (staff already exist in all selected branches)." };
+  }
 
   revalidatePath("/staffs");
   revalidatePath("/", "layout");
-  return { ok: true, staffId: firstNewStaffId };
+
+  let msg = `Staff created successfully.`;
+  if (sentEmails.length > 0) {
+    msg += ` Login URL and default password sent to ${sentEmails.join(", ")}.`;
+  }
+  if (failedEmails.length > 0) {
+    msg += ` (Notice: Credentials email could not be delivered to ${failedEmails.join(", ")}).`;
+  }
+
+  return {
+    ok: true,
+    staffId: firstNewStaffId,
+    emailSent: sentEmails.length > 0,
+    message: msg,
+  };
 }
 
 export async function updateStaff(
@@ -511,7 +587,69 @@ export async function resetStaffPassword(staffId: string, customPassword?: strin
     metadata: { staffId: targetStaff.id, email: targetStaff.email },
   });
 
+  const appUrl = await resolveAppUrl();
+  const loginUrl = `${appUrl}/login`;
+  let emailSent = false;
+
+  try {
+    await sendStaffWelcomeEmail({
+      to: targetStaff.email,
+      name: targetStaff.email.split("@")[0],
+      role: "Staff",
+      churchName: c.name,
+      loginUrl,
+      temporaryPassword,
+      isReset: true,
+    });
+    emailSent = true;
+  } catch (err) {
+    console.error("Failed to send reset password email:", err);
+  }
+
   revalidatePath("/staffs");
-  return { ok: true, password: temporaryPassword };
+  return { ok: true, password: temporaryPassword, emailSent };
+}
+
+export async function resendStaffCredentials(staffId: string) {
+  await requireModule("staffs");
+  const { church: c } = await requireAdmin();
+
+  const [targetStaff] = await db
+    .select({
+      id: staff.id,
+      email: staff.email,
+      role: staff.role,
+      userId: staff.userId,
+    })
+    .from(staff)
+    .where(eq(staff.id, staffId))
+    .limit(1);
+
+  if (!targetStaff) {
+    return { ok: false, error: "Staff member not found." };
+  }
+
+  const [targetUser] = targetStaff.userId
+    ? await db.select({ name: user.name }).from(user).where(eq(user.id, targetStaff.userId)).limit(1)
+    : [];
+
+  const appUrl = await resolveAppUrl();
+  const loginUrl = `${appUrl}/login`;
+  const defaultPassword = "WAMCHURCH@26";
+
+  try {
+    await sendStaffWelcomeEmail({
+      to: targetStaff.email,
+      name: targetUser?.name || targetStaff.email.split("@")[0],
+      role: targetStaff.role,
+      churchName: c.name,
+      loginUrl,
+      temporaryPassword: defaultPassword,
+    });
+    return { ok: true, message: `Login URL & default password sent to ${targetStaff.email}.` };
+  } catch (err: any) {
+    console.error("Failed to resend credentials:", err);
+    return { ok: false, error: err?.message || "Failed to send credentials email." };
+  }
 }
 

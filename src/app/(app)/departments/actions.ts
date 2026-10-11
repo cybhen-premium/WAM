@@ -7,6 +7,8 @@ import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
 import { hashPassword } from "better-auth/crypto";
+import { resolveAppUrl } from "@/lib/notifications";
+import { sendStaffWelcomeEmail } from "@/lib/email";
 
 const { department } = schema;
 
@@ -137,7 +139,7 @@ export async function assignDepartmentAccount(
     name: `${dept.name} Lead`,
     email: emailRaw,
     emailVerified: true,
-    passwordChangeRequired: false,
+    passwordChangeRequired: true,
     createdAt: now,
     updatedAt: now,
   });
@@ -177,6 +179,21 @@ export async function assignDepartmentAccount(
     action: `Created department login account for "${dept.name}" (${emailRaw})`,
     metadata: { departmentId: dept.id, email: emailRaw },
   });
+
+  try {
+    const appUrl = await resolveAppUrl();
+    await sendStaffWelcomeEmail({
+      to: emailRaw,
+      name: `${dept.name} Lead`,
+      role: "Department Lead",
+      churchName: church.name,
+      branches: church.name,
+      loginUrl: `${appUrl}/login`,
+      temporaryPassword: password,
+    });
+  } catch (emailErr) {
+    console.error("Failed to send department lead credentials email:", emailErr);
+  }
 
   revalidatePath("/departments");
   revalidatePath("/staffs");
