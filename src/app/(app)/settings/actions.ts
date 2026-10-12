@@ -136,6 +136,25 @@ export async function savePreferences(_prev: FormState, f: FormData): Promise<Fo
   return done("Preferences saved.");
 }
 
+export async function saveSmsSignature(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("settings");
+  const { church: c } = await requireAdmin();
+  const customFooter = s(f, "customFooter");
+  await db
+    .update(church)
+    .set({
+      appendFooter: f.get("appendFooter") === "on",
+      customFooter: customFooter ? customFooter : null,
+    })
+    .where(eq(church.id, c.id));
+  logActivity({
+    module: "settings",
+    actionCode: "settings.sms_signature",
+    action: "Updated SMS signature and footer settings",
+  });
+  return done("SMS signature saved.");
+}
+
 /* Staff -------------------------------------------------------------------- */
 
 const ROLES = ["admin", "pastor", "finance", "secretary", "usher"] as const;

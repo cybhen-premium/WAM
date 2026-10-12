@@ -13,7 +13,6 @@ export const metadata = { title: "Settings & Management" };
 const TABS = [
   { id: "profile", label: "Profile", icon: User },
   { id: "preferences", label: "Preferences", icon: SlidersHorizontal },
-  // Platform admins only (PLATFORM_ADMIN_EMAILS).
   { id: "integrations", label: "Integrations", icon: Plug },
 ] as const;
 
@@ -24,10 +23,10 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   }
   await requireModule("settings");
   const sp = await searchParams;
-  const platformAdmin = isPlatformAdmin(user.email);
-  const tabs = TABS.filter((t) => t.id !== "integrations" || platformAdmin);
-  const tab = tabs.find((t) => t.id === sp.tab)?.id ?? "profile";
   const isAdmin = role === "admin";
+  const platformAdmin = isPlatformAdmin(user.email);
+  const tabs = TABS.filter((t) => t.id !== "integrations" || isAdmin || platformAdmin);
+  const tab = tabs.find((t) => t.id === sp.tab)?.id ?? "profile";
 
   return (
     <div className="space-y-6 pb-6 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
@@ -72,6 +71,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
           <SenderIdForm status={church.senderIdStatus} current={church.senderId} requested={church.senderIdRequested} />
         </div>
       )}
+
       {tab === "preferences" && <PreferencesForm church={church} />}
       {tab === "integrations" && <Integrations />}
     </div>
@@ -87,7 +87,7 @@ async function Integrations() {
   return (
     <div className="space-y-6">
       <p className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-[#1e3a8a]">
-        Platform-wide settings, visible to platform admins only. Keys are encrypted before they&apos;re stored and are never shown again.
+        Manage platform integrations and API keys. Keys are encrypted before they&apos;re stored and are never shown again.
       </p>
       <IntegrationForm kind="sms" saved={sms} />
       <IntegrationForm kind="ai" saved={ai} />

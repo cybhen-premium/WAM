@@ -2,20 +2,24 @@
 
 import { revalidatePath } from "next/cache";
 import { generateText } from "ai";
-import { requireUser } from "@/lib/session";
+import { requireChurch, requireUser } from "@/lib/session";
 import { getIntegration, isPlatformAdmin, saveIntegration } from "@/lib/platform";
 import { INTEGRATIONS, type IntegrationKey } from "@/lib/integrations";
 import { normalizePhone } from "@/lib/sms";
 import { sendWithProvider } from "@/lib/sms-providers";
 import { modelFor } from "@/lib/ai";
-import { requireModule } from "@/lib/permissions";
+import { requireModule, isBranchWithDisabledAdmin } from "@/lib/permissions";
 
 export type IntegrationState = { error?: string; ok?: boolean; message?: string } | undefined;
 
-async function requirePlatformAdmin() {
+async function requireIntegrationAdmin() {
   const user = await requireUser();
-  if (!isPlatformAdmin(user.email)) throw new Error("Only platform admins can manage integrations.");
-  return user;
+  if (isPlatformAdmin(user.email)) return user;
+  const ctx = await requireChurch();
+  if (ctx.role === "admin" && !isBranchWithDisabledAdmin(ctx.church.name)) {
+    return user;
+  }
+  throw new Error("Only administrators can manage integration settings.");
 }
 
 /** Provider-specific checks beyond "required fields are present". */
@@ -41,7 +45,7 @@ function validate(key: IntegrationKey, provider: string, common: Record<string, 
 
 export async function saveIntegrationSettings(key: IntegrationKey, _prev: IntegrationState, f: FormData): Promise<IntegrationState> {
   await requireModule("settings");
-  const user = await requirePlatformAdmin();
+  const user = await requireIntegrationAdmin();
   const integration = INTEGRATIONS[key];
   const provider = String(f.get("provider") ?? "");
   const def = integration.providers.find((p) => p.id === provider);
@@ -57,6 +61,7 @@ export async function saveIntegrationSettings(key: IntegrationKey, _prev: Integr
   } catch (e) {
     return { error: (e as Error).message };
   }
+  revalidatePath("/settings");
   revalidatePath("/", "layout");
   return { ok: true, message: `${integration.title} saved.` };
 }
@@ -64,7 +69,7 @@ export async function saveIntegrationSettings(key: IntegrationKey, _prev: Integr
 /** Exercises the saved configuration without touching church credits. */
 export async function testIntegration(key: IntegrationKey, _prev: IntegrationState, f: FormData): Promise<IntegrationState> {
   await requireModule("settings");
-  await requirePlatformAdmin();
+  await requireIntegrationAdmin();
   const cfg = await getIntegration(key);
   if (!cfg) return { error: "Save and enable a provider first." };
 

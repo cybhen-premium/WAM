@@ -13,6 +13,7 @@ import {
   saveBranding,
   savePreferences,
   saveProfile,
+  saveSmsSignature,
   setAutoWelcome,
   setStaffModules,
   setSuperAdminTwoFactor,
@@ -354,6 +355,72 @@ export function SenderIdForm({ status, current, requested }: { status: string; c
         </label>
         <Submit pending={pending} state={state}>
           Submit for Approval
+        </Submit>
+      </form>
+    </Section>
+  );
+}
+
+export function SmsSignatureForm({ church }: { church: Church }) {
+  const [state, action, pending] = useFormAction(saveSmsSignature);
+  const [footer, setFooter] = useState(church.appendFooter);
+  const defaultSignature = `${church.name}${church.phone ? ` | Tel: ${church.phone}` : ""}`;
+  const [customFooter, setCustomFooter] = useState(church.customFooter ?? "");
+
+  const activeSignature = customFooter.trim() || defaultSignature;
+
+  return (
+    <Section title="Professional SMS Signature" subtitle="Automatically append your church's signature and contact details to outgoing broadcasts, tithe receipts, and announcements.">
+      <form action={action} className="space-y-4">
+        <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4">
+          <span>
+            <span className="block text-sm font-bold text-slate-800">Append Footer to Broadcasts</span>
+            <span className="text-xs text-slate-500">Turn this off if you prefer to write your own signatures manually.</span>
+          </span>
+          <input type="checkbox" name="appendFooter" checked={footer} onChange={(e) => setFooter(e.target.checked)} className="peer sr-only" />
+          <span className="relative h-7 w-12 shrink-0 rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-500 after:absolute after:left-1 after:top-1 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5" />
+        </label>
+
+        <div className={cn("space-y-2 transition-opacity", !footer && "opacity-40 pointer-events-none")}>
+          <div className="flex items-center justify-between">
+            <label htmlFor="customFooter" className={label}>
+              Custom Footer Signature
+            </label>
+            {customFooter && (
+              <button
+                type="button"
+                onClick={() => setCustomFooter("")}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+              >
+                Reset to default
+              </button>
+            )}
+          </div>
+          <textarea
+            id="customFooter"
+            name="customFooter"
+            value={customFooter}
+            onChange={(e) => setCustomFooter(e.target.value)}
+            placeholder={defaultSignature}
+            rows={2}
+            className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-blue-100 transition-all placeholder:text-slate-400"
+          />
+          <p className="text-xs text-slate-400">
+            Leave blank to automatically use: <strong className="font-semibold text-slate-600">{defaultSignature}</strong>.
+          </p>
+        </div>
+
+        <div className={cn("rounded-2xl border border-dashed border-slate-200 p-4 font-mono text-xs text-slate-600", !footer && "opacity-40")}>
+          <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Live Footer Preview</p>
+          &quot;Your broadcast message goes here...&quot;
+          <br />
+          ---
+          <br />
+          <span className="font-bold text-slate-800">{activeSignature}</span>
+        </div>
+
+        <Submit pending={pending} state={state}>
+          Save SMS Signature
         </Submit>
       </form>
     </Section>
