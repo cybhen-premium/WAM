@@ -49,6 +49,7 @@ export async function createStaff(
   const password = String(f.get("password") ?? "").trim() || "WAMCHURCH@26";
   const roleRaw  = String(f.get("role")     ?? "Secretary").trim();
   const role     = roleRaw || "Secretary";
+  const departmentId = String(f.get("departmentId") ?? "").trim() || null;
   const activateNow = f.get("activate") === "on";
   const modulesRaw  = f.getAll("modules") as string[];
   const branchIdsRaw = f.getAll("branchIds") as string[];
@@ -175,6 +176,7 @@ export async function createStaff(
         userId: finalUserId,
         email: emailItem,
         role,
+        departmentId,
         status: activateNow ? "active" : "pending",
       }).returning({ id: staff.id });
 
@@ -182,8 +184,11 @@ export async function createStaff(
       if (!currentStaffId) currentStaffId = newStaff.id;
 
       // Assign modules (non-admins)
-      if (role !== "admin" && modulesRaw.length > 0) {
+      if (role !== "admin") {
         const wanted = MODULE_KEYS.filter((k) => modulesRaw.includes(k));
+        if (departmentId || role === "Department Lead") {
+          if (!wanted.includes("department_portal")) wanted.push("department_portal");
+        }
         if (wanted.length > 0) {
           await db.insert(staffModule).values(
             wanted.map((module) => ({ churchId: branchId, staffId: newStaff.id, module })),
@@ -256,6 +261,9 @@ export async function updateStaff(
   const emailRaw = String(f.get("email")    ?? "").trim().toLowerCase();
   const roleRaw  = String(f.get("role")     ?? "Secretary").trim();
   const role     = roleRaw || "Secretary";
+  const departmentId = f.has("departmentId")
+    ? (String(f.get("departmentId") ?? "").trim() || null)
+    : undefined;
   const modulesRaw  = f.getAll("modules") as string[];
 
   if (!name) return { error: "Full name is required." };
@@ -277,11 +285,15 @@ export async function updateStaff(
     await db.update(user).set({ name: username, email: emailRaw, updatedAt: new Date() })
       .where(eq(user.id, existingStaff.userId));
   }
-  await db.update(staff).set({ email: emailRaw, role }).where(eq(staff.id, staffId));
+  const finalDeptId = departmentId !== undefined ? departmentId : existingStaff.departmentId;
+  await db.update(staff).set({ email: emailRaw, role, departmentId: finalDeptId }).where(eq(staff.id, staffId));
 
   if (role !== "admin") {
     await db.delete(staffModule).where(eq(staffModule.staffId, staffId));
     const wanted = MODULE_KEYS.filter((k) => modulesRaw.includes(k));
+    if (finalDeptId || role === "Department Lead") {
+      if (!wanted.includes("department_portal")) wanted.push("department_portal");
+    }
     if (wanted.length > 0) {
       await db.insert(staffModule).values(
         wanted.map((module) => ({ churchId: c.id, staffId, module }))

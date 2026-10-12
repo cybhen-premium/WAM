@@ -18,7 +18,7 @@ export default async function StaffsPage() {
   const branchIds = availableBranches.map((b) => b.id);
   const targetBranchIds = branchIds.length > 0 ? branchIds : [church.id];
 
-  const [rawRows, assignments, allUserBranches] = await Promise.all([
+  const [rawRows, assignments, allUserBranches, depts] = await Promise.all([
     db
       .select({ s: schema.staff, name: schema.user.name })
       .from(schema.staff)
@@ -38,7 +38,19 @@ export default async function StaffsPage() {
       .from(schema.staff)
       .innerJoin(schema.church, eq(schema.staff.churchId, schema.church.id))
       .where(eq(schema.staff.status, "active")),
+    db
+      .select({
+        id: schema.department.id,
+        name: schema.department.name,
+      })
+      .from(schema.department)
+      .where(inArray(schema.department.churchId, targetBranchIds)),
   ]);
+
+  const deptMap = new Map<string, string>();
+  for (const d of depts) {
+    deptMap.set(d.id, d.name);
+  }
 
   // Group module assignments by staffId
   const byStaff = new Map<string, string[]>();
@@ -77,6 +89,8 @@ export default async function StaffsPage() {
       email: r.s.email,
       role: r.s.role,
       twoFactorMethod: r.s.twoFactorMethod,
+      departmentId: r.s.departmentId ?? undefined,
+      departmentName: r.s.departmentId ? deptMap.get(r.s.departmentId) : undefined,
       joined: r.s.createdAt.toISOString(),
       self: r.s.userId === user.id,
       status: r.s.status,
@@ -94,6 +108,8 @@ export default async function StaffsPage() {
       email: r.s.email,
       role: r.s.role,
       twoFactorMethod: r.s.twoFactorMethod,
+      departmentId: r.s.departmentId ?? undefined,
+      departmentName: r.s.departmentId ? deptMap.get(r.s.departmentId) : undefined,
       invited: r.s.createdAt.toISOString(),
       modules: byStaff.get(r.s.id) ?? [],
       assignedBranches: [{ id: church.id, name: church.name }],

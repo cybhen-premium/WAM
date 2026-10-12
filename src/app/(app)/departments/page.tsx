@@ -1,5 +1,5 @@
 import { and, asc, count, eq } from "drizzle-orm";
-import { Users, KeyRound, ExternalLink, CheckCircle2, Clock, Calendar } from "lucide-react";
+import { Users, KeyRound, ExternalLink, CheckCircle2, Clock } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { DepartmentToolbar, DepartmentRowActions } from "./client";
@@ -48,9 +48,12 @@ export default async function DepartmentsPage({ searchParams }: PageProps<"/depa
       .select({
         id: schema.staff.id,
         email: schema.staff.email,
+        name: schema.user.name,
+        role: schema.staff.role,
         departmentId: schema.staff.departmentId,
       })
       .from(schema.staff)
+      .leftJoin(schema.user, eq(schema.user.id, schema.staff.userId))
       .where(eq(schema.staff.churchId, church.id)),
     db
       .select({
@@ -73,9 +76,14 @@ export default async function DepartmentsPage({ searchParams }: PageProps<"/depa
     if (m.departmentId) countMap.set(m.departmentId, m.count);
   }
 
-  const staffMap = new Map<string, { id: string; email: string }>();
+  const staffMap = new Map<string, { id: string; email: string; name: string | null }>();
+  const availableStaff: Array<{ id: string; name: string | null; email: string; role: string }> = [];
+
   for (const s of staffRows) {
-    if (s.departmentId) staffMap.set(s.departmentId, { id: s.id, email: s.email });
+    if (s.departmentId) {
+      staffMap.set(s.departmentId, { id: s.id, email: s.email, name: s.name });
+    }
+    availableStaff.push({ id: s.id, name: s.name, email: s.email, role: s.role });
   }
 
   // Map attendance for recent Sunday: departmentId -> { present, absent, recorded }
@@ -163,7 +171,7 @@ export default async function DepartmentsPage({ searchParams }: PageProps<"/depa
                 Sunday Attendance ({formattedSunday})
               </th>
               <th className="px-4 h-16 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
-                Login Account
+                Leader / Login Account
               </th>
               <th className="px-4 h-16 text-left align-middle font-black text-[10px] uppercase tracking-[0.15em] text-slate-400">
                 Portal
@@ -219,14 +227,18 @@ export default async function DepartmentsPage({ searchParams }: PageProps<"/depa
                     </td>
                     <td className="px-4 py-4">
                       {assignedStaff ? (
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-800">
-                            <KeyRound className="h-3 w-3" /> {assignedStaff.email}
+                        <div className="flex flex-col gap-0.5">
+                          <span className="inline-flex items-center gap-1.5 font-bold text-slate-800 text-xs">
+                            <KeyRound className="h-3 w-3 text-emerald-600" />
+                            {assignedStaff.name || "Leader"}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-medium pl-4.5 truncate max-w-[200px]" title={assignedStaff.email}>
+                            {assignedStaff.email}
                           </span>
                         </div>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
-                          No Account
+                          No Leader Assigned
                         </span>
                       )}
                     </td>
@@ -241,7 +253,8 @@ export default async function DepartmentsPage({ searchParams }: PageProps<"/depa
                     <td className="px-4 pr-8 py-4 text-right">
                       <DepartmentRowActions
                         department={d}
-                        assignedEmail={assignedStaff?.email}
+                        assignedLeader={assignedStaff ? { id: assignedStaff.id, email: assignedStaff.email, name: assignedStaff.name } : undefined}
+                        availableStaff={availableStaff}
                         isAdmin={role === "admin"}
                       />
                     </td>

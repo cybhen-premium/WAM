@@ -32,17 +32,21 @@ function toUsername(name: string): string {
 
 export type ActiveStaff = {
   id: string; userId?: string; name: string; email: string; role: string;
+  departmentId?: string;
+  departmentName?: string;
   joined: string; self: boolean; status: string; modules: string[];
   twoFactorMethod: string;
   assignedBranches?: Array<{ id: string; name: string }>;
 };
 export type PendingStaff = {
   id: string; userId?: string; email: string; role: string; invited: string; modules: string[];
+  departmentId?: string;
+  departmentName?: string;
   twoFactorMethod: string;
   assignedBranches?: Array<{ id: string; name: string }>;
 };
 
-const DEFAULT_ROLES = ["Admin", "Finance", "SOB", "Akwaaba"];
+const DEFAULT_ROLES = ["Admin", "Finance", "SOB", "Akwaaba", "Department Lead"];
 const DEFAULT_PASSWORD = "WAMCHURCH@26";
 
 /* --- Module descriptions for the permissions step ----------------------- */
@@ -91,7 +95,7 @@ function Avatar({ name }: { name: string }) {
 }
 
 /* --- Badges -------------------------------------------------------------- */
-function AccessBadge({ role }: { role: string }) {
+function AccessBadge({ role, departmentName }: { role: string; departmentName?: string }) {
   const map: Record<string, string> = {
     admin: "bg-purple-50 text-purple-700 border-purple-200/70",
     pastor: "bg-blue-50 text-blue-700 border-blue-200/70",
@@ -100,6 +104,7 @@ function AccessBadge({ role }: { role: string }) {
     usher: "bg-slate-50 text-slate-700 border-slate-200/70",
     sob: "bg-indigo-50 text-indigo-700 border-indigo-200/70",
     akwaaba: "bg-rose-50 text-rose-700 border-rose-200/70",
+    "department lead": "bg-teal-50 text-teal-700 border-teal-200/70",
   };
   const normalized = role?.toLowerCase() ?? "";
   const display =
@@ -115,17 +120,26 @@ function AccessBadge({ role }: { role: string }) {
       ? "Pastor"
       : normalized === "secretary"
       ? "Secretary"
+      : normalized === "department lead"
+      ? (departmentName ? `Dept Lead · ${departmentName}` : "Department Lead")
       : role;
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-bold border shadow-[0_1px_2px_rgba(0,0,0,0.02)]",
-        map[normalized] ?? "bg-slate-50 text-slate-700 border-slate-200/70"
+    <div className="flex flex-col gap-1 items-start">
+      <span
+        className={cn(
+          "inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-bold border shadow-[0_1px_2px_rgba(0,0,0,0.02)]",
+          map[normalized] ?? "bg-slate-50 text-slate-700 border-slate-200/70"
+        )}
+      >
+        {display}
+      </span>
+      {departmentName && normalized !== "department lead" && (
+        <span className="text-[11px] font-semibold text-slate-500">
+          Dept: {departmentName}
+        </span>
       )}
-    >
-      {display}
-    </span>
+    </div>
   );
 }
 
@@ -710,6 +724,8 @@ export function StaffsClient({
       name: p.email.split("@")[0],
       email: p.email,
       role: p.role,
+      departmentId: p.departmentId,
+      departmentName: p.departmentName,
       joined: p.invited,
       self: false,
       status: "pending",
@@ -1026,7 +1042,7 @@ export function StaffsClient({
 
                           {/* Role / Access Level */}
                           <td className="py-3.5 pr-4">
-                            <AccessBadge role={s.role} />
+                            <AccessBadge role={s.role} departmentName={s.departmentName} />
                           </td>
 
                           {/* 2FA Method Badge */}
