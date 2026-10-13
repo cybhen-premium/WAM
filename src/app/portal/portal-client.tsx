@@ -28,6 +28,8 @@ import {
   Mail,
   MapPin,
   Maximize2,
+  ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -120,6 +122,7 @@ export function MemberPortalClient({
   const [activeTab, setActiveTab] = useState<"profile" | "tithes" | "welfare" | "inquiries">("profile");
   const [copiedId, setCopiedId] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<NotificationRecord | null>(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [photoZoom, setPhotoZoom] = useState(false);
@@ -351,11 +354,95 @@ export function MemberPortalClient({
                 )}
               </button>
 
-              {/* Notification Popover */}
+              {/* Notification Panel — full-screen sheet on mobile, popover on sm+ */}
               {notifOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-sm sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-100 z-50 p-4 animate-in fade-in zoom-in-95 duration-150">
+                  {/* Backdrop */}
+                  <div className="fixed inset-0 z-40 bg-black/30 sm:bg-transparent" onClick={() => { setNotifOpen(false); setSelectedNotification(null); }} />
+
+                  {/* Mobile: full-screen slide-up sheet */}
+                  <div className="fixed inset-x-0 bottom-0 top-14 z-50 flex flex-col bg-white rounded-t-3xl shadow-2xl sm:hidden animate-in slide-in-from-bottom duration-250">
+                    <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
+                      <p className="text-sm font-black uppercase tracking-wider text-slate-900">
+                        Notifications ({notifications.length})
+                      </p>
+                      <div className="flex items-center gap-3">
+                        {unreadCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await markAllNotificationsRead();
+                              toast.success("All notifications marked as read");
+                              router.refresh();
+                            }}
+                            className="text-[11px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { setNotifOpen(false); setSelectedNotification(null); }}
+                          className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 cursor-pointer"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+                      {notifications.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                          <Bell className="h-10 w-10 text-slate-300 mb-3" />
+                          <p className="text-sm font-bold text-slate-500">No notifications yet</p>
+                          <p className="text-xs text-slate-400 mt-1">You&apos;ll be notified of important church updates here.</p>
+                        </div>
+                      ) : (
+                        notifications.map((n) => (
+                          <button
+                            key={n.id}
+                            type="button"
+                            onClick={async () => {
+                              if (!n.read) {
+                                await markNotificationRead(n.id);
+                                router.refresh();
+                              }
+                              setSelectedNotification(n);
+                            }}
+                            className={cn(
+                              "w-full p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-3 active:scale-[0.99]",
+                              n.read
+                                ? "bg-slate-50/50 border-slate-100 text-slate-600"
+                                : "bg-blue-50/60 border-blue-200/60 text-slate-900"
+                            )}
+                          >
+                            <div className={cn(
+                              "shrink-0 h-9 w-9 rounded-xl flex items-center justify-center mt-0.5",
+                              n.read ? "bg-slate-100 text-slate-400" : "bg-blue-100 text-blue-600"
+                            )}>
+                              <Bell className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold truncate">{n.title}</p>
+                              <p className="text-xs text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">{n.message}</p>
+                              <p className="text-[10px] text-slate-400 mt-1.5">
+                                {new Date(n.createdAt).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-slate-300 shrink-0 mt-1" />
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Desktop: popover */}
+                  <div className="hidden sm:block absolute right-0 top-full mt-2 w-96 rounded-2xl bg-white shadow-2xl border border-slate-100 z-50 p-4 animate-in fade-in zoom-in-95 duration-150">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-2">
                       <p className="text-xs font-black uppercase tracking-wider text-slate-900">
                         Notifications ({notifications.length})
@@ -366,6 +453,7 @@ export function MemberPortalClient({
                           onClick={async () => {
                             await markAllNotificationsRead();
                             toast.success("All notifications marked as read");
+                            router.refresh();
                           }}
                           className="text-[10px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
                         >
@@ -374,25 +462,30 @@ export function MemberPortalClient({
                       )}
                     </div>
 
-                    <div className="max-h-72 overflow-y-auto space-y-2">
+                    <div className="max-h-80 overflow-y-auto space-y-2">
                       {notifications.length === 0 ? (
                         <p className="text-xs text-slate-400 py-6 text-center">No notifications yet.</p>
                       ) : (
                         notifications.map((n) => (
-                          <div
+                          <button
                             key={n.id}
+                            type="button"
                             onClick={async () => {
-                              if (!n.read) await markNotificationRead(n.id);
+                              if (!n.read) {
+                                await markNotificationRead(n.id);
+                                router.refresh();
+                              }
+                              setSelectedNotification(n);
                             }}
                             className={cn(
-                              "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                              "w-full p-3 rounded-xl border text-left transition-all cursor-pointer hover:shadow-sm",
                               n.read
                                 ? "bg-slate-50/50 border-slate-100 text-slate-600"
                                 : "bg-blue-50/50 border-blue-100 text-slate-900 font-semibold"
                             )}
                           >
                             <p className="text-xs font-bold">{n.title}</p>
-                            <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{n.message}</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
                             <p className="text-[9px] text-slate-400 mt-1.5">
                               {new Date(n.createdAt).toLocaleDateString("en-US", {
                                 month: "short",
@@ -401,7 +494,7 @@ export function MemberPortalClient({
                                 minute: "2-digit",
                               })}
                             </p>
-                          </div>
+                          </button>
                         ))
                       )}
                     </div>
@@ -506,19 +599,19 @@ export function MemberPortalClient({
               </div>
 
               {/* Unique Member ID & Branch Badge */}
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex items-center gap-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 px-3.5 py-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <div className="inline-flex items-center gap-2 sm:gap-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 px-3 sm:px-3.5 py-2 max-w-full">
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 shrink-0">
                     Member ID
                   </span>
-                  <span className="font-mono text-sm font-black text-blue-900 tracking-wider">
+                  <span className="font-mono text-xs sm:text-sm font-black text-blue-900 tracking-wider truncate">
                     {member.memberIdCode || "UNASSIGNED"}
                   </span>
                   {member.memberIdCode && (
                     <button
                       type="button"
                       onClick={copyMemberId}
-                      className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                      className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer shrink-0"
                       title="Copy Member ID"
                     >
                       {copiedId ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
@@ -526,9 +619,9 @@ export function MemberPortalClient({
                   )}
                 </div>
 
-                <div className="inline-flex items-center gap-1.5 rounded-2xl bg-blue-50/80 border border-blue-200/60 px-3 py-2 text-xs font-bold text-blue-900">
+                <div className="inline-flex items-center gap-1.5 rounded-2xl bg-blue-50/80 border border-blue-200/60 px-3 py-2 text-xs font-bold text-blue-900 max-w-full">
                   <Church className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                  <span>{church.name}</span>
+                  <span className="truncate">{church.name}</span>
                 </div>
               </div>
             </div>
@@ -617,12 +710,13 @@ export function MemberPortalClient({
         </div>
 
         {/* Tab Controls */}
-        <div className="-mx-4 px-4 sm:mx-0 sm:px-0 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="-mx-4 px-4 sm:mx-0 sm:px-0 flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+          <style>{`.portal-tabs::-webkit-scrollbar { display: none; }`}</style>
           {[
-            { id: "profile", label: "My Profile", icon: User },
-            { id: "tithes", label: "Tithes History", icon: DollarSign },
-            { id: "welfare", label: "Welfare Dues", icon: Heart },
-            { id: "inquiries", label: "Messages & Support", icon: MessageSquare },
+            { id: "profile", label: "Profile", mobileLabel: "Profile", icon: User },
+            { id: "tithes", label: "Tithes History", mobileLabel: "Tithes", icon: DollarSign },
+            { id: "welfare", label: "Welfare Dues", mobileLabel: "Welfare", icon: Heart },
+            { id: "inquiries", label: "Messages & Support", mobileLabel: "Messages", icon: MessageSquare },
           ].map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -632,14 +726,15 @@ export function MemberPortalClient({
                 type="button"
                 onClick={() => setActiveTab(tab.id as any)}
                 className={cn(
-                  "shrink-0 min-h-[42px] inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap",
+                  "shrink-0 min-h-[40px] sm:min-h-[42px] inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap",
                   active
                     ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
                     : "bg-white text-slate-600 hover:bg-slate-100/80 border border-slate-200/60"
                 )}
               >
-                <Icon className="h-4 w-4" />
-                <span>{tab.label}</span>
+                <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="sm:hidden">{tab.mobileLabel}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
               </button>
             );
           })}
@@ -647,15 +742,15 @@ export function MemberPortalClient({
 
         {/* Tab 1: Profile View */}
         {activeTab === "profile" && (
-          <div className="rounded-3xl bg-white p-6 sm:p-8 border border-slate-100 shadow-sm space-y-6">
+          <div className="rounded-3xl bg-white p-4 sm:p-6 md:p-8 border border-slate-100 shadow-sm space-y-5 sm:space-y-6">
             <div>
-              <h2 className="text-lg font-black text-slate-900 tracking-tight">Personal &amp; Church Profile</h2>
-              <p className="text-xs text-slate-500 font-medium">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Personal &amp; Church Profile</h2>
+              <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
                 Your registered details in the church membership database.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
                   Full Name
@@ -743,7 +838,7 @@ export function MemberPortalClient({
 
         {/* Tab 2: Tithes History */}
         {activeTab === "tithes" && (
-          <div className="rounded-3xl bg-white p-6 sm:p-8 border border-slate-100 shadow-sm space-y-6">
+          <div className="rounded-3xl bg-white p-4 sm:p-6 md:p-8 border border-slate-100 shadow-sm space-y-5 sm:space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Tithes Contribution History</h2>
@@ -858,7 +953,7 @@ export function MemberPortalClient({
 
         {/* Tab 3: Welfare Dues */}
         {activeTab === "welfare" && (
-          <div className="rounded-3xl bg-white p-6 sm:p-8 border border-slate-100 shadow-sm space-y-6">
+          <div className="rounded-3xl bg-white p-4 sm:p-6 md:p-8 border border-slate-100 shadow-sm space-y-5 sm:space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Welfare Dues Contributions</h2>
@@ -951,7 +1046,7 @@ export function MemberPortalClient({
         {activeTab === "inquiries" && (
           <div className="space-y-6">
             {/* Submit New Message Card */}
-            <div id="messages-section" className="rounded-3xl bg-white p-5 sm:p-8 border border-slate-100 shadow-sm space-y-5 scroll-mt-20 sm:scroll-mt-24">
+            <div id="messages-section" className="rounded-3xl bg-white p-4 sm:p-6 md:p-8 border border-slate-100 shadow-sm space-y-4 sm:space-y-5 scroll-mt-20 sm:scroll-mt-24">
               <div>
                 <h2 className="text-lg font-black text-slate-900 tracking-tight">
                   Send a Message or Pastoral Inquiry
@@ -1031,7 +1126,7 @@ export function MemberPortalClient({
             </div>
 
             {/* Inquiries History */}
-            <div className="rounded-3xl bg-white p-6 sm:p-8 border border-slate-100 shadow-sm space-y-5">
+            <div className="rounded-3xl bg-white p-4 sm:p-6 md:p-8 border border-slate-100 shadow-sm space-y-4 sm:space-y-5">
               <h3 className="text-base font-black text-slate-900 tracking-tight">
                 Message History &amp; Leadership Replies ({inquiries.length})
               </h3>
@@ -1250,6 +1345,84 @@ export function MemberPortalClient({
               >
                 <LogOut className="h-3.5 w-3.5" />
                 <span>Sign Out Now</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Detail Modal */}
+      {selectedNotification && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 sm:bg-slate-900/60 backdrop-blur-xs animate-in fade-in-0 duration-200"
+          onClick={() => setSelectedNotification(null)}
+        >
+          {/* Mobile: full-screen from bottom; Desktop: centered card */}
+          <div
+            className="w-full sm:w-auto sm:max-w-md sm:mx-4 bg-white sm:rounded-3xl rounded-t-3xl max-h-[90vh] sm:max-h-[80vh] flex flex-col shadow-2xl border-t sm:border border-slate-100 animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-slate-100 shrink-0">
+              <button
+                type="button"
+                onClick={() => setSelectedNotification(null)}
+                className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 cursor-pointer shrink-0 sm:hidden"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-0.5">
+                  Notification
+                </p>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-snug">
+                  {selectedNotification.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedNotification(null)}
+                className="hidden sm:flex h-8 w-8 rounded-xl bg-slate-100 items-center justify-center text-slate-500 hover:bg-slate-200 cursor-pointer shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+              {/* Type & Date */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider">
+                  <Bell className="h-3 w-3" />
+                  {selectedNotification.type || "General"}
+                </span>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {new Date(selectedNotification.createdAt).toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+
+              {/* Full Message */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {selectedNotification.message}
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-4 border-t border-slate-100 shrink-0">
+              <button
+                type="button"
+                onClick={() => setSelectedNotification(null)}
+                className="w-full h-11 rounded-xl bg-slate-900 text-white text-xs font-black tracking-wider uppercase hover:bg-slate-800 active:scale-[0.99] transition-all cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>
