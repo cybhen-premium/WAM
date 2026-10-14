@@ -167,6 +167,10 @@ export function MemberFilters(props: {
   group: string;
   departmentId: string;
   status: "active" | "inactive";
+  duplicate?: string;
+  duplicateNamesCount?: number;
+  duplicateContactsCount?: number;
+  totalDuplicatesCount?: number;
   activeCount: number;
   inactiveCount: number;
   departments: Department[];
@@ -181,6 +185,7 @@ export function MemberFilters(props: {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
+    next.delete("page");
     startTransition(() => router.replace(`${pathname}?${next}`));
   }
 
@@ -237,6 +242,20 @@ export function MemberFilters(props: {
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
         </div>
+        <div className="relative flex-1 sm:flex-none sm:w-[170px]">
+          <select
+            value={props.duplicate ?? ""}
+            onChange={(e) => update("duplicate", e.target.value)}
+            className={`${select} ${props.duplicate ? "text-amber-800 font-bold bg-amber-50/70 border border-amber-300" : ""}`}
+            aria-label="Duplicates Check"
+          >
+            <option value="">All Records</option>
+            <option value="names">⚠️ Duplicate Names ({props.duplicateNamesCount ?? 0})</option>
+            <option value="contact">⚠️ Duplicate Contacts ({props.duplicateContactsCount ?? 0})</option>
+            <option value="any">⚠️ Any Duplicates ({props.totalDuplicatesCount ?? 0})</option>
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+        </div>
       </div>
     </div>
   );
@@ -249,10 +268,14 @@ export function MemberTableRow({
   member,
   department,
   departments,
+  isDuplicateName,
+  isDuplicateContact,
 }: {
   member: Member;
   department: Department | null;
   departments: Department[];
+  isDuplicateName?: boolean;
+  isDuplicateContact?: boolean;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -306,13 +329,22 @@ export function MemberTableRow({
             className="min-w-0 text-left focus:outline-none group/name"
             title={`Click to view ${member.fullName}'s profile`}
           >
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <p className="font-bold text-slate-900 truncate max-w-[190px] leading-tight group-hover/name:text-blue-600 transition-colors">
                 {member.fullName}
               </p>
               {member.memberIdCode && (
                 <span className="font-mono text-[9px] font-bold bg-slate-100 border border-slate-200/80 text-slate-600 px-1.5 py-0.2 rounded shrink-0">
                   {member.memberIdCode}
+                </span>
+              )}
+              {isDuplicateName && (
+                <span
+                  className="inline-flex items-center gap-1 font-bold text-[9px] uppercase tracking-wider bg-amber-50 border border-amber-300 text-amber-800 px-1.5 py-0.5 rounded shadow-2xs shrink-0"
+                  title="Another member in this church has this same name"
+                >
+                  <AlertCircle className="h-2.5 w-2.5 text-amber-600 shrink-0" />
+                  Duplicate Name
                 </span>
               )}
             </div>
@@ -378,6 +410,17 @@ export function MemberTableRow({
               <Phone className="h-3 w-3 text-slate-400 shrink-0" />
               <span>{member.phone}</span>
             </a>
+            {isDuplicateContact && (
+              <div className="mt-0.5">
+                <span
+                  className="inline-flex items-center gap-1 font-bold text-[9px] uppercase tracking-wider bg-rose-50 border border-rose-300 text-rose-800 px-1.5 py-0.5 rounded shadow-2xs"
+                  title="Another member in this church shares this contact phone number"
+                >
+                  <AlertCircle className="h-2.5 w-2.5 text-rose-600 shrink-0" />
+                  Duplicate Contact
+                </span>
+              </div>
+            )}
             {member.email && (
               <a
                 href={`mailto:${member.email}`}
@@ -1173,7 +1216,7 @@ function MemberFormModal({ open, onClose, member, departments }: { open: boolean
     const cleanName = fullName.trim();
     const cleanPhone = phone.trim();
 
-    if (!cleanName && !cleanPhone) {
+    if ((!cleanName || cleanName.length < 2) && !cleanPhone) {
       setDuplicateWarning(null);
       return;
     }
@@ -1189,7 +1232,7 @@ function MemberFormModal({ open, onClose, member, departments }: { open: boolean
       } else {
         setDuplicateWarning(null);
       }
-    }, 400);
+    }, 350);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -1286,18 +1329,8 @@ function MemberFormModal({ open, onClose, member, departments }: { open: boolean
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
           />
-          <TextField
-            label="Phone Number"
-            name="phone"
-            type="tel"
-            icon={Phone}
-            placeholder="024XXXXXXX"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-          <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue={member?.gender === "female" ? "Female" : "Male"} />
 
-          {/* Real-Time Duplicate Warning Banner */}
+          {/* Real-Time Duplicate Warning Banner (Immediately visible when typing name or phone) */}
           {duplicateWarning && (
             <div className="sm:col-span-2 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 p-3.5 flex items-start gap-3 text-amber-900 animate-in fade-in duration-200">
               <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -1314,6 +1347,17 @@ function MemberFormModal({ open, onClose, member, departments }: { open: boolean
               </div>
             </div>
           )}
+
+          <TextField
+            label="Phone Number"
+            name="phone"
+            type="tel"
+            icon={Phone}
+            placeholder="024XXXXXXX"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+          <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue={member?.gender === "female" ? "Female" : "Male"} />
 
           <SelectField label="Ministry" name="category" options={MEMBER_CATEGORIES} defaultValue={member?.category ?? "General Member"} />
           <SelectField

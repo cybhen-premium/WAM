@@ -90,21 +90,38 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
       .from(member)
       .where(eq(member.churchId, church.id));
 
-    const cleanName = values.fullName.trim().toLowerCase();
+    const normalizeName = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+    const getNameTokens = (s: string) => normalizeName(s).split(" ").filter(Boolean).sort().join(" ");
+
+    const cleanName = normalizeName(values.fullName);
+    const nameTokens = getNameTokens(values.fullName);
     const phoneDigits = values.phone ? values.phone.replace(/\D/g, "") : "";
     const phoneCore = phoneDigits.length >= 8 ? phoneDigits.slice(-9) : "";
 
     for (const m of existing) {
+      const mCleanName = normalizeName(m.fullName ?? "");
+      const mNameTokens = getNameTokens(m.fullName ?? "");
       const mDigits = m.phone ? m.phone.replace(/\D/g, "") : "";
       const mCore = mDigits.length >= 8 ? mDigits.slice(-9) : "";
-      if (phoneCore && mCore && phoneCore === mCore) {
+
+      const nameMatches = Boolean(
+        cleanName &&
+        cleanName.length >= 2 &&
+        (mCleanName === cleanName || (nameTokens && nameTokens.length >= 3 && mNameTokens === nameTokens))
+      );
+      const phoneMatches = Boolean(phoneCore && mCore && phoneCore === mCore);
+
+      if (phoneMatches) {
         return {
           error: `A person with phone number "${values.phone}" already exists in this church branch: ${m.fullName} (${m.category}). Please find them in the directory instead of creating a duplicate.`,
         };
       }
-      if (cleanName && m.fullName.trim().toLowerCase() === cleanName) {
+      if (nameMatches) {
+        const isTransposed = mCleanName !== cleanName && mNameTokens === nameTokens;
         return {
-          error: `A person named "${m.fullName}" is already registered in this church branch (${m.category}). Please find them in the directory instead of adding a duplicate.`,
+          error: isTransposed
+            ? `A person named "${m.fullName}" (same name in different word order) is already registered in this church branch (${m.category}). Please find them in the directory instead of adding a duplicate.`
+            : `A person named "${m.fullName}" is already registered in this church branch (${m.category}). Please find them in the directory instead of adding a duplicate.`,
         };
       }
     }

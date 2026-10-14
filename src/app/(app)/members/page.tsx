@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import { UserCheck } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
@@ -18,8 +18,63 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
   const group = typeof sp.group === "string" ? sp.group : "";
   const departmentId = typeof sp.departmentId === "string" ? sp.departmentId : "";
   const status = sp.status === "inactive" ? "inactive" : "active";
+  const duplicate = typeof sp.duplicate === "string" ? sp.duplicate : "";
   const page = Math.max(1, Number(sp.page) || 1);
   const pageSize = Math.max(10, Number(sp.pageSize) || 50);
+
+  // Retrieve lightweight records to calculate duplicate names and contacts in this church
+  const allChurchMembers = await db
+    .select({
+      id: member.id,
+      fullName: member.fullName,
+      phone: member.phone,
+    })
+    .from(member)
+    .where(
+      and(
+        eq(member.churchId, church.id),
+        sql`${member.category} not in ('Visitor', 'Regular Attendee')`
+      )
+    );
+
+  const normalizeName = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+  const getNameTokens = (s: string) => normalizeName(s).split(" ").filter(Boolean).sort().join(" ");
+  const getPhoneCore = (p: string | null) => {
+    if (!p) return "";
+    const d = p.replace(/\D/g, "");
+    return d.length >= 8 ? d.slice(-9) : "";
+  };
+
+  const nameCounts = new Map<string, number>();
+  const tokenCounts = new Map<string, number>();
+  const phoneCounts = new Map<string, number>();
+
+  for (const m of allChurchMembers) {
+    const norm = normalizeName(m.fullName);
+    const tokens = getNameTokens(m.fullName);
+    if (norm) nameCounts.set(norm, (nameCounts.get(norm) ?? 0) + 1);
+    if (tokens && tokens !== norm) tokenCounts.set(tokens, (tokenCounts.get(tokens) ?? 0) + 1);
+    const pc = getPhoneCore(m.phone);
+    if (pc) phoneCounts.set(pc, (phoneCounts.get(pc) ?? 0) + 1);
+  }
+
+  const duplicateNameIds = new Set<string>();
+  const duplicateContactIds = new Set<string>();
+
+  for (const m of allChurchMembers) {
+    const norm = normalizeName(m.fullName);
+    const tokens = getNameTokens(m.fullName);
+    const pc = getPhoneCore(m.phone);
+    if (
+      (norm && (nameCounts.get(norm) ?? 0) > 1) ||
+      (tokens && (tokenCounts.get(tokens) ?? 0) > 1)
+    ) {
+      duplicateNameIds.add(m.id);
+    }
+    if (pc && (phoneCounts.get(pc) ?? 0) > 1) {
+      duplicateContactIds.add(m.id);
+    }
+  }
 
   const filters: (SQL | undefined)[] = [
     eq(member.churchId, church.id),
@@ -32,6 +87,17 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
   if (q) {
     const like = `%${q}%`;
     filters.push(or(ilike(member.fullName, like), ilike(member.phone, like), ilike(member.occupation, like)));
+  }
+
+  if (duplicate === "names") {
+    const arr = Array.from(duplicateNameIds);
+    filters.push(arr.length > 0 ? inArray(member.id, arr) : sql`1 = 0`);
+  } else if (duplicate === "contact") {
+    const arr = Array.from(duplicateContactIds);
+    filters.push(arr.length > 0 ? inArray(member.id, arr) : sql`1 = 0`);
+  } else if (duplicate === "any") {
+    const arr = Array.from(new Set([...duplicateNameIds, ...duplicateContactIds]));
+    filters.push(arr.length > 0 ? inArray(member.id, arr) : sql`1 = 0`);
   }
 
   const [rows, counts, departments, [totalFiltered]] = await Promise.all([
@@ -79,6 +145,10 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
         group={group} 
         departmentId={departmentId}
         status={status} 
+        duplicate={duplicate}
+        duplicateNamesCount={duplicateNameIds.size}
+        duplicateContactsCount={duplicateContactIds.size}
+        totalDuplicatesCount={new Set([...duplicateNameIds, ...duplicateContactIds]).size}
         activeCount={activeCount} 
         inactiveCount={inactiveCount} 
         departments={departments}
@@ -106,7 +176,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
                     <div className="flex flex-col items-center justify-center text-slate-400">
                       <UserCheck className="h-10 w-10 mb-3 opacity-20" />
                       <p className="text-sm font-medium italic">
-                        {q || group ? "No members match your filters." : "The member directory is currently empty."}
+                        {q || group || duplicate ? "No members match your filters." : "The member directory is currently empty."}
                       </p>
                     </div>
                   </td>
@@ -118,6 +188,8 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
                     member={m}
                     department={d}
                     departments={departments}
+                    isDuplicateName={duplicateNameIds.has(m.id)}
+                    isDuplicateContact={duplicateContactIds.has(m.id)}
                   />
                 ))
               )}

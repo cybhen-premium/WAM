@@ -30,6 +30,9 @@ export type DuplicateMatch = {
   message: string;
 };
 
+const normalizeName = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+const getNameTokens = (s: string) => normalizeName(s).split(" ").filter(Boolean).sort().join(" ");
+
 /** Look up whether a member with the same phone, name, or email already exists in this church branch */
 export async function findDuplicateMember({
   churchId,
@@ -61,36 +64,58 @@ export async function findDuplicateMember({
         : eq(schema.member.churchId, churchId)
     );
 
-  const cleanName = fullName.trim().toLowerCase();
+  const cleanName = normalizeName(fullName);
+  const nameTokens = getNameTokens(fullName);
   const phoneDigits = phone ? phone.replace(/\D/g, "") : "";
   const phoneCore = phoneDigits.length >= 8 ? phoneDigits.slice(-9) : "";
   const cleanEmail = email ? email.trim().toLowerCase() : "";
 
   for (const m of existingMembers) {
-    // 1. Phone collision: both have phone numbers
-    if (phoneCore && m.phone) {
-      const mDigits = m.phone.replace(/\D/g, "");
-      const mCore = mDigits.length >= 8 ? mDigits.slice(-9) : "";
-      if (mCore && (mCore === phoneCore || mDigits === phoneDigits)) {
-        return {
-          type: "phone",
-          member: m,
-          message: `A member with phone number "${phone}" already exists in this church branch: ${m.fullName} (${m.memberIdCode ? `Member ID: ${m.memberIdCode}` : m.category}).`,
-        };
-      }
-    }
+    const mCleanName = normalizeName(m.fullName ?? "");
+    const mNameTokens = getNameTokens(m.fullName ?? "");
+    const mDigits = m.phone ? m.phone.replace(/\D/g, "") : "";
+    const mCore = mDigits.length >= 8 ? mDigits.slice(-9) : "";
 
-    // 2. Full Name collision: exact case-insensitive match
-    if (cleanName && m.fullName.trim().toLowerCase() === cleanName) {
+    const nameMatches = Boolean(
+      cleanName &&
+      cleanName.length >= 2 &&
+      (mCleanName === cleanName || (nameTokens && nameTokens.length >= 3 && mNameTokens === nameTokens))
+    );
+    const phoneMatches = Boolean(phoneCore && mCore && (mCore === phoneCore || mDigits === phoneDigits));
+    const emailMatches = Boolean(cleanEmail && m.email && m.email.trim().toLowerCase() === cleanEmail);
+
+    // If both name and phone collide
+    if (nameMatches && phoneMatches) {
       return {
         type: "name",
         member: m,
-        message: `A member named "${m.fullName}" already exists in this church branch (${m.memberIdCode ? `Member ID: ${m.memberIdCode}` : m.category}${m.phone ? `, Phone: ${m.phone}` : ""}).`,
+        message: `A member named "${m.fullName}" with phone number "${phone}" already exists in this church branch (${m.memberIdCode ? `Member ID: ${m.memberIdCode}` : m.category}).`,
       };
     }
 
-    // 3. Email collision: exact case-insensitive match
-    if (cleanEmail && m.email && m.email.trim().toLowerCase() === cleanEmail) {
+    // Name collision
+    if (nameMatches) {
+      const isTransposed = mCleanName !== cleanName && mNameTokens === nameTokens;
+      return {
+        type: "name",
+        member: m,
+        message: isTransposed
+          ? `A member named "${m.fullName}" (same name in different word order) already exists in this church branch (${m.memberIdCode ? `Member ID: ${m.memberIdCode}` : m.category}${m.phone ? `, Phone: ${m.phone}` : ""}).`
+          : `A member named "${m.fullName}" already exists in this church branch (${m.memberIdCode ? `Member ID: ${m.memberIdCode}` : m.category}${m.phone ? `, Phone: ${m.phone}` : ""}).`,
+      };
+    }
+
+    // Phone collision
+    if (phoneMatches) {
+      return {
+        type: "phone",
+        member: m,
+        message: `A member with phone number "${phone}" already exists in this church branch: ${m.fullName} (${m.memberIdCode ? `Member ID: ${m.memberIdCode}` : m.category}).`,
+      };
+    }
+
+    // Email collision
+    if (emailMatches) {
       return {
         type: "email",
         member: m,
@@ -112,7 +137,9 @@ export async function checkMemberDuplicate(data: {
   try {
     await requireModule("members");
     const { church } = await requireChurch();
-    if (!data.fullName.trim() && !data.phone?.trim()) {
+    const hasName = data.fullName.trim().length >= 2;
+    const hasPhone = Boolean(data.phone?.trim());
+    if (!hasName && !hasPhone) {
       return { duplicate: false };
     }
     const dup = await findDuplicateMember({
@@ -404,6 +431,7 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
 
   const existingPhoneCores = new Set<string>();
   const existingNames = new Set<string>();
+  const existingTokens = new Set<string>();
   const existingEmails = new Set<string>();
 
   for (const m of existingMembers) {
@@ -411,7 +439,12 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
       const d = m.phone.replace(/\D/g, "");
       if (d.length >= 8) existingPhoneCores.add(d.slice(-9));
     }
-    if (m.fullName) existingNames.add(m.fullName.trim().toLowerCase());
+    if (m.fullName) {
+      const n = normalizeName(m.fullName);
+      const t = getNameTokens(m.fullName);
+      if (n) existingNames.add(n);
+      if (t) existingTokens.add(t);
+    }
     if (m.email) existingEmails.add(m.email.trim().toLowerCase());
   }
 
@@ -441,14 +474,15 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
   let skippedDuplicates = 0;
 
   for (const item of rawValues) {
-    const cleanName = item.fullName.trim().toLowerCase();
+    const cleanName = normalizeName(item.fullName);
+    const nameTokens = getNameTokens(item.fullName);
     const phoneDigits = item.phone ? item.phone.replace(/\D/g, "") : "";
     const phoneCore = phoneDigits.length >= 8 ? phoneDigits.slice(-9) : "";
     const cleanEmail = item.email ? item.email.trim().toLowerCase() : "";
 
     const isDup =
       (phoneCore && existingPhoneCores.has(phoneCore)) ||
-      existingNames.has(cleanName) ||
+      (cleanName && (existingNames.has(cleanName) || existingTokens.has(nameTokens))) ||
       (cleanEmail && existingEmails.has(cleanEmail));
 
     if (isDup) {
@@ -458,7 +492,8 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
 
     // Add to sets to also prevent duplicate rows within the same CSV file
     if (phoneCore) existingPhoneCores.add(phoneCore);
-    existingNames.add(cleanName);
+    if (cleanName) existingNames.add(cleanName);
+    if (nameTokens) existingTokens.add(nameTokens);
     if (cleanEmail) existingEmails.add(cleanEmail);
 
     const memberIdCode = await generateMemberIdCode(church.name);
