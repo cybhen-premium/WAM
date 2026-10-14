@@ -157,7 +157,7 @@ export async function saveSmsSignature(_prev: FormState, f: FormData): Promise<F
 
 /* Staff -------------------------------------------------------------------- */
 
-const ROLES = ["admin", "pastor", "finance", "secretary", "usher"] as const;
+const ROLES = ["admin", "pastor", "elder", "finance", "secretary", "sob", "akwaaba", "gadites", "angels", "sunday school instructors", "wam choreo/drama", "team wise", "prayer warriors"] as const;
 
 export async function inviteStaff(_prev: FormState, f: FormData): Promise<FormState> {
   await requireModule("settings");

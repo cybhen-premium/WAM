@@ -539,7 +539,7 @@ export function PreferencesForm({ church }: { church: Church }) {
 
 /* Staff -------------------------------------------------------------------- */
 
-const ROLES = ["admin", "pastor", "finance", "secretary", "usher"];
+const ROLES = ["admin", "pastor", "elder", "finance", "secretary", "sob", "akwaaba", "gadites", "angels", "sunday school instructors", "wam choreo/drama", "team wise", "prayer warriors"];
 
 type ActiveStaff = {
   id: string;

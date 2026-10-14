@@ -22,7 +22,22 @@ async function requireAdmin() {
   return ctx;
 }
 
-const DEFAULT_ROLES = ["Admin", "Finance", "SOB", "Akwaaba"] as const;
+const DEFAULT_ROLES = [
+  "Admin",
+  "Finance",
+  "SOB",
+  "Akwaaba",
+  "Department Lead",
+  "Gadites",
+  "Angels",
+  "Sunday School Instructors",
+  "WAM Choreo/Drama",
+  "Team Wise",
+  "Prayer Warriors",
+  "Secretary",
+  "Pastor",
+  "Elder",
+] as const;
 
 /** "John Doe" → "johndoe" */
 function toUsername(name: string): string {

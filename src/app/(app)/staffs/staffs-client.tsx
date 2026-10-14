@@ -46,7 +46,22 @@ export type PendingStaff = {
   assignedBranches?: Array<{ id: string; name: string }>;
 };
 
-const DEFAULT_ROLES = ["Admin", "Finance", "SOB", "Akwaaba", "Department Lead"];
+const DEFAULT_ROLES = [
+  "Admin",
+  "Finance",
+  "SOB",
+  "Akwaaba",
+  "Department Lead",
+  "Gadites",
+  "Angels",
+  "Sunday School Instructors",
+  "WAM Choreo/Drama",
+  "Team Wise",
+  "Prayer Warriors",
+  "Secretary",
+  "Pastor",
+  "Elder",
+];
 const DEFAULT_PASSWORD = "WAMCHURCH@26";
 
 /* --- Module descriptions for the permissions step ----------------------- */
@@ -99,12 +114,18 @@ function AccessBadge({ role, departmentName }: { role: string; departmentName?: 
   const map: Record<string, string> = {
     admin: "bg-purple-50 text-purple-700 border-purple-200/70",
     pastor: "bg-blue-50 text-blue-700 border-blue-200/70",
+    elder: "bg-sky-50 text-sky-700 border-sky-200/70",
     finance: "bg-emerald-50 text-emerald-700 border-emerald-200/70",
     secretary: "bg-amber-50 text-amber-700 border-amber-200/70",
-    usher: "bg-slate-50 text-slate-700 border-slate-200/70",
     sob: "bg-indigo-50 text-indigo-700 border-indigo-200/70",
     akwaaba: "bg-rose-50 text-rose-700 border-rose-200/70",
     "department lead": "bg-teal-50 text-teal-700 border-teal-200/70",
+    gadites: "bg-orange-50 text-orange-700 border-orange-200/70",
+    angels: "bg-cyan-50 text-cyan-700 border-cyan-200/70",
+    "sunday school instructors": "bg-lime-50 text-lime-700 border-lime-200/70",
+    "wam choreo/drama": "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200/70",
+    "team wise": "bg-violet-50 text-violet-700 border-violet-200/70",
+    "prayer warriors": "bg-pink-50 text-pink-700 border-pink-200/70",
   };
   const normalized = role?.toLowerCase() ?? "";
   const display =
@@ -118,8 +139,22 @@ function AccessBadge({ role, departmentName }: { role: string; departmentName?: 
       ? "Akwaaba"
       : normalized === "pastor"
       ? "Pastor"
+      : normalized === "elder"
+      ? "Elder"
       : normalized === "secretary"
       ? "Secretary"
+      : normalized === "gadites"
+      ? "Gadites"
+      : normalized === "angels"
+      ? "Angels"
+      : normalized === "sunday school instructors"
+      ? "Sunday School Instructors"
+      : normalized === "wam choreo/drama"
+      ? "WAM Choreo/Drama"
+      : normalized === "team wise"
+      ? "Team Wise"
+      : normalized === "prayer warriors"
+      ? "Prayer Warriors"
       : normalized === "department lead"
       ? (departmentName ? `Dept Lead · ${departmentName}` : "Department Lead")
       : role;
