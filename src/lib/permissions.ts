@@ -26,9 +26,6 @@ export const getMyPermissions = cache(async (): Promise<Permissions> => {
   if (!user) return new Set();
   const row = await getChurchForUser(user.id);
   if (!row) return new Set();
-  if (row.departmentId) {
-    return new Set<ModuleKey>(["department_portal"]);
-  }
 
   const isHolySpirit = isBranchWithDisabledAdmin(row.church.name);
 
@@ -40,11 +37,18 @@ export const getMyPermissions = cache(async (): Promise<Permissions> => {
     return "all";
   }
 
+  // Load only the modules explicitly assigned to this staff member.
   const rows = await db
     .select({ module: schema.staffModule.module })
     .from(schema.staffModule)
     .where(eq(schema.staffModule.staffId, row.staffId));
   const assigned = rows.map((r) => r.module).filter((m): m is ModuleKey => m in MODULES);
+
+  // If this staff member is assigned to a department, grant department_portal
+  // on top of their other assigned modules (not instead of them).
+  if (row.departmentId && !assigned.includes("department_portal")) {
+    assigned.push("department_portal");
+  }
 
   if (isHolySpirit) {
     return new Set(assigned.filter((k) => k !== "staffs" && k !== "settings"));
@@ -100,7 +104,6 @@ export async function landingHref(): Promise<string> {
   if (user) {
     const row = await getChurchForUser(user.id);
     if (row) {
-      if (row.departmentId) return "/department-portal";
       isHolySpirit = isBranchWithDisabledAdmin(row.church.name);
     }
   }
