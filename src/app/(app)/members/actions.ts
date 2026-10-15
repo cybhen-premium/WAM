@@ -172,7 +172,13 @@ function readMember(form: FormData) {
     email: opt("email"),
     gender: gender === "male" || gender === "female" ? gender : null,
     category: (MEMBER_CATEGORIES as readonly string[]).includes(category) ? category : "General Member",
-    baptized: s("baptized") === "Baptized",
+    baptized: s("baptismStatus") ? s("baptismStatus").toLowerCase() === "baptized" : s("baptized") === "Baptized",
+    baptismStatus: (() => {
+      const b = (s("baptismStatus") || s("baptized")).toLowerCase();
+      if (b === "awaiting baptism") return "Awaiting Baptism";
+      if (b === "baptized") return "Baptized";
+      return "Not Baptized";
+    })(),
     maritalStatus: opt("maritalStatus"),
     occupation: opt("occupation"),
     skills: opt("skills"),
@@ -456,9 +462,14 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
       f.set("phone", col(row, "phone", "phonenumber"));
       f.set("email", col(row, "email"));
       f.set("gender", col(row, "gender"));
-      f.set("category", col(row, "ministry", "category", "membercategory"));
-      f.set("baptized", /^(yes|true|baptized)$/i.test(col(row, "baptized", "baptismstatus")) ? "Baptized" : "");
-      f.set("maritalStatus", col(row, "maritalstatus"));
+      const bRaw = col(row, "baptismstatus", "baptized", "baptism");
+      const bStatus = /awaiting/i.test(bRaw)
+        ? "Awaiting Baptism"
+        : /^(yes|true|baptized)$/i.test(bRaw)
+        ? "Baptized"
+        : "Not Baptized";
+      f.set("baptismStatus", bStatus);
+      f.set("baptized", bStatus === "Baptized" ? "Baptized" : "");
       f.set("occupation", col(row, "occupation", "profession"));
       f.set("address", col(row, "address", "residentialaddress"));
       f.set("departmentId", col(row, "department", "departmentid"));

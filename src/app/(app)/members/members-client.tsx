@@ -349,7 +349,12 @@ export function MemberTableRow({
               )}
             </div>
             <div className="flex items-center gap-1.5 mt-0.5">
-              {member.baptized ? (
+              {member.baptismStatus === "Awaiting Baptism" ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Awaiting Baptism
+                </span>
+              ) : member.baptized ? (
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Baptized
@@ -1028,7 +1033,9 @@ export function MemberProfileModal({
               </div>
               <div className="p-2.5 rounded-xl bg-white border border-slate-100">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Baptism Status</p>
-                <p className="font-bold text-slate-900 mt-0.5">{member.baptized ? "Baptized" : "Not Baptized"}</p>
+                <p className="font-bold text-slate-900 mt-0.5">
+                  {member.baptismStatus || (member.baptized ? "Baptized" : "Not Baptized")}
+                </p>
               </div>
               <div className="p-2.5 rounded-xl bg-white border border-slate-100">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Date Joined</p>
@@ -1366,7 +1373,12 @@ function MemberFormModal({ open, onClose, member, departments }: { open: boolean
             options={[{ label: "None", value: "" }, ...departments.map(d => ({ label: d.name, value: d.id }))]}
             defaultValue={member?.departmentId ?? ""}
           />
-          <SelectField label="Baptism Status" name="baptized" options={["Not Baptized", "Baptized"]} defaultValue={member?.baptized ? "Baptized" : "Not Baptized"} />
+          <SelectField
+            label="Baptism Status"
+            name="baptized"
+            options={["Not Baptized", "Awaiting Baptism", "Baptized"]}
+            defaultValue={member?.baptismStatus || (member?.baptized ? "Baptized" : "Not Baptized")}
+          />
           <SelectField label="Marital Status" name="maritalStatus" options={MARITAL_STATUSES} defaultValue={member?.maritalStatus ?? "Single"} />
           <TextField label="Profession / Occupation" name="occupation" icon={Briefcase} placeholder="e.g., Software Engineer, Nurse" defaultValue={member?.occupation ?? ""} />
           <TextField className="sm:col-span-2" label="Skills & Talents (Ministry Gifts)" name="skills" placeholder="e.g., Singing, Graphic Design, Carpentry, Public Speaking" defaultValue={member?.skills ?? ""} />

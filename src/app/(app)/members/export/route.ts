@@ -10,7 +10,7 @@ const COLUMNS = [
   ["Gender", "gender"],
   ["Ministry", "category"],
   ["Department", "departmentName"],
-  ["Baptized", "baptized"],
+  ["Baptism Status", "baptismStatus"],
   ["Marital Status", "maritalStatus"],
   ["Occupation", "occupation"],
   ["Skills", "skills"],

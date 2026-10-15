@@ -51,6 +51,7 @@ type Member = {
   category: string;
   gender: string | null;
   baptized: boolean;
+  baptismStatus?: string | null;
   dateOfBirth: string | null;
   weddingAnniversary: string | null;
   occupation: string | null;
@@ -587,14 +588,21 @@ export function MemberPortalClient({
                       </span>
                     </>
                   )}
-                  {member.baptized && (
+                  {member.baptismStatus === "Awaiting Baptism" ? (
+                    <>
+                      <span className="text-slate-300">•</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600">
+                        <Shield className="h-3.5 w-3.5" /> Awaiting Baptism
+                      </span>
+                    </>
+                  ) : member.baptized ? (
                     <>
                       <span className="text-slate-300">•</span>
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
                         <Shield className="h-3.5 w-3.5" /> Baptized
                       </span>
                     </>
-                  )}
+                  ) : null}
                 </div>
               </div>
 

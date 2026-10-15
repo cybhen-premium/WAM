@@ -211,6 +211,7 @@ export const member = pgTable(
     // General Member, Choir, Deacon, ... (see MEMBER_CATEGORIES)
     category: text("category").notNull().default("General Member"),
     baptized: boolean("baptized").notNull().default(false),
+    baptismStatus: text("baptism_status").notNull().default("Not Baptized"),
     dateOfBirth: date("date_of_birth"),
     weddingAnniversary: date("wedding_anniversary"),
     maritalStatus: text("marital_status"),
