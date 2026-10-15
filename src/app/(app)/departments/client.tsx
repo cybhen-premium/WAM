@@ -310,37 +310,37 @@ function DepartmentAccountModal({
             {state?.error && <p className="text-xs font-semibold text-rose-600">{state.error}</p>}
 
             {/* Actions Toolbar */}
-            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
                 disabled={resending || pending || removing}
                 onClick={handleResend}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 h-11 text-xs font-bold text-blue-700 hover:bg-blue-100 active:scale-95 transition-all"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 h-11 text-xs font-bold text-blue-700 hover:bg-blue-100 active:scale-95 transition-all cursor-pointer"
                 title="Resend login link & password to leader's email"
               >
                 <Mail className="h-4 w-4" />
-                {resending ? "Sending…" : "Resend Credentials"}
+                <span>{resending ? "Sending…" : "Resend Credentials"}</span>
               </button>
 
               {customPassword ? (
                 <button
                   type="submit"
                   disabled={pending || removing || resending}
-                  className="inline-flex items-center justify-center flex-1 h-11 rounded-xl bg-[#1e3a8a] text-white hover:bg-blue-900 text-xs font-bold shadow-sm transition-all active:scale-95"
+                  className="inline-flex items-center justify-center flex-1 h-11 rounded-xl bg-[#1e3a8a] text-white hover:bg-blue-900 text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
                 >
                   {pending ? "Saving…" : "Save New Password"}
                 </button>
-              ) : <div className="flex-1" />}
+              ) : null}
 
               <button
                 type="button"
                 disabled={removing || pending || resending}
                 onClick={handleRemove}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 h-11 text-xs font-bold text-rose-700 hover:bg-rose-100 active:scale-95 transition-all"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 h-11 text-xs font-bold text-rose-700 hover:bg-rose-100 active:scale-95 transition-all cursor-pointer"
                 title="Unassign leader from this department"
               >
                 <Trash2 className="h-4 w-4" />
-                {removing ? "Removing…" : "Unassign Leader"}
+                <span>{removing ? "Removing…" : "Unassign Leader"}</span>
               </button>
             </div>
           </div>

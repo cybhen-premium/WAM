@@ -21,9 +21,9 @@ export default async function MemberLoginPage({
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-100/60 to-slate-200/50 flex flex-col justify-between p-4 sm:p-6 md:p-8">
       {/* Top Header */}
-      <div className="w-full max-w-5xl mx-auto flex items-center justify-between py-2">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white border border-slate-200/80 shadow-xs overflow-hidden p-1">
+      <div className="w-full max-w-5xl mx-auto flex items-center justify-between gap-2 py-2">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-white border border-slate-200/80 shadow-xs overflow-hidden p-1">
             {churchData?.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -37,11 +37,11 @@ export default async function MemberLoginPage({
               </div>
             )}
           </div>
-          <div>
-            <span className="text-xs font-black uppercase tracking-wider text-slate-900 block truncate max-w-[240px]">
+          <div className="min-w-0">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-900 block truncate max-w-[140px] min-[400px]:max-w-[220px] sm:max-w-none">
               World Ark Missions
             </span>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block truncate">
               Member Portal
             </span>
           </div>
@@ -49,15 +49,16 @@ export default async function MemberLoginPage({
 
         <Link
           href="/login"
-          className="text-xs font-bold text-slate-500 hover:text-slate-800 bg-white/80 hover:bg-white border border-slate-200/80 px-3.5 py-1.5 rounded-xl shadow-2xs transition-all"
+          className="text-xs font-bold text-slate-500 hover:text-slate-800 bg-white/80 hover:bg-white border border-slate-200/80 px-2.5 sm:px-3.5 py-1.5 rounded-xl shadow-2xs transition-all shrink-0 whitespace-nowrap"
         >
-          Staff &amp; Admin Sign In →
+          <span className="hidden sm:inline">Staff &amp; Admin Sign In →</span>
+          <span className="sm:hidden">Staff Login →</span>
         </Link>
       </div>
 
       {/* Main Center Card */}
-      <div className="w-full max-w-md mx-auto my-auto py-8">
-        <div className="rounded-3xl bg-white p-6 sm:p-8 shadow-xl shadow-slate-200/60 border border-slate-100">
+      <div className="w-full max-w-md mx-auto my-auto py-6 sm:py-8">
+        <div className="rounded-3xl bg-white p-5 sm:p-8 shadow-xl shadow-slate-200/60 border border-slate-100">
           <div className="text-center mb-6">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white mb-3 border border-slate-100 shadow-md shadow-slate-200/60 overflow-hidden p-1.5">
               {churchData?.logoUrl ? (

@@ -596,22 +596,22 @@ function CreateStaffView({
               )}
 
               {/* Activate + Next button */}
-              <div className="flex items-center justify-between pt-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
                 {!isEditing ? (
                   <label className="flex items-center gap-3 cursor-pointer">
                     <button type="button" onClick={() => setActivate((v) => !v)}
-                      className={cn("flex h-6 w-6 items-center justify-center rounded-md border-2 transition-all",
+                      className={cn("flex h-6 w-6 items-center justify-center rounded-md border-2 transition-all shrink-0",
                         activate ? "bg-blue-600 border-blue-600" : "border-slate-300 bg-white")}>
                       {activate && <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
                     </button>
-                    <span className="text-sm font-semibold text-slate-700">Activate account immediately</span>
+                    <span className="text-xs sm:text-sm font-semibold text-slate-700">Activate account immediately</span>
                   </label>
                 ) : <div />}
                 <button
                   type="button"
                   disabled={!step1Valid}
                   onClick={() => setStep(2)}
-                  className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-7 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-7 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                 >
                   Next: Customize Permissions
                 </button>
@@ -626,7 +626,7 @@ function CreateStaffView({
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-100">
                 <div className="flex items-center gap-3">
                   <button type="button" onClick={() => setStep(1)}
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 transition-colors shrink-0">
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 transition-colors shrink-0 cursor-pointer">
                     <ArrowLeft className="h-4 w-4 text-slate-600" />
                   </button>
                   <div>
@@ -636,10 +636,10 @@ function CreateStaffView({
                 </div>
                 <div className="flex items-center gap-3 self-end sm:self-auto">
                   <button type="button" onClick={selectAll}
-                    className="text-xs font-bold text-blue-600 hover:underline">Select All</button>
+                    className="text-xs font-bold text-blue-600 hover:underline cursor-pointer">Select All</button>
                   <span className="text-slate-300">·</span>
                   <button type="button" onClick={clearAll}
-                    className="text-xs font-bold text-slate-400 hover:text-slate-600 hover:underline">Use Default</button>
+                    className="text-xs font-bold text-slate-400 hover:text-slate-600 hover:underline cursor-pointer">Use Default</button>
                 </div>
               </div>
 
@@ -652,7 +652,7 @@ function CreateStaffView({
                       <button
                         key={key} type="button" onClick={() => toggleModule(key)}
                         className={cn(
-                          "flex items-start gap-3 rounded-xl border p-4 text-left transition-all",
+                          "flex items-start gap-3 rounded-xl border p-4 text-left transition-all cursor-pointer",
                           on ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
                         )}
                       >
@@ -675,15 +675,15 @@ function CreateStaffView({
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100 bg-slate-50/50">
                 <p className="text-xs text-slate-400 font-semibold">
                   {selectedModules.size} module{selectedModules.size !== 1 ? "s" : ""} selected
-                  {role === "admin" && <span className="ml-1.5 text-purple-600">(admin gets all modules automatically)</span>}
+                  {role === "admin" && <span className="ml-1.5 text-purple-600 block sm:inline">(admin gets all modules)</span>}
                 </p>
                 <button
                   type="submit"
                   disabled={pending}
-                  className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-7 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 transition-all"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-7 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 transition-all cursor-pointer"
                 >
                   {pending ? "Saving…" : isEditing ? "Save Changes" : "Create Staff Account"}
                 </button>

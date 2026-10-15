@@ -232,24 +232,24 @@ export function DepartmentPortalClient({
   return (
     <div className="space-y-6">
       {/* Top Banner / Department Header */}
-      <div className="rounded-3xl border border-slate-100 bg-white p-6 md:p-8 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1e3a8a] text-amber-400 shadow-md">
-              <Building2 className="h-7 w-7" />
+      <div className="rounded-3xl border border-slate-100 bg-white p-4 sm:p-6 md:p-8 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-[#1e3a8a] text-amber-400 shadow-md">
+              <Building2 className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                   Department Management
                 </span>
                 {isAdmin && (
-                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-black text-blue-700 uppercase">
+                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-black text-blue-700 uppercase shrink-0">
                     Admin View
                   </span>
                 )}
               </div>
-              <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight truncate">
                 {department.name}
               </h1>
             </div>
@@ -257,8 +257,8 @@ export function DepartmentPortalClient({
 
           {/* Department switcher for Admins */}
           {isAdmin && allDepartments.length > 1 && (
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-500">Switch Department:</span>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-xs font-bold text-slate-500 shrink-0">Switch Dept:</span>
               <select
                 value={department.id}
                 onChange={(e) =>
@@ -266,7 +266,7 @@ export function DepartmentPortalClient({
                     `/department-portal?deptId=${e.target.value}&date=${currentDate}&tab=${activeTab}`,
                   )
                 }
-                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
+                className="w-full sm:w-auto rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
               >
                 {allDepartments.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -279,17 +279,18 @@ export function DepartmentPortalClient({
         </div>
 
         {/* Tab Navigation */}
-        <div className="mt-8 flex flex-wrap gap-2 border-b border-slate-100 pb-3">
+        <div className="mt-6 sm:mt-8 flex flex-wrap gap-2 border-b border-slate-100 pb-3">
           <button
             onClick={() => setActiveTab("attendance")}
             className={cn(
-              "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition-all",
+              "flex items-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer",
               activeTab === "attendance"
                 ? "bg-[#1e3a8a] text-white shadow-xs"
                 : "text-slate-500 hover:bg-slate-100",
             )}
           >
-            <Calendar className="h-4 w-4" /> Sunday Attendance
+            <Calendar className="h-4 w-4 shrink-0" />
+            <span>Attendance</span>
             <span
               className={cn(
                 "rounded-full px-1.5 py-0.5 text-[10px]",
@@ -303,40 +304,42 @@ export function DepartmentPortalClient({
           <button
             onClick={() => setActiveTab("members")}
             className={cn(
-              "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition-all",
+              "flex items-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer",
               activeTab === "members"
                 ? "bg-[#1e3a8a] text-white shadow-xs"
                 : "text-slate-500 hover:bg-slate-100",
             )}
           >
-            <Users className="h-4 w-4" /> Department Members
+            <Users className="h-4 w-4 shrink-0" />
+            <span>Members</span>
           </button>
 
           <button
             onClick={() => setActiveTab("analytics")}
             className={cn(
-              "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition-all",
+              "flex items-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer",
               activeTab === "analytics"
                 ? "bg-[#1e3a8a] text-white shadow-xs"
                 : "text-slate-500 hover:bg-slate-100",
             )}
           >
-            <TrendingUp className="h-4 w-4" /> Data & Charts
+            <TrendingUp className="h-4 w-4 shrink-0" />
+            <span>Data &amp; Charts</span>
           </button>
         </div>
       </div>
 
       {/* ----------------- TAB 1: SUNDAY ATTENDANCE ----------------- */}
       {activeTab === "attendance" && (
-        <div className="space-y-6">
+        <div className="space-y-5 sm:space-y-6">
           {/* Controls Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {/* Date Selector */}
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+            <div className="col-span-2 sm:col-span-1 rounded-2xl border border-slate-100 bg-white p-3.5 sm:p-4 shadow-xs">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                Sunday Service Date
+                Service Date
               </label>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-1.5 flex items-center gap-2">
                 <input
                   type="date"
                   value={currentDate}
@@ -347,7 +350,7 @@ export function DepartmentPortalClient({
             </div>
 
             {/* Quick Status Card */}
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+            <div className="col-span-2 sm:col-span-1 rounded-2xl border border-slate-100 bg-white p-3.5 sm:p-4 shadow-xs">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 Attendance Status
               </span>
@@ -365,22 +368,22 @@ export function DepartmentPortalClient({
             </div>
 
             {/* Present Count */}
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+            <div className="col-span-1 rounded-2xl border border-slate-100 bg-white p-3.5 sm:p-4 shadow-xs">
               <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
-                Present Today
+                Present
               </span>
-              <p className="mt-1 text-2xl font-black text-slate-900">
+              <p className="mt-1 text-xl sm:text-2xl font-black text-slate-900">
                 {presentCount}{" "}
                 <span className="text-xs font-bold text-slate-400">/ {members.length}</span>
               </p>
             </div>
 
             {/* Absent Count */}
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+            <div className="col-span-1 rounded-2xl border border-slate-100 bg-white p-3.5 sm:p-4 shadow-xs">
               <span className="text-[10px] font-black uppercase tracking-widest text-amber-600">
-                Absent Today
+                Absent
               </span>
-              <p className="mt-1 text-2xl font-black text-slate-900">
+              <p className="mt-1 text-xl sm:text-2xl font-black text-slate-900">
                 {absentCount}{" "}
                 <span className="text-xs font-bold text-slate-400">
                   ({100 - attendanceRate}%)
@@ -392,7 +395,7 @@ export function DepartmentPortalClient({
           {/* Members Checklist Table */}
           <div className="rounded-2xl border border-slate-100 bg-white shadow-xs overflow-hidden">
             {/* Checklist Action Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-4 px-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 border-b border-slate-100 bg-slate-50/50 p-3.5 sm:p-4 px-4 sm:px-6">
               <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input
@@ -409,14 +412,14 @@ export function DepartmentPortalClient({
                   <button
                     type="button"
                     onClick={markAllPresent}
-                    className="flex-1 sm:flex-initial rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-emerald-800 hover:bg-emerald-100 transition-colors uppercase tracking-tight"
+                    className="flex-1 sm:flex-initial rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-emerald-800 hover:bg-emerald-100 transition-colors uppercase tracking-tight cursor-pointer"
                   >
                     <UserCheck className="inline h-3.5 w-3.5 mr-1" /> Mark All Present
                   </button>
                   <button
                     type="button"
                     onClick={clearAll}
-                    className="flex-1 sm:flex-initial rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-black text-slate-600 hover:bg-slate-50 transition-colors uppercase tracking-tight"
+                    className="flex-1 sm:flex-initial rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-black text-slate-600 hover:bg-slate-50 transition-colors uppercase tracking-tight cursor-pointer"
                   >
                     Clear All
                   </button>
@@ -455,7 +458,7 @@ export function DepartmentPortalClient({
                       key={member.id}
                       onClick={() => (!isAdmin ? toggleMember(member.id) : undefined)}
                       className={cn(
-                        "flex items-center justify-between gap-4 p-4 px-6 transition-colors select-none",
+                        "flex items-center justify-between gap-3 p-3.5 sm:p-4 px-4 sm:px-6 transition-colors select-none",
                         !isAdmin ? "cursor-pointer" : "cursor-default",
                         isPresent
                           ? "bg-emerald-50/30 hover:bg-emerald-50/50"
@@ -466,12 +469,12 @@ export function DepartmentPortalClient({
                           : "hover:bg-slate-50",
                       )}
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                         {/* Custom Tick Checkbox for Dept Head, or Status Icon for Admin */}
                         {!isAdmin ? (
                           <div
                             className={cn(
-                              "flex h-7 w-7 items-center justify-center rounded-xl border-2 transition-all",
+                              "flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border-2 transition-all",
                               isPresent
                                 ? "border-emerald-600 bg-emerald-600 text-white shadow-xs"
                                 : "border-slate-300 bg-white hover:border-slate-400",
@@ -482,7 +485,7 @@ export function DepartmentPortalClient({
                         ) : (
                           <div
                             className={cn(
-                              "flex h-7 w-7 items-center justify-center rounded-xl",
+                              "flex h-7 w-7 shrink-0 items-center justify-center rounded-xl",
                               isPresent
                                 ? "bg-emerald-100 text-emerald-800"
                                 : isRecordedAbsent
@@ -501,19 +504,19 @@ export function DepartmentPortalClient({
                         )}
 
                         {/* Member Details */}
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900 text-sm">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="font-bold text-slate-900 text-sm truncate">
                               {member.fullName}
                             </span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-slate-600 shrink-0">
                               {member.category}
                             </span>
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
-                            <span>{member.phone || "No phone"}</span>
+                          <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-400 mt-0.5 truncate">
+                            <span className="truncate">{member.phone || "No phone"}</span>
                             {member.lastAttendedAt && (
-                              <span>
+                              <span className="shrink-0 hidden min-[400px]:inline">
                                 · Last seen:{" "}
                                 {new Date(member.lastAttendedAt + "T00:00:00").toLocaleDateString(
                                   "en-GB",
@@ -528,7 +531,7 @@ export function DepartmentPortalClient({
                       {/* Status Tag */}
                       <span
                         className={cn(
-                          "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-tight",
+                          "rounded-full px-2.5 sm:px-3 py-1 text-[10px] font-black uppercase tracking-tight shrink-0",
                           isPresent
                             ? "bg-emerald-100 text-emerald-800"
                             : !isAdmin

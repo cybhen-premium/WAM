@@ -215,6 +215,7 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <SummaryCard
+            className="col-span-2 sm:col-span-1"
             label="Month"
             value={monthLabel}
             sub=""
@@ -369,15 +370,17 @@ function SummaryCard({
   sub,
   tone,
   icon: Icon,
+  className,
 }: {
   label: string;
   value: string;
   sub: string;
   tone: string;
   icon: typeof TrendingUp;
+  className?: string;
 }) {
   return (
-    <div className="rounded-2xl bg-white border border-slate-100 shadow-sm p-4">
+    <div className={`rounded-2xl bg-white border border-slate-100 shadow-sm p-4 ${className ?? ""}`}>
       <div className="flex items-center gap-2 mb-1">
         <Icon className={`h-3.5 w-3.5 ${tone}`} />
         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</p>
