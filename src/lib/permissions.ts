@@ -44,12 +44,6 @@ export const getMyPermissions = cache(async (): Promise<Permissions> => {
     .where(eq(schema.staffModule.staffId, row.staffId));
   const assigned = rows.map((r) => r.module).filter((m): m is ModuleKey => m in MODULES);
 
-  // If this staff member is assigned to a department, grant department_portal
-  // on top of their other assigned modules (not instead of them).
-  if (row.departmentId && !assigned.includes("department_portal")) {
-    assigned.push("department_portal");
-  }
-
   if (isHolySpirit) {
     return new Set(assigned.filter((k) => k !== "staffs" && k !== "settings"));
   }
@@ -64,6 +58,10 @@ export async function can(module: ModuleKey | string): Promise<boolean> {
     const row = await getChurchForUser(user.id);
     if (row && isBranchWithDisabledAdmin(row.church.name) && (module === "staffs" || module === "settings")) {
       return false;
+    }
+    // Department heads have access to their department portal without needing the admin module
+    if (module === "department_portal" && row?.departmentId) {
+      return true;
     }
   }
   const perms = await getMyPermissions();
@@ -114,7 +112,12 @@ export async function landingHref(): Promise<string> {
     if (isHolySpirit && (k === "staffs" || k === "settings")) return false;
     return perms.has(k);
   });
-  return first ? MODULES[first].routes[0] : "/dashboard";
+  if (first) return MODULES[first].routes[0];
+  if (user) {
+    const row = await getChurchForUser(user.id);
+    if (row?.departmentId) return "/department-portal";
+  }
+  return "/dashboard";
 }
 
 

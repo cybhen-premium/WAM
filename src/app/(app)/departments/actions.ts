@@ -197,21 +197,6 @@ export async function assignDepartmentAccount(
         status: "active",
       })
       .where(eq(schema.staff.id, existingUserStaff.id));
-
-    // Ensure department_portal module is assigned
-    const [hasMod] = await db
-      .select()
-      .from(schema.staffModule)
-      .where(and(eq(schema.staffModule.staffId, targetStaffId), eq(schema.staffModule.module, "department_portal")))
-      .limit(1);
-
-    if (!hasMod) {
-      await db.insert(schema.staffModule).values({
-        churchId: church.id,
-        staffId: targetStaffId,
-        module: "department_portal",
-      });
-    }
   } else {
     const [newStaff] = await db
       .insert(schema.staff)
@@ -226,12 +211,6 @@ export async function assignDepartmentAccount(
       .returning({ id: schema.staff.id });
 
     targetStaffId = newStaff.id;
-
-    await db.insert(schema.staffModule).values({
-      churchId: church.id,
-      staffId: targetStaffId,
-      module: "department_portal",
-    });
   }
 
   logActivity({

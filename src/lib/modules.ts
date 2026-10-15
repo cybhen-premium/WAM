@@ -8,7 +8,7 @@ export const MODULES = {
   dashboard: { label: "Dashboard", routes: ["/dashboard"] },
   members: { label: "Members", routes: ["/members"] },
   departments: { label: "Departments", routes: ["/departments"] },
-  department_portal: { label: "Department Portal", routes: ["/department-portal"] },
+  department_portal: { label: "Department Portal (Admin)", routes: ["/department-portal"] },
   akwaaba: { label: "Akwaaba Intake", routes: ["/akwaaba"] },
   visitors: { label: "Visitors", routes: ["/visitor-conversion"] },
   sob: { label: "School of Baptism", routes: ["/sob"] },

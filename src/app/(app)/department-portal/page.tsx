@@ -26,6 +26,16 @@ export default async function DepartmentPortalPage({
   const { church, user, role, departmentId } = ctx;
   const sp = await searchParams;
 
+  const { getMyPermissions } = await import("@/lib/permissions");
+  const perms = await getMyPermissions();
+  const isAdminPortal = role === "admin" || perms === "all" || (perms instanceof Set && perms.has("department_portal"));
+
+  // If user is neither admin/department_portal holder NOR assigned to a department, 404
+  if (!isAdminPortal && !departmentId) {
+    const { notFound } = await import("next/navigation");
+    notFound();
+  }
+
   // 1. Fetch departments available in the church
   const allDepartments = await db
     .select({ id: schema.department.id, name: schema.department.name })
@@ -43,7 +53,7 @@ export default async function DepartmentPortalPage({
         <p className="mt-2 text-sm text-slate-500">
           Create church departments first to assign members and take attendance.
         </p>
-        {role === "admin" && (
+        {isAdminPortal && (
           <Link
             href="/departments"
             className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#1e3a8a] px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white hover:bg-blue-900"
@@ -57,12 +67,19 @@ export default async function DepartmentPortalPage({
 
   // 2. Resolve target department
   let activeDept = allDepartments[0];
-  if (departmentId) {
-    // If user account is locked to a specific department
+  if (!isAdminPortal && departmentId) {
+    // Non-admin department lead: strictly locked to their assigned department
     const matched = allDepartments.find((d) => d.id === departmentId);
-    if (matched) activeDept = matched;
+    if (!matched) {
+      const { notFound } = await import("next/navigation");
+      notFound();
+    }
+    activeDept = matched!;
   } else if (sp.deptId) {
     const matched = allDepartments.find((d) => d.id === sp.deptId);
+    if (matched) activeDept = matched;
+  } else if (departmentId) {
+    const matched = allDepartments.find((d) => d.id === departmentId);
     if (matched) activeDept = matched;
   }
 
@@ -184,7 +201,7 @@ export default async function DepartmentPortalPage({
     <div className="space-y-6 pb-6 px-2 sm:px-4 md:px-8 animate-in fade-in duration-500">
       <DepartmentPortalClient
         department={activeDept}
-        allDepartments={role === "admin" ? allDepartments : []}
+        allDepartments={isAdminPortal ? allDepartments : []}
         selectedDate={selectedDate}
         members={deptMembers}
         dateAttendance={dateAttendance}
@@ -196,7 +213,7 @@ export default async function DepartmentPortalPage({
           church.absenceTemplate ||
           "Hello [Name], we missed you at church today! We prayed for you and look forward to seeing you next Sunday. Have a blessed week!"
         }
-        isAdmin={role === "admin"}
+        isAdmin={isAdminPortal}
       />
     </div>
   );

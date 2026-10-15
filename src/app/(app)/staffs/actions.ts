@@ -201,9 +201,6 @@ export async function createStaff(
       // Assign modules (non-admins)
       if (role !== "admin") {
         const wanted = MODULE_KEYS.filter((k) => modulesRaw.includes(k));
-        if (departmentId || role === "Department Lead") {
-          if (!wanted.includes("department_portal")) wanted.push("department_portal");
-        }
         if (wanted.length > 0) {
           await db.insert(staffModule).values(
             wanted.map((module) => ({ churchId: branchId, staffId: newStaff.id, module })),
@@ -306,9 +303,6 @@ export async function updateStaff(
   if (role !== "admin") {
     await db.delete(staffModule).where(eq(staffModule.staffId, staffId));
     const wanted = MODULE_KEYS.filter((k) => modulesRaw.includes(k));
-    if (finalDeptId || role === "Department Lead") {
-      if (!wanted.includes("department_portal")) wanted.push("department_portal");
-    }
     if (wanted.length > 0) {
       await db.insert(staffModule).values(
         wanted.map((module) => ({ churchId: c.id, staffId, module }))

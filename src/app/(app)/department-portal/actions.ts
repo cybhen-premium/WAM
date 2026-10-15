@@ -184,6 +184,10 @@ export async function saveDepartmentServiceNotes(input: {
   const ctx = await requireChurch();
   const { church } = ctx;
 
+  if (ctx.departmentId && ctx.departmentId !== input.departmentId) {
+    return { error: "You are only permitted to update notes for your assigned department." };
+  }
+
   if (!input.serviceDate || !/^\d{4}-\d{2}-\d{2}$/.test(input.serviceDate)) {
     return { error: "A valid date (YYYY-MM-DD) is required." };
   }

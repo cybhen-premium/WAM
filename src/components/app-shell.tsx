@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Church, ChevronDown, LogOut, Menu, RotateCcw, X, Check } from "lucide-react";
-import { NAV, NAV_ENTRIES, NAV_CATEGORIES } from "@/lib/nav";
+import { NAV, NAV_ENTRIES, NAV_CATEGORIES, type NavEntry } from "@/lib/nav";
 import { hasModule, type ModuleKey } from "@/lib/modules";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ type Props = {
   logoUrl?: string;
   smsCredits: number;
   isAdmin?: boolean;
+  assignedDepartment?: { id: string; name: string } | null;
   /** Modules this user may access — the sidebar only shows these (superadmins get all of them). */
   modules: ModuleKey[];
   children: React.ReactNode;
@@ -32,6 +33,7 @@ export function AppShell({
   logoUrl,
   smsCredits,
   isAdmin = false,
+  assignedDepartment,
   modules,
   children,
 }: Props) {
@@ -138,13 +140,39 @@ export function AppShell({
   }
 
   // Filter categories and entries by assigned modules for this user
-  const visibleCategories = NAV_CATEGORIES.map((cat) => ({
-    ...cat,
-    entries: cat.entries.filter((e) => {
-      const mod = e.type === "item" ? e.item.module : e.group.module;
-      return hasModule(modules, mod);
-    }),
-  })).filter((cat) => cat.entries.length > 0);
+  const visibleCategories = NAV_CATEGORIES.map((cat) => {
+    const entries = cat.entries.flatMap((e): NavEntry[] => {
+      if (e.type === "item") {
+        if (e.item.module === "department_portal") {
+          // If the user has the admin department_portal module ticked or is superadmin
+          if (hasModule(modules, "department_portal") || isAdmin) {
+            return [e];
+          }
+          // If the staff member is assigned to a department, they see their department's portal!
+          if (assignedDepartment) {
+            return [{
+              type: "item" as const,
+              item: {
+                href: "/department-portal",
+                module: "department_portal" as const,
+                label: `${assignedDepartment.name} Portal`,
+                icon: e.item.icon,
+              },
+            }];
+          }
+          return [];
+        }
+        return hasModule(modules, e.item.module) ? [e] : [];
+      } else {
+        return hasModule(modules, e.group.module) ? [e] : [];
+      }
+    });
+
+    return {
+      ...cat,
+      entries,
+    };
+  }).filter((cat) => cat.entries.length > 0);
 
   return (
     <div className="fixed inset-0 flex h-full w-full overflow-hidden bg-[#F8FAFC]">

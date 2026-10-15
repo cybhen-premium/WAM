@@ -69,7 +69,7 @@ const MODULE_DESC: Record<string, string> = {
   dashboard:          "View church statistics, at-risk members, and celebration alerts.",
   members:            "Manage church member directory, personal details, and profiles.",
   departments:        "Manage church ministry departments and member enrollments.",
-  department_portal:  "Access the department lead portal for attendance and reports.",
+  department_portal:  "Admin portal to switch and oversee attendance across all departments.",
   akwaaba:            "Run the first-timer welcome programme and reception intake.",
   visitors:           "Track first-time visitors, conversion stages, and follow-ups.",
   sob:                "Track School of Baptism lesson progress and graduations.",

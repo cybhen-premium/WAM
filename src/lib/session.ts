@@ -179,12 +179,28 @@ export async function requireChurch() {
 
   const allBranches = await getUserBranches(user.id);
 
+  let assignedDepartment: { id: string; name: string } | null = null;
+  if (row.departmentId) {
+    const [dept] = await retry(
+      () =>
+        db
+          .select({ id: schema.department.id, name: schema.department.name })
+          .from(schema.department)
+          .where(eq(schema.department.id, row.departmentId!))
+          .limit(1),
+      undefined,
+      4,
+    );
+    if (dept) assignedDepartment = dept;
+  }
+
   return {
     user,
     church: row.church,
     role: row.role,
     staffId: row.staffId,
     departmentId: row.departmentId,
+    assignedDepartment,
     availableBranches: allBranches.map((b) => ({
       id: b.church.id,
       name: b.church.name,
