@@ -163,14 +163,6 @@ export function AppShell({
           return [];
         }
 
-        if (e.item.module === "departments") {
-          // Non-admin departmental heads only access their assigned department portal, not the admin departments management page
-          if (assignedDepartment && !isAdmin) {
-            return [];
-          }
-          return (hasModule(modules, "departments") || isAdmin) ? [e] : [];
-        }
-
         return hasModule(modules, e.item.module) ? [e] : [];
       } else {
         return hasModule(modules, e.group.module) ? [e] : [];
