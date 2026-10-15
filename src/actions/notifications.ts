@@ -76,3 +76,17 @@ export async function clearNotificationAction(id: string) {
     return { ok: false, error: String(err) };
   }
 }
+
+export async function clearAllNotificationsAction() {
+  try {
+    const { church } = await requireChurch();
+    await db
+      .delete(schema.notification)
+      .where(eq(schema.notification.churchId, church.id));
+
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}

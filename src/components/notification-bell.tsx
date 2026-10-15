@@ -20,6 +20,7 @@ import {
   markNotificationReadAction,
   markAllNotificationsReadAction,
   clearNotificationAction,
+  clearAllNotificationsAction,
 } from "@/actions/notifications";
 import { toast } from "sonner";
 
@@ -134,6 +135,25 @@ export function NotificationBell() {
     });
   }
 
+  // Clear all notifications
+  function handleClearAll() {
+    if (items.length === 0) return;
+    startTransition(async () => {
+      const prevItems = items;
+      const prevUnread = unreadCount;
+      setItems([]);
+      setUnreadCount(0);
+      const res = await clearAllNotificationsAction();
+      if (!res.ok) {
+        setItems(prevItems);
+        setUnreadCount(prevUnread);
+        toast.error("Failed to clear notifications");
+      } else {
+        toast.success("All notifications cleared");
+      }
+    });
+  }
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Bell Trigger Button */}
@@ -190,10 +210,22 @@ export function NotificationBell() {
                   <span>Mark all read</span>
                 </button>
               )}
+              {items.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:underline px-1.5 py-0.5 transition-colors cursor-pointer"
+                  title="Clear all notifications"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  <span>Clear all</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="h-6 w-6 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
+                className="h-6 w-6 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors cursor-pointer ml-0.5"
                 aria-label="Close"
               >
                 <X className="h-3.5 w-3.5" />
