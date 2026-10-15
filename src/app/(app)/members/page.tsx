@@ -159,20 +159,19 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
           <table className="w-full text-sm text-left border-collapse">
             <thead className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-black uppercase tracking-wider text-slate-400">
               <tr>
-                <th className="py-3 pl-4 sm:pl-5 pr-2.5 min-w-[190px]">Member Profile</th>
-                <th className="py-3 px-2.5 sm:px-3 min-w-[120px]">Ministry</th>
-                <th className="py-3 px-2.5 sm:px-3 min-w-[125px]">Department</th>
-                <th className="py-3 px-2.5 sm:px-3 min-w-[120px]">Contact</th>
-                <th className="py-3 px-2.5 sm:px-3 min-w-[100px]">Location</th>
-                <th className="py-3 px-2.5 sm:px-3 min-w-[100px]">Celebrations</th>
-                <th className="py-3 px-2.5 sm:px-3 min-w-[80px]">Status</th>
-                <th className="py-3 pl-2.5 pr-4 sm:pr-5 text-right min-w-[95px]">Actions</th>
+                <th className="py-3 pl-4 sm:pl-5 pr-2.5 min-w-[180px]">Member Profile</th>
+                <th className="py-3 px-2 sm:px-2.5 min-w-[110px]">Ministry</th>
+                <th className="py-3 px-2 sm:px-2.5 min-w-[120px]">Department</th>
+                <th className="py-3 px-2 sm:px-2.5 min-w-[110px]">Contact</th>
+                <th className="py-3 px-2 sm:px-2.5 min-w-[100px]">Location</th>
+                <th className="py-3 px-2 sm:px-2.5 min-w-[95px]">Celebrations</th>
+                <th className="py-3 pl-2 pr-4 sm:pr-5 text-right min-w-[130px]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="h-64 text-center">
+                  <td colSpan={7} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center text-slate-400">
                       <UserCheck className="h-10 w-10 mb-3 opacity-20" />
                       <p className="text-sm font-medium italic">

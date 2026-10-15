@@ -284,9 +284,9 @@ export function MemberTableRow({
   const [zoomImage, setZoomImage] = useState<string | null>(null);
 
   return (
-    <tr className="group border-b border-slate-100 last:border-0 hover:bg-blue-50/25 transition-colors">
+    <tr className="group border-b border-slate-100 last:border-0 hover:bg-slate-50/70 transition-colors">
       {/* 1. Member Profile (Avatar + Full Name + Status) */}
-      <td className="py-3 pl-4 sm:pl-5 pr-2.5">
+      <td className="py-2.5 pl-4 sm:pl-5 pr-2.5">
         <div className="flex items-center gap-3">
           {member.photoUrl ? (
             <button
@@ -299,9 +299,9 @@ export function MemberTableRow({
               <img
                 src={member.photoUrl}
                 alt={member.fullName}
-                className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-slate-100 shadow-sm transition-transform duration-200 group-hover/photo:scale-110 group-hover/photo:ring-blue-500"
+                className="h-9 w-9 shrink-0 rounded-full object-cover ring-2 ring-slate-100 shadow-2xs transition-transform duration-200 group-hover/photo:scale-105 group-hover/photo:ring-blue-500"
               />
-              <div className="absolute inset-0 rounded-full bg-black/35 opacity-0 group-hover/photo:opacity-100 flex items-center justify-center transition-opacity text-white shadow-xs">
+              <div className="absolute inset-0 rounded-full bg-black/35 opacity-0 group-hover/photo:opacity-100 flex items-center justify-center transition-opacity text-white">
                 <Maximize2 className="h-3 w-3" />
               </div>
             </button>
@@ -314,7 +314,7 @@ export function MemberTableRow({
             >
               <div
                 className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-white text-xs font-black uppercase shadow-sm transition-transform duration-200 hover:scale-105",
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-white text-[11px] font-bold uppercase shadow-2xs transition-transform duration-200 hover:scale-105",
                   avatarColor(member.fullName)
                 )}
               >
@@ -329,44 +329,44 @@ export function MemberTableRow({
             className="min-w-0 text-left focus:outline-none group/name"
             title={`Click to view ${member.fullName}'s profile`}
           >
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="font-bold text-slate-900 truncate max-w-[190px] leading-tight group-hover/name:text-blue-600 transition-colors">
+            <div className="flex items-center gap-1.5 flex-nowrap">
+              <span className="font-semibold text-slate-900 truncate max-w-[160px] leading-tight group-hover/name:text-blue-600 transition-colors text-[13px]">
                 {member.fullName}
-              </p>
-              {member.memberIdCode && (
-                <span className="font-mono text-[9px] font-bold bg-slate-100 border border-slate-200/80 text-slate-600 px-1.5 py-0.2 rounded shrink-0">
-                  {member.memberIdCode}
-                </span>
-              )}
+              </span>
               {isDuplicateName && (
                 <span
-                  className="inline-flex items-center gap-1 font-bold text-[9px] uppercase tracking-wider bg-amber-50 border border-amber-300 text-amber-800 px-1.5 py-0.5 rounded shadow-2xs shrink-0"
+                  className="inline-flex items-center gap-0.5 font-bold text-[8.5px] uppercase tracking-wider bg-amber-50 border border-amber-300 text-amber-800 px-1 py-0.2 rounded shrink-0"
                   title="Another member in this church has this same name"
                 >
                   <AlertCircle className="h-2.5 w-2.5 text-amber-600 shrink-0" />
-                  Duplicate Name
+                  Duplicate
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex items-center gap-1.5 mt-0.5 text-[11px] leading-none">
+              {member.memberIdCode && (
+                <span className="font-mono text-[9px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200/60 shrink-0">
+                  {member.memberIdCode}
+                </span>
+              )}
               {member.baptismStatus === "Awaiting Baptism" ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600">
+                <span className="inline-flex items-center gap-1 font-medium text-amber-600 whitespace-nowrap">
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                   Awaiting Baptism
                 </span>
               ) : member.baptized ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                <span className="inline-flex items-center gap-1 font-medium text-emerald-600 whitespace-nowrap">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Baptized
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+                <span className="inline-flex items-center gap-1 font-medium text-slate-400 whitespace-nowrap">
                   <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
                   Unbaptized
                 </span>
               )}
               {member.occupation && (
-                <span className="text-[11px] text-slate-400 truncate max-w-[110px]">
+                <span className="text-slate-400 truncate max-w-[95px] whitespace-nowrap">
                   · {member.occupation}
                 </span>
               )}
@@ -376,14 +376,14 @@ export function MemberTableRow({
       </td>
 
       {/* 2. Ministry */}
-      <td className="py-3 px-2.5 sm:px-3">
-        {member.category !== "General Member" ? (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-purple-50 border border-purple-200/80 px-2.5 py-1 text-xs font-bold text-purple-700 shadow-2xs">
-            <Sparkles className="h-3 w-3 text-purple-600 shrink-0" />
+      <td className="py-2.5 px-2.5 sm:px-3">
+        {member.category && member.category !== "General Member" ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60 px-2.5 py-0.5 text-xs font-medium whitespace-nowrap">
+            <Sparkles className="h-3 w-3 text-purple-500 shrink-0" />
             <span>{member.category}</span>
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100/90 border border-slate-200/70 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 whitespace-nowrap">
             <Shield className="h-3 w-3 text-slate-400 shrink-0" />
             <span>General Member</span>
           </span>
@@ -391,26 +391,24 @@ export function MemberTableRow({
       </td>
 
       {/* 3. Department */}
-      <td className="py-3 px-2.5 sm:px-3">
+      <td className="py-2.5 px-2.5 sm:px-3">
         {department ? (
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50/90 border border-blue-200/70 px-2.5 py-1 text-xs font-bold text-blue-700 shadow-2xs">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50/80 border border-blue-200/60 px-2.5 py-0.5 text-xs font-medium text-blue-700 whitespace-nowrap">
             <Users className="h-3 w-3 text-blue-500 shrink-0" />
             <span>{department.name}</span>
           </span>
         ) : (
-          <span className="inline-flex items-center text-xs text-slate-400 italic">
-            No Department
-          </span>
+          <span className="text-xs text-slate-300 font-medium">—</span>
         )}
       </td>
 
       {/* 4. Contact Details */}
-      <td className="py-3 px-2.5 sm:px-3">
+      <td className="py-2.5 px-2.5 sm:px-3">
         {member.phone ? (
-          <div>
+          <div className="flex flex-col">
             <a
               href={`tel:${member.phone}`}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 hover:text-blue-600 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-blue-600 transition-colors font-mono tracking-tight whitespace-nowrap"
             >
               <Phone className="h-3 w-3 text-slate-400 shrink-0" />
               <span>{member.phone}</span>
@@ -418,33 +416,33 @@ export function MemberTableRow({
             {isDuplicateContact && (
               <div className="mt-0.5">
                 <span
-                  className="inline-flex items-center gap-1 font-bold text-[9px] uppercase tracking-wider bg-rose-50 border border-rose-300 text-rose-800 px-1.5 py-0.5 rounded shadow-2xs"
+                  className="inline-flex items-center gap-0.5 font-bold text-[8.5px] uppercase tracking-wider bg-rose-50 border border-rose-300 text-rose-800 px-1 py-0.2 rounded shrink-0"
                   title="Another member in this church shares this contact phone number"
                 >
                   <AlertCircle className="h-2.5 w-2.5 text-rose-600 shrink-0" />
-                  Duplicate Contact
+                  Duplicate
                 </span>
               </div>
             )}
             {member.email && (
               <a
                 href={`mailto:${member.email}`}
-                className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-600 truncate max-w-[160px] mt-0.5 block"
+                className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-600 truncate max-w-[150px] mt-0.5 whitespace-nowrap"
                 title={member.email}
               >
-                <Mail className="h-3 w-3 text-slate-300 shrink-0" />
-                <span>{member.email}</span>
+                <Mail className="h-2.5 w-2.5 text-slate-300 shrink-0" />
+                <span className="truncate">{member.email}</span>
               </a>
             )}
           </div>
         ) : member.email ? (
           <a
             href={`mailto:${member.email}`}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 truncate max-w-[160px]"
+            className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900 truncate max-w-[150px] whitespace-nowrap"
             title={member.email}
           >
             <Mail className="h-3 w-3 text-slate-400 shrink-0" />
-            <span>{member.email}</span>
+            <span className="truncate">{member.email}</span>
           </a>
         ) : (
           <span className="text-xs text-slate-300 font-medium">—</span>
@@ -452,14 +450,14 @@ export function MemberTableRow({
       </td>
 
       {/* 5. Location */}
-      <td className="py-3 px-2.5 sm:px-3">
+      <td className="py-2.5 px-2.5 sm:px-3">
         {member.address ? (
           <span
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 max-w-[140px] truncate"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 max-w-[130px] truncate whitespace-nowrap"
             title={member.address}
           >
-            <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-            <span>{member.address}</span>
+            <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+            <span className="truncate">{member.address}</span>
           </span>
         ) : (
           <span className="text-xs text-slate-300 font-medium">—</span>
@@ -467,17 +465,17 @@ export function MemberTableRow({
       </td>
 
       {/* 6. Celebrations & Care */}
-      <td className="py-3 px-2.5 sm:px-3">
+      <td className="py-2.5 px-2.5 sm:px-3">
         {member.dateOfBirth || member.weddingAnniversary ? (
           <div className="flex flex-col gap-1 items-start">
             {member.dateOfBirth && (
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50/90 border border-amber-200/60 px-2 py-0.5 text-[11px] font-bold text-amber-700 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+              <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 whitespace-nowrap">
                 <Cake className="h-3 w-3 text-amber-500 shrink-0" />
                 <span>{fmtDayShort(member.dateOfBirth)}</span>
               </span>
             )}
             {member.weddingAnniversary && (
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-pink-50/90 border border-pink-200/60 px-2 py-0.5 text-[11px] font-bold text-pink-700 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+              <span className="inline-flex items-center gap-1 rounded-md bg-pink-50 border border-pink-200/60 px-1.5 py-0.5 text-[11px] font-semibold text-pink-700 whitespace-nowrap">
                 <Heart className="h-3 w-3 fill-pink-500 text-pink-500 shrink-0" />
                 <span>{fmtDayShort(member.weddingAnniversary)}</span>
               </span>
@@ -488,24 +486,9 @@ export function MemberTableRow({
         )}
       </td>
 
-      {/* 7. Status */}
-      <td className="py-3 px-2.5 sm:px-3">
-        {member.active ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50/80 border border-emerald-200/80 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Active
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50/80 border border-rose-200/80 px-2.5 py-0.5 text-[11px] font-bold text-rose-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-            Inactive
-          </span>
-        )}
-      </td>
-
-      {/* 8. Actions */}
-      <td className="py-3 pl-2.5 pr-4 sm:pr-5 text-right">
-        <div className="inline-flex items-center justify-end gap-1.5">
+      {/* 7. Actions */}
+      <td className="py-2.5 pl-2.5 pr-4 sm:pr-5 text-right whitespace-nowrap">
+        <div className="inline-flex items-center justify-end gap-1">
           {member.phone && (
             <button
               type="button"
@@ -521,7 +504,7 @@ export function MemberTableRow({
                   }
                 });
               }}
-              className="h-8 w-8 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-slate-500 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
+              className="h-8 w-8 rounded-lg border border-slate-200/90 bg-white hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 text-slate-500 transition-colors shadow-2xs inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
               title="Send Member Portal ID via SMS"
               aria-label="Send Member Portal ID via SMS"
             >
@@ -531,7 +514,7 @@ export function MemberTableRow({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="h-8 w-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 text-slate-500 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] inline-flex items-center justify-center cursor-pointer"
+            className="h-8 w-8 rounded-lg border border-slate-200/90 bg-white hover:bg-slate-100 hover:text-slate-900 text-slate-500 transition-colors shadow-2xs inline-flex items-center justify-center cursor-pointer"
             title="Edit member details"
             aria-label="Edit member details"
           >
@@ -546,7 +529,7 @@ export function MemberTableRow({
                 toast.success(member.active ? "Member marked inactive" : "Member reactivated");
               });
             }}
-            className="h-8 w-8 rounded-lg border border-slate-200 bg-white hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 text-slate-500 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
+            className="h-8 w-8 rounded-lg border border-slate-200/90 bg-white hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200 text-slate-500 transition-colors shadow-2xs inline-flex items-center justify-center cursor-pointer disabled:opacity-50"
             title={member.active ? "Mark inactive" : "Reactivate"}
             aria-label={member.active ? "Mark inactive" : "Reactivate"}
           >
@@ -555,7 +538,7 @@ export function MemberTableRow({
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
-            className="h-8 w-8 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.02)] inline-flex items-center justify-center cursor-pointer"
+            className="h-8 w-8 rounded-lg border border-slate-200/90 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 transition-colors shadow-2xs inline-flex items-center justify-center cursor-pointer"
             title="Delete member record"
             aria-label="Delete member record"
           >
