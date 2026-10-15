@@ -159,7 +159,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
           <table className="w-full text-sm text-left border-collapse">
             <thead className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-black uppercase tracking-wider text-slate-400">
               <tr>
-                <th className="py-3 pl-4 sm:pl-5 pr-2.5 min-w-[180px]">Member Profile</th>
+                <th className="py-3 pl-4 sm:pl-5 pr-2.5 min-w-[210px]">Member Profile</th>
                 <th className="py-3 px-2 sm:px-2.5 min-w-[110px]">Ministry</th>
                 <th className="py-3 px-2 sm:px-2.5 min-w-[120px]">Department</th>
                 <th className="py-3 px-2 sm:px-2.5 min-w-[110px]">Contact</th>

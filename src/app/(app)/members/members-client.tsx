@@ -330,9 +330,14 @@ export function MemberTableRow({
             title={`Click to view ${member.fullName}'s profile`}
           >
             <div className="flex items-center gap-1.5 flex-nowrap">
-              <span className="font-semibold text-slate-900 truncate max-w-[160px] leading-tight group-hover/name:text-blue-600 transition-colors text-[13px]">
+              <span className="font-bold text-slate-900 truncate max-w-[170px] leading-snug group-hover/name:text-blue-600 transition-colors text-[13px]">
                 {member.fullName}
               </span>
+              {member.memberIdCode && (
+                <span className="font-mono text-[9.5px] font-bold text-slate-600 bg-slate-100/90 px-1.5 py-0.5 rounded border border-slate-200/80 shrink-0 leading-none tracking-tight">
+                  {member.memberIdCode}
+                </span>
+              )}
               {isDuplicateName && (
                 <span
                   className="inline-flex items-center gap-0.5 font-bold text-[8.5px] uppercase tracking-wider bg-amber-50 border border-amber-300 text-amber-800 px-1 py-0.2 rounded shrink-0"
@@ -343,31 +348,32 @@ export function MemberTableRow({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1.5 mt-0.5 text-[11px] leading-none">
-              {member.memberIdCode && (
-                <span className="font-mono text-[9px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200/60 shrink-0">
-                  {member.memberIdCode}
-                </span>
+            <div className="flex items-center gap-1.5 mt-0.5 text-[11px] leading-tight">
+              {member.occupation && (
+                <>
+                  <span
+                    className="font-medium text-slate-500 truncate max-w-[130px] whitespace-nowrap"
+                    title={member.occupation}
+                  >
+                    {member.occupation}
+                  </span>
+                  <span className="text-slate-300 select-none">·</span>
+                </>
               )}
               {member.baptismStatus === "Awaiting Baptism" ? (
-                <span className="inline-flex items-center gap-1 font-medium text-amber-600 whitespace-nowrap">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                <span className="inline-flex items-center gap-1 font-semibold text-amber-600 whitespace-nowrap">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
                   Awaiting Baptism
                 </span>
               ) : member.baptized ? (
-                <span className="inline-flex items-center gap-1 font-medium text-emerald-600 whitespace-nowrap">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 whitespace-nowrap">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
                   Baptized
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 font-medium text-slate-400 whitespace-nowrap">
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-300 shrink-0" />
                   Unbaptized
-                </span>
-              )}
-              {member.occupation && (
-                <span className="text-slate-400 truncate max-w-[95px] whitespace-nowrap">
-                  · {member.occupation}
                 </span>
               )}
             </div>
