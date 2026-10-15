@@ -58,7 +58,6 @@ export function hasModule(assigned: readonly string[] | "all", module: ModuleKey
   // Legacy aliases
   if ((module === "welfare" || module === "welfare_dues") && assigned.includes("care")) return true;
   if (module === "care" && (assigned.includes("welfare") || assigned.includes("welfare_dues"))) return true;
-  if (module === "departments" && assigned.includes("members")) return true;
   if (module === "announcements" && assigned.includes("messaging")) return true;
   if (
     (module === "visitors" || module === "giving_analytics" || module === "growth") &&

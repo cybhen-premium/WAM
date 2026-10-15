@@ -70,7 +70,6 @@ export async function can(module: ModuleKey | string): Promise<boolean> {
   // Legacy alias fallbacks
   if ((module === "welfare" || module === "welfare_dues") && perms.has("care" as any)) return true;
   if (module === "care" && (perms.has("welfare" as any) || perms.has("welfare_dues" as any))) return true;
-  if (module === "departments" && perms.has("members")) return true;
   if (module === "announcements" && perms.has("messaging")) return true;
   if (
     (module === "visitors" || module === "giving_analytics" || module === "growth") &&

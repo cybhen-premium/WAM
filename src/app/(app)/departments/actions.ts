@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
@@ -197,6 +197,16 @@ export async function assignDepartmentAccount(
         status: "active",
       })
       .where(eq(schema.staff.id, existingUserStaff.id));
+
+    // Clear any previous automatic admin department modules
+    await db
+      .delete(schema.staffModule)
+      .where(
+        and(
+          eq(schema.staffModule.staffId, targetStaffId),
+          inArray(schema.staffModule.module, ["department_portal", "departments"])
+        )
+      );
   } else {
     const [newStaff] = await db
       .insert(schema.staff)
@@ -240,6 +250,7 @@ export async function assignDepartmentAccount(
 
   revalidatePath("/departments");
   revalidatePath("/staffs");
+  revalidatePath("/", "layout");
   return { ok: true, message: `Department leader assigned! Credentials sent to ${emailRaw}.` };
 }
 
@@ -322,4 +333,5 @@ export async function removeDepartmentAccount(deptId: string) {
 
   revalidatePath("/departments");
   revalidatePath("/staffs");
+  revalidatePath("/", "layout");
 }
