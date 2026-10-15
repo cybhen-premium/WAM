@@ -36,8 +36,7 @@ export default async function StaffsPage() {
         churchName: schema.church.name,
       })
       .from(schema.staff)
-      .innerJoin(schema.church, eq(schema.staff.churchId, schema.church.id))
-      .where(eq(schema.staff.status, "active")),
+      .innerJoin(schema.church, eq(schema.staff.churchId, schema.church.id)),
     db
       .select({
         id: schema.department.id,
@@ -52,16 +51,29 @@ export default async function StaffsPage() {
     deptMap.set(d.id, d.name);
   }
 
+  const branchNameMap = new Map<string, string>();
+  for (const b of availableBranches) {
+    branchNameMap.set(b.id, b.name);
+  }
+  branchNameMap.set(church.id, church.name);
+
   // Group module assignments by staffId
   const byStaff = new Map<string, string[]>();
   for (const a of assignments) {
     byStaff.set(a.staffId, [...(byStaff.get(a.staffId) ?? []), a.module]);
   }
 
-  // Deduplicate rows by user so staff assigned to multiple branches only appear once
+  // Deduplicate rows by user so staff assigned to multiple branches only appear once.
+  // Prefer the current church's row if available.
+  const sortedRawRows = [...rawRows].sort((a, b) => {
+    if (a.s.churchId === church.id && b.s.churchId !== church.id) return -1;
+    if (a.s.churchId !== church.id && b.s.churchId === church.id) return 1;
+    return 0;
+  });
+
   const rows: typeof rawRows = [];
   const seenUsers = new Set<string>();
-  for (const r of rawRows) {
+  for (const r of sortedRawRows) {
     const key = r.s.userId || r.s.email;
     if (!seenUsers.has(key)) {
       seenUsers.add(key);
@@ -96,7 +108,7 @@ export default async function StaffsPage() {
       status: r.s.status,
       modules: byStaff.get(r.s.id) ?? [],
       assignedBranches: (r.s.userId ? branchesByUser.get(r.s.userId) : null) ?? [
-        { id: church.id, name: church.name },
+        { id: r.s.churchId, name: branchNameMap.get(r.s.churchId) ?? church.name },
       ],
     }));
 
@@ -112,7 +124,9 @@ export default async function StaffsPage() {
       departmentName: r.s.departmentId ? deptMap.get(r.s.departmentId) : undefined,
       invited: r.s.createdAt.toISOString(),
       modules: byStaff.get(r.s.id) ?? [],
-      assignedBranches: [{ id: church.id, name: church.name }],
+      assignedBranches: (r.s.userId ? branchesByUser.get(r.s.userId) : null) ?? [
+        { id: r.s.churchId, name: branchNameMap.get(r.s.churchId) ?? church.name },
+      ],
     }));
 
   return (

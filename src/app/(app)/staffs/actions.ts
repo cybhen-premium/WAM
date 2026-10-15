@@ -265,7 +265,12 @@ export async function updateStaff(
   f: FormData,
 ): Promise<CreateStaffState> {
   await requireModule("staffs");
-  const { church: c } = await requireAdmin();
+  const ctx = await requireAdmin();
+  const c = ctx.church;
+  const allowedBranchIds = new Set([
+    c.id,
+    ...(ctx.availableBranches?.map((b) => b.id) ?? []),
+  ]);
 
   const staffId  = String(f.get("staffId"));
   const name     = String(f.get("name")     ?? "").trim();
@@ -280,13 +285,21 @@ export async function updateStaff(
 
   if (!name) return { error: "Full name is required." };
 
-  const [existingStaff] = await db.select().from(staff)
-    .where(and(eq(staff.id, staffId), eq(staff.churchId, c.id))).limit(1);
-  if (!existingStaff) return { error: "Staff not found." };
+  const [existingStaff] = await db
+    .select()
+    .from(staff)
+    .where(eq(staff.id, staffId))
+    .limit(1);
+
+  if (!existingStaff || !allowedBranchIds.has(existingStaff.churchId)) {
+    return { error: "Staff not found." };
+  }
 
   if (existingStaff.email !== emailRaw) {
     const [dup] = await db.select().from(user).where(eq(user.email, emailRaw)).limit(1);
-    if (dup) return { error: "Another user is using that email." };
+    if (dup && dup.id !== existingStaff.userId) {
+      return { error: "Another user is using that email." };
+    }
   }
 
   if (existingStaff.userId === c.ownerId && role !== "admin") {
@@ -294,30 +307,45 @@ export async function updateStaff(
   }
 
   if (existingStaff.userId) {
-    await db.update(user).set({ name: username, email: emailRaw, updatedAt: new Date() })
+    await db
+      .update(user)
+      .set({ name: name || username, email: emailRaw, updatedAt: new Date() })
       .where(eq(user.id, existingStaff.userId));
   }
-  const finalDeptId = departmentId !== undefined ? departmentId : existingStaff.departmentId;
-  await db.update(staff).set({ email: emailRaw, role, departmentId: finalDeptId }).where(eq(staff.id, staffId));
 
-  if (role !== "admin") {
-    await db.delete(staffModule).where(eq(staffModule.staffId, staffId));
-    const wanted = MODULE_KEYS.filter((k) => modulesRaw.includes(k));
-    if (wanted.length > 0) {
-      await db.insert(staffModule).values(
-        wanted.map((module) => ({ churchId: c.id, staffId, module }))
-      );
-    }
+  const finalDeptId = departmentId !== undefined ? departmentId : existingStaff.departmentId;
+
+  // Update target staff row
+  await db
+    .update(staff)
+    .set({ email: emailRaw, role, departmentId: finalDeptId })
+    .where(eq(staff.id, staffId));
+
+  // If user has other branch staff records, keep role & email synchronized
+  if (existingStaff.userId) {
+    await db
+      .update(staff)
+      .set({ email: emailRaw, role })
+      .where(eq(staff.userId, existingStaff.userId));
+  } else if (existingStaff.email !== emailRaw) {
+    await db
+      .update(staff)
+      .set({ email: emailRaw, role })
+      .where(eq(staff.email, existingStaff.email));
   }
 
   // Sync branch assignments if provided
   const branchIdsRaw = f.getAll("branchIds") as string[];
-  if (branchIdsRaw.length > 0 && existingStaff.userId) {
+  if (branchIdsRaw.length > 0) {
     const targetBranches = new Set(branchIdsRaw);
     const currentRows = await db
       .select({ id: staff.id, churchId: staff.churchId })
       .from(staff)
-      .where(eq(staff.userId, existingStaff.userId));
+      .where(
+        existingStaff.userId
+          ? eq(staff.userId, existingStaff.userId)
+          : eq(staff.email, emailRaw)
+      );
     const currentBranchIds = new Set(currentRows.map((r) => r.churchId));
 
     // Remove from unselected branches
@@ -352,6 +380,33 @@ export async function updateStaff(
           }
         }
       }
+    }
+  }
+
+  // Update module permissions across all current branch staff rows for this user
+  const allCurrentStaffRows = existingStaff.userId
+    ? await db
+        .select({ id: staff.id, churchId: staff.churchId })
+        .from(staff)
+        .where(eq(staff.userId, existingStaff.userId))
+    : await db
+        .select({ id: staff.id, churchId: staff.churchId })
+        .from(staff)
+        .where(eq(staff.id, staffId));
+
+  if (role !== "admin") {
+    const wanted = MODULE_KEYS.filter((k) => modulesRaw.includes(k));
+    for (const sRow of allCurrentStaffRows) {
+      await db.delete(staffModule).where(eq(staffModule.staffId, sRow.id));
+      if (wanted.length > 0) {
+        await db.insert(staffModule).values(
+          wanted.map((module) => ({ churchId: sRow.churchId, staffId: sRow.id, module })),
+        );
+      }
+    }
+  } else {
+    for (const sRow of allCurrentStaffRows) {
+      await db.delete(staffModule).where(eq(staffModule.staffId, sRow.id));
     }
   }
 

@@ -334,11 +334,14 @@ function CreateStaffView({
       if ((state as any).emailSent === false) {
         toast.warning((state as any).message || "Staff created, but credentials email could not be sent.");
       } else {
-        toast.success((state as any).message || "Staff created! Login credentials and URL sent to email.");
+        toast.success(
+          (state as any).message ||
+            (isEditing ? "Staff profile updated successfully!" : "Staff created! Login credentials and URL sent to email.")
+        );
       }
       onClose();
     }
-  }, [state, onClose]);
+  }, [state, onClose, isEditing]);
 
   function toggleModule(key: string) {
     setSelectedModules((prev) => {
@@ -607,14 +610,25 @@ function CreateStaffView({
                     <span className="text-xs sm:text-sm font-semibold text-slate-700">Activate account immediately</span>
                   </label>
                 ) : <div />}
-                <button
-                  type="button"
-                  disabled={!step1Valid}
-                  onClick={() => setStep(2)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-7 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-                >
-                  Next: Customize Permissions
-                </button>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+                  {isEditing && (
+                    <button
+                      type="submit"
+                      disabled={!step1Valid || pending}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      {pending ? "Saving…" : "Save Changes"}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={!step1Valid}
+                    onClick={() => setStep(2)}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-7 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    Next: Customize Permissions
+                  </button>
+                </div>
               </div>
             </div>
           )}
