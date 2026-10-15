@@ -144,23 +144,38 @@ export function AppShell({
     const entries = cat.entries.flatMap((e): NavEntry[] => {
       if (e.type === "item") {
         if (e.item.module === "department_portal") {
-          // If the user has the admin department_portal module ticked or is superadmin
-          if (hasModule(modules, "department_portal") || isAdmin) {
-            return [e];
-          }
-          // If the staff member is assigned to a department, they see their department's portal!
+          const items: NavEntry[] = [];
+          const hasAdminPortal = hasModule(modules, "department_portal") || isAdmin;
+
+          // 1. If assigned to a department, their specific department head portal is ALWAYS present
           if (assignedDepartment) {
-            return [{
+            items.push({
               type: "item" as const,
               item: {
-                href: "/department-portal",
+                href: hasAdminPortal
+                  ? `/department-portal?deptId=${assignedDepartment.id}`
+                  : "/department-portal",
                 module: "department_portal" as const,
                 label: `${assignedDepartment.name} Portal`,
                 icon: e.item.icon,
               },
-            }];
+            });
           }
-          return [];
+
+          // 2. If they also have the admin department portal checked or are admin, include the Admin Department Portal
+          if (hasAdminPortal) {
+            items.push({
+              type: "item" as const,
+              item: {
+                href: "/department-portal",
+                module: "department_portal" as const,
+                label: assignedDepartment ? "Department Portal (Admin)" : "Department Portal",
+                icon: e.item.icon,
+              },
+            });
+          }
+
+          return items;
         }
 
         return hasModule(modules, e.item.module) ? [e] : [];
@@ -238,7 +253,20 @@ export function AppShell({
                 {cat.entries.map((entry) => {
                   if (entry.type === "item") {
                     const { href, label, icon: Icon } = entry.item;
-                    const active = pathname === href || pathname.startsWith(href + "/");
+                    let active = false;
+                    if (href.includes("?deptId=")) {
+                      const deptParam = new URLSearchParams(href.split("?")[1]).get("deptId");
+                      active = pathname === "/department-portal" && searchParams.get("deptId") === deptParam;
+                    } else if (href === "/department-portal") {
+                      if (assignedDepartment && (hasModule(modules, "department_portal") || isAdmin)) {
+                        const currentDeptParam = searchParams.get("deptId");
+                        active = pathname === "/department-portal" && (!currentDeptParam || currentDeptParam !== assignedDepartment.id);
+                      } else {
+                        active = pathname === "/department-portal";
+                      }
+                    } else {
+                      active = pathname === href || pathname.startsWith(href + "/");
+                    }
                     return (
                       <Link
                         key={href}
