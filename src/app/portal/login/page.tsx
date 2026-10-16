@@ -31,18 +31,12 @@ export default async function MemberLoginPage({
       <div className="w-full max-w-5xl mx-auto flex items-center justify-between gap-2 py-2">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-white border border-slate-200/80 shadow-xs overflow-hidden p-1">
-            {churchData?.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={churchData.logoUrl}
-                alt={churchData.name || "Church Logo"}
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center rounded-xl bg-gradient-to-br from-blue-700 to-indigo-800 text-white">
-                <Church className="h-5 w-5" />
-              </div>
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={churchData?.logoUrl || "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png"}
+              alt={churchData?.name || "World Ark Missions"}
+              className="h-full w-full object-contain"
+            />
           </div>
           <div className="min-w-0">
             <span className="text-xs font-black uppercase tracking-wider text-slate-900 block truncate max-w-[140px] min-[400px]:max-w-[220px] sm:max-w-none">

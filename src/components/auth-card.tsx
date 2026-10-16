@@ -3,17 +3,46 @@
 import { useState } from "react";
 import { Church, Eye, EyeOff } from "lucide-react";
 
-export function AuthCard({ title, subtitle, logoUrl, children }: { title: string; subtitle: string; logoUrl?: string | null; children: React.ReactNode }) {
+export const DEFAULT_CHURCH_LOGO =
+  "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png";
+
+export function AuthCard({
+  title,
+  subtitle,
+  logoUrl,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  logoUrl?: string | null;
+  children: React.ReactNode;
+}) {
+  const [currentSrc, setCurrentSrc] = useState<string>(logoUrl || DEFAULT_CHURCH_LOGO);
+  const [hasError, setHasError] = useState(false);
+
+  function handleError() {
+    if (currentSrc !== "/wam.png") {
+      setCurrentSrc("/wam.png");
+    } else {
+      setHasError(true);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-start justify-center px-4 py-12">
       <div className="w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-slate-200">
         <div className="bg-[#1E3A8A] px-8 py-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 overflow-hidden">
-            {logoUrl ? (
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-md overflow-hidden p-1.5">
+            {!hasError ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="Church Logo" className="h-full w-full object-contain bg-white" />
+              <img
+                src={currentSrc}
+                alt="Church Logo"
+                className="h-full w-full object-contain"
+                onError={handleError}
+              />
             ) : (
-              <Church className="h-7 w-7 text-white" />
+              <Church className="h-8 w-8 text-[#1E3A8A]" />
             )}
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-white">{title}</h1>
@@ -61,14 +90,22 @@ export function Field({
   );
 }
 
-export function SubmitButton({ children, pending }: { children: React.ReactNode; pending?: boolean }) {
+export function SubmitButton({
+  children,
+  pending = false,
+  className,
+}: {
+  children: React.ReactNode;
+  pending?: boolean;
+  className?: string;
+}) {
   return (
     <button
       type="submit"
       disabled={pending}
-      className="w-full h-12 rounded-xl bg-primary text-primary-foreground text-sm font-extrabold shadow-button transition-all hover:opacity-95 active:scale-[0.98] disabled:opacity-60"
+      className={`flex h-12 w-full items-center justify-center rounded-xl bg-[#1E3A8A] font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:bg-blue-900 active:scale-[0.99] disabled:opacity-50 ${className ?? ""}`}
     >
-      {pending ? "Please wait…" : children}
+      {pending ? "Please wait..." : children}
     </button>
   );
 }

@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { AuthCard } from "@/components/auth-card";
+import { AuthCard, DEFAULT_CHURCH_LOGO } from "@/components/auth-card";
 import { LoginForm } from "./login-form";
 import { db } from "@/db";
 
@@ -17,7 +17,7 @@ export default async function LoginPage() {
     <AuthCard
       title="Welcome back"
       subtitle="Sign in to World Ark Missions"
-      logoUrl={churchData?.logoUrl}
+      logoUrl={churchData?.logoUrl || DEFAULT_CHURCH_LOGO}
     >
       <Suspense>
         <LoginForm />
