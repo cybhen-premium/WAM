@@ -47,7 +47,10 @@ export const getUser = cache(async () => {
       4,
     );
     return session?.user ?? null;
-  } catch (err) {
+  } catch (err: any) {
+    if (err && (err.digest === "DYNAMIC_SERVER_USAGE" || err.message?.includes("Dynamic server usage"))) {
+      throw err;
+    }
     console.error("[Session] Error fetching user session from database:", err);
     return null;
   }
