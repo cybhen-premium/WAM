@@ -3,6 +3,8 @@ import { AuthCard } from "@/components/auth-card";
 import { LoginForm } from "./login-form";
 import { db } from "@/db";
 
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   let churchData = null;
   try {

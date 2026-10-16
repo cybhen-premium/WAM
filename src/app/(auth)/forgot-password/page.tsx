@@ -1,6 +1,8 @@
 import { db } from "@/db";
 import { ForgotPasswordWrapper } from "./forgot-password-wrapper";
 
+export const dynamic = "force-dynamic";
+
 export default async function ForgotPasswordPage() {
   let churchData = null;
   try {

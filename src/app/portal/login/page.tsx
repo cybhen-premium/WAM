@@ -4,6 +4,8 @@ import { Church, ShieldCheck, Heart, Clock } from "lucide-react";
 import { MemberLoginForm } from "./login-form";
 import { db } from "@/db";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Member Portal Login",
   description: "Access your church member dashboard, tithes, welfare dues, and pastoral support.",
@@ -16,7 +18,12 @@ export default async function MemberLoginPage({
 }) {
   const params = await searchParams;
   const isTimedOut = params?.reason === "timeout" || params?.expired === "true";
-  const churchData = await db.query.church.findFirst();
+  let churchData = null;
+  try {
+    churchData = await db.query.church.findFirst();
+  } catch (err) {
+    console.warn("[MemberLoginPage] Unable to fetch church branding:", err);
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-100/60 to-slate-200/50 flex flex-col justify-between p-4 sm:p-6 md:p-8">

@@ -3,6 +3,8 @@ import { AuthCard } from "@/components/auth-card";
 import { ForcePasswordForm } from "./force-password-form";
 import { db } from "@/db";
 
+export const dynamic = "force-dynamic";
+
 export default async function ForcePasswordChangePage() {
   let churchData = null;
   try {
