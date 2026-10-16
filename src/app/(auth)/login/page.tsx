@@ -4,7 +4,12 @@ import { LoginForm } from "./login-form";
 import { db } from "@/db";
 
 export default async function LoginPage() {
-  const churchData = await db.query.church.findFirst();
+  let churchData = null;
+  try {
+    churchData = await db.query.church.findFirst();
+  } catch (err) {
+    console.warn("[LoginPage] Unable to fetch church branding (database offline or quota reached):", err);
+  }
 
   return (
     <AuthCard

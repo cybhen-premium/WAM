@@ -157,15 +157,15 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
       <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left border-collapse">
-            <thead className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-black uppercase tracking-wider text-slate-400">
+            <thead className="bg-slate-50/80 border-b border-slate-200/80 text-[10.5px] font-black uppercase tracking-wider text-slate-400 select-none">
               <tr>
-                <th className="py-3 pl-4 sm:pl-5 pr-2.5 min-w-[210px]">Member Profile</th>
-                <th className="py-3 px-2 sm:px-2.5 min-w-[110px]">Ministry</th>
-                <th className="py-3 px-2 sm:px-2.5 min-w-[120px]">Department</th>
-                <th className="py-3 px-2 sm:px-2.5 min-w-[110px]">Contact</th>
-                <th className="py-3 px-2 sm:px-2.5 min-w-[100px]">Location</th>
-                <th className="py-3 px-2 sm:px-2.5 min-w-[95px]">Celebrations</th>
-                <th className="py-3 pl-2 pr-4 sm:pr-5 text-right min-w-[130px]">Actions</th>
+                <th className="py-2.5 pl-3.5 sm:pl-4 pr-1.5 w-[26%]">Member Profile</th>
+                <th className="py-2.5 px-1.5 sm:px-2 w-[12%]">Ministry</th>
+                <th className="py-2.5 px-1.5 sm:px-2 w-[14%]">Department</th>
+                <th className="py-2.5 px-1.5 sm:px-2 w-[13%]">Contact</th>
+                <th className="py-2.5 px-1.5 sm:px-2 w-[11%]">Location</th>
+                <th className="py-2.5 px-1.5 sm:px-2 w-[10%]">Celebrations</th>
+                <th className="py-2.5 pl-1 pr-3 sm:pr-4 text-right w-[14%]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

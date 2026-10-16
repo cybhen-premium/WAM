@@ -7,6 +7,7 @@ import { requireChurch } from "@/lib/session";
 import { requireModule, isBranchWithDisabledAdmin } from "@/lib/permissions";
 import { MODULE_KEYS } from "@/lib/modules";
 import { logActivity } from "@/lib/activity";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
 
 const { church, staff, staffModule, user: userTable, account } = schema;
 
@@ -65,8 +66,17 @@ export async function saveBranding(_prev: FormState, f: FormData): Promise<FormS
   await requireModule("settings");
   const { church: c } = await requireAdmin();
   const color = (k: string, fallback: string) => (/^#[0-9a-f]{6}$/i.test(s(f, k)) ? s(f, k) : fallback);
-  const logo = s(f, "logoUrl");
+  let logo = s(f, "logoUrl");
   if (logo && !/^(https:\/\/|data:image\/|\/)/.test(logo)) return { error: "Logo must be a valid image URL or upload." };
+  if (logo && logo.startsWith("data:")) {
+    try {
+      const uploaded = await uploadImageToCloudinary(logo, "churchy/branding");
+      logo = uploaded.url;
+    } catch (err: any) {
+      console.error("Cloudinary church branding logo upload failed:", err);
+      return { error: `Failed to upload logo: ${err?.message || "Unknown error"}` };
+    }
+  }
   await db
     .update(church)
     .set({

@@ -22,6 +22,8 @@ import {
 import { MODULES, MODULE_KEYS } from "@/lib/modules";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useTablePagination } from "@/components/table-pagination";
+import { toast } from "sonner";
+import { uploadImageAction } from "@/lib/cloudinary-actions";
 
 type Church = typeof schema.church.$inferSelect;
 
@@ -162,6 +164,7 @@ function ColorPicker({ name, defaultValue }: { name: string; defaultValue: strin
 export function BrandingForm({ church }: { church: Church }) {
   const [state, action, pending] = useFormAction(saveBranding);
   const [logo, setLogo] = useState(church.logoUrl ?? "");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     setLogo(church.logoUrl ?? "");
@@ -177,25 +180,44 @@ export function BrandingForm({ church }: { church: Church }) {
           </div>
           <div className="flex-1 space-y-3">
             <Input
-              title="Official Organization Logo (image URL or upload)"
+              title="Official Organization Logo (image URL or upload to Cloudinary)"
               name="logoUrl"
               type="text"
-              placeholder="https://…/logo.png"
+              placeholder="https://res.cloudinary.com/…/logo.png"
               value={logo}
               onChange={(e) => setLogo(e.target.value)}
             />
-            <label className="inline-flex items-center gap-2 cursor-pointer rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200">
-              Upload Image File
+            <label className="inline-flex items-center gap-2 cursor-pointer rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200 transition-colors">
+              {uploadingLogo ? "Uploading to Cloudinary..." : "Upload Logo to Cloudinary"}
               <input
                 type="file"
                 accept="image/*"
+                disabled={uploadingLogo}
                 className="hidden"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
+                  if (!file) return;
+                  try {
+                    setUploadingLogo(true);
+                    toast.loading("Uploading logo to Cloudinary...", { id: "upload-logo" });
                     const reader = new FileReader();
-                    reader.onloadend = () => setLogo(reader.result as string);
+                    reader.onloadend = async () => {
+                      const dataUrl = reader.result as string;
+                      const res = await uploadImageAction(dataUrl, "churchy/branding");
+                      if (res.ok && res.url) {
+                        setLogo(res.url);
+                        toast.success("Logo uploaded to Cloudinary!", { id: "upload-logo" });
+                      } else {
+                        toast.error(res.error || "Failed to upload logo to Cloudinary.", { id: "upload-logo" });
+                      }
+                      setUploadingLogo(false);
+                    };
                     reader.readAsDataURL(file);
+                  } catch {
+                    toast.error("Failed to process logo image.", { id: "upload-logo" });
+                    setUploadingLogo(false);
+                  } finally {
+                    e.target.value = "";
                   }
                 }}
               />

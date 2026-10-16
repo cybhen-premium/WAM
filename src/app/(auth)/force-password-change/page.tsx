@@ -4,7 +4,12 @@ import { ForcePasswordForm } from "./force-password-form";
 import { db } from "@/db";
 
 export default async function ForcePasswordChangePage() {
-  const churchData = await db.query.church.findFirst();
+  let churchData = null;
+  try {
+    churchData = await db.query.church.findFirst();
+  } catch (err) {
+    console.warn("[ForcePasswordChangePage] Unable to fetch church branding:", err);
+  }
 
   return (
     <AuthCard

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft, ArrowUpDown, Ban, Check, CheckCircle, ChevronDown,
   Edit2, Eye, EyeOff, Filter, Plus, Search, Shield, Trash2, X, XCircle, Users, Church,
-  Mail, Smartphone, RotateCcw,
+  Mail, Smartphone, RotateCcw, Key,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -310,6 +310,9 @@ function CreateStaffView({
   const [username, setUsername] = useState((initialData as any)?.name ? toUsername((initialData as any).name) : "");
   const [email, setEmail] = useState((initialData as any)?.email || "");
   const [password, setPassword] = useState(DEFAULT_PASSWORD);
+  const [resetPassword, setResetPassword] = useState(false);
+  const [editPassword, setEditPassword] = useState(DEFAULT_PASSWORD);
+  const [sendResetEmail, setSendResetEmail] = useState(true);
   const [role, setRole] = useState<string>(initialData?.role || "Akwaaba");
   const [activate, setActivate] = useState(!initialData || (initialData as ActiveStaff).status === "active");
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set(initialData?.modules || []));
@@ -406,7 +409,14 @@ function CreateStaffView({
           <input type="hidden" name="name"     value={fullName} />
           <input type="hidden" name="username" value={username} />
           <input type="hidden" name="email"    value={email} />
-          <input type="hidden" name="password" value={password} />
+          {!isEditing && <input type="hidden" name="password" value={password} />}
+          {isEditing && resetPassword && (
+            <>
+              <input type="hidden" name="resetPassword" value="on" />
+              <input type="hidden" name="password" value={editPassword} />
+              {sendResetEmail && <input type="hidden" name="sendCredentialsEmail" value="on" />}
+            </>
+          )}
           <input type="hidden" name="role"     value={role} />
           {/* Branch assignments */}
           {[...selectedBranches].map((bId) => (
@@ -588,6 +598,74 @@ function CreateStaffView({
                       An email containing the <strong>login portal URL</strong> and default password (<span className="font-mono font-bold">{password}</span>) will be automatically sent upon creation.
                     </p>
                   </div>
+                </div>
+              )}
+
+              {/* Password Management for existing staff */}
+              {isEditing && (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={resetPassword}
+                        onChange={(e) => setResetPassword(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                      />
+                      <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                        <Key className="h-4 w-4 text-blue-600" />
+                        Reset user password
+                      </span>
+                    </label>
+                    <span className="text-[11px] font-semibold text-slate-400">
+                      {resetPassword ? "New password will be set" : "Keeps current password"}
+                    </span>
+                  </div>
+
+                  {resetPassword ? (
+                    <div className="pt-3 space-y-3 border-t border-slate-200/80">
+                      <label className="block">
+                        <span className="mb-1.5 block text-xs font-bold text-slate-700">
+                          New Temporary Password <span className="text-red-500">*</span>
+                        </span>
+                        <div className="relative">
+                          <input
+                            type={showPass ? "text" : "password"}
+                            value={editPassword}
+                            onChange={(e) => setEditPassword(e.target.value)}
+                            placeholder="WAMCHURCH@26"
+                            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 pr-12 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 tracking-widest transition-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPass((v) => !v)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                          >
+                            {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-400">
+                          The user will be required to change this password on their next login.
+                        </p>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={sendResetEmail}
+                          onChange={(e) => setSendResetEmail(e.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-slate-300 accent-blue-600 cursor-pointer"
+                        />
+                        <span className="text-xs font-semibold text-slate-600">
+                          Email new login credentials and URL to {email || "staff member"}
+                        </span>
+                      </label>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      Leave this unchecked to keep the user's existing login credentials intact.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1179,19 +1257,20 @@ export function StaffsClient({
                                 </button>
                               )}
 
-                              {/* Resend credentials button */}
+                              {/* Resend credentials button (resets DB password & emails credentials) */}
                               {isAdmin && !s.self && (
                                 <button
                                   type="button"
-                                  title="Send login URL and default password via email"
+                                  title="Reset password to default (WAMCHURCH@26) and email login credentials"
                                   disabled={busy}
                                   onClick={() => {
                                     startTransition(async () => {
+                                      toast.loading(`Resetting password and emailing credentials to ${s.email}...`, { id: `resend-${s.id}` });
                                       const res = await resendStaffCredentials(s.id);
                                       if (res?.ok) {
-                                        toast.success(res.message || `Credentials sent to ${s.email}`);
+                                        toast.success(res.message || `Credentials sent to ${s.email}`, { id: `resend-${s.id}` });
                                       } else {
-                                        toast.error(res?.error || "Failed to send credentials email");
+                                        toast.error(res?.error || "Failed to send credentials email", { id: `resend-${s.id}` });
                                       }
                                     });
                                   }}

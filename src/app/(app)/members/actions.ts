@@ -9,6 +9,7 @@ import { sendSms, withFooter } from "@/lib/sms";
 import { requireModule } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
 import { generateMemberIdCode, getPortalUrl } from "@/lib/member-portal";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
 
 const VISITOR = "Visitor";
 const REGULAR_ATTENDEE = "Regular Attendee";
@@ -197,6 +198,17 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
   const values = readMember(form);
   if (!values.fullName) return { error: "Full name is required." };
 
+  let photoUrl = values.photoUrl;
+  if (photoUrl && photoUrl.startsWith("data:")) {
+    try {
+      const uploaded = await uploadImageToCloudinary(photoUrl, "churchy/members");
+      photoUrl = uploaded.url;
+    } catch (err: any) {
+      console.error("Cloudinary member photo fallback upload failed:", err);
+      return { error: `Failed to upload member photo: ${err?.message || "Unknown error"}` };
+    }
+  }
+
   const id = String(form.get("id") ?? "");
 
   // Duplicate Check against existing records in this church branch
@@ -253,7 +265,7 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
       (values.category !== VISITOR && values.category !== REGULAR_ATTENDEE);
     await db
       .update(member)
-      .set({ ...values, ...(converted ? { convertedAt: new Date().toISOString().slice(0, 10) } : {}) })
+      .set({ ...values, photoUrl, ...(converted ? { convertedAt: new Date().toISOString().slice(0, 10) } : {}) })
       .where(and(eq(member.id, id), eq(member.churchId, church.id)));
     logActivity({
       module: "members",
@@ -265,7 +277,7 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
     const memberIdCode = await generateMemberIdCode(church.name);
     const [created] = await db
       .insert(member)
-      .values({ ...values, memberIdCode, churchId: church.id })
+      .values({ ...values, photoUrl, memberIdCode, churchId: church.id })
       .returning({ id: member.id, memberIdCode: member.memberIdCode });
 
     if (values.phone) {

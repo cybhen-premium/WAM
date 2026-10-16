@@ -15,9 +15,21 @@ export async function updateMemberPhoto(photoUrl: string): Promise<{ ok: boolean
     return { ok: false, error: "Photo URL or image data is required." };
   }
 
+  let finalPhotoUrl = photoUrl;
+  if (photoUrl.startsWith("data:")) {
+    try {
+      const { uploadImageToCloudinary } = await import("@/lib/cloudinary");
+      const uploaded = await uploadImageToCloudinary(photoUrl, "churchy/members");
+      finalPhotoUrl = uploaded.url;
+    } catch (err: any) {
+      console.error("[updateMemberPhoto] Cloudinary upload error:", err);
+      return { ok: false, error: "Failed to upload photo to Cloudinary." };
+    }
+  }
+
   await db
     .update(schema.member)
-    .set({ photoUrl })
+    .set({ photoUrl: finalPhotoUrl })
     .where(eq(schema.member.id, session.member.id));
 
   // Log activity in church audit log

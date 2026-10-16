@@ -2,7 +2,12 @@ import { db } from "@/db";
 import { ForgotPasswordWrapper } from "./forgot-password-wrapper";
 
 export default async function ForgotPasswordPage() {
-  const churchData = await db.query.church.findFirst();
+  let churchData = null;
+  try {
+    churchData = await db.query.church.findFirst();
+  } catch (err) {
+    console.warn("[ForgotPasswordPage] Unable to fetch church branding:", err);
+  }
 
   return <ForgotPasswordWrapper logoUrl={churchData?.logoUrl} />;
 }

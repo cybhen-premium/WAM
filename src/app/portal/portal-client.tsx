@@ -40,6 +40,7 @@ import {
   markAllNotificationsRead,
   logoutMemberPortal,
 } from "./actions";
+import { uploadImageAction } from "@/lib/cloudinary-actions";
 
 type Member = {
   id: string;
@@ -247,7 +248,19 @@ export function MemberPortalClient({
   function handleSavePhoto() {
     if (!previewPhoto) return;
     startPhotoTransition(async () => {
-      const res = await updateMemberPhoto(previewPhoto);
+      let finalPhotoUrl = previewPhoto;
+      if (previewPhoto.startsWith("data:")) {
+        toast.loading("Uploading picture to Cloudinary...", { id: "portal-photo-upload" });
+        const res = await uploadImageAction(previewPhoto, "churchy/members");
+        if (!res.ok || !res.url) {
+          toast.error(res.error || "Failed to upload photo to Cloudinary.", { id: "portal-photo-upload" });
+          return;
+        }
+        finalPhotoUrl = res.url;
+        toast.success("Picture uploaded to Cloudinary!", { id: "portal-photo-upload" });
+      }
+
+      const res = await updateMemberPhoto(finalPhotoUrl);
       if (!res.ok) {
         toast.error(res.error || "Failed to update profile picture.");
         return;

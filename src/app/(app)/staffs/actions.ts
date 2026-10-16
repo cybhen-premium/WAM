@@ -162,7 +162,7 @@ export async function createStaff(
         continue;
       }
 
-      // Existing user: ensure they have a credential account record
+      // Existing user: ensure they have a credential account record with the specified password
       const [existingAccount] = await db
         .select({ id: account.id })
         .from(account)
@@ -180,7 +180,17 @@ export async function createStaff(
           createdAt: now,
           updatedAt: now,
         });
+      } else {
+        await db.update(account).set({
+          password: hashed,
+          updatedAt: now,
+        }).where(eq(account.id, existingAccount.id));
       }
+
+      await db.update(user).set({
+        passwordChangeRequired: true,
+        updatedAt: now,
+      }).where(eq(user.id, finalUserId));
     }
 
     let currentStaffId = "";
@@ -311,6 +321,63 @@ export async function updateStaff(
       .update(user)
       .set({ name: name || username, email: emailRaw, updatedAt: new Date() })
       .where(eq(user.id, existingStaff.userId));
+  }
+
+  const newPassword = String(f.get("password") ?? "").trim();
+  const resetPass = f.get("resetPassword") === "on";
+
+  if (existingStaff.userId && (newPassword || resetPass)) {
+    const passToSet = newPassword || "WAMCHURCH@26";
+    const hashed = await hashPassword(passToSet);
+    const now = new Date();
+
+    const [existingAcc] = await db
+      .select({ id: account.id })
+      .from(account)
+      .where(and(eq(account.userId, existingStaff.userId), eq(account.providerId, "credential")))
+      .limit(1);
+
+    if (existingAcc) {
+      await db.update(account).set({
+        password: hashed,
+        updatedAt: now,
+      }).where(eq(account.id, existingAcc.id));
+    } else {
+      const accountId = crypto.randomUUID().replace(/-/g, "");
+      await db.insert(account).values({
+        id: accountId,
+        accountId: existingStaff.userId,
+        providerId: "credential",
+        userId: existingStaff.userId,
+        password: hashed,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    await db.update(user).set({
+      passwordChangeRequired: true,
+      updatedAt: now,
+    }).where(eq(user.id, existingStaff.userId));
+
+    if (f.get("sendCredentialsEmail") === "on" || resetPass) {
+      const appUrl = await resolveAppUrl();
+      const loginUrl = `${appUrl}/login`;
+      try {
+        await sendStaffWelcomeEmail({
+          to: emailRaw,
+          name: name || username,
+          username: toUsername(name),
+          role,
+          churchName: c.name,
+          loginUrl,
+          temporaryPassword: passToSet,
+          isReset: true,
+        });
+      } catch (err) {
+        console.error("Failed to send reset email during staff update:", err);
+      }
+    }
   }
 
   const finalDeptId = departmentId !== undefined ? departmentId : existingStaff.departmentId;
@@ -582,6 +649,7 @@ export async function resetStaffPassword(staffId: string, customPassword?: strin
     .select({
       id: staff.id,
       email: staff.email,
+      role: staff.role,
       userId: staff.userId,
     })
     .from(staff)
@@ -667,11 +735,19 @@ export async function resetStaffPassword(staffId: string, customPassword?: strin
   const loginUrl = `${appUrl}/login`;
   let emailSent = false;
 
+  const [targetUserRow] = targetUserId
+    ? await db.select({ name: user.name }).from(user).where(eq(user.id, targetUserId)).limit(1)
+    : [];
+
+  const displayName = targetUserRow?.name || targetStaff.email.split("@")[0];
+  const displayUsername = toUsername(displayName);
+
   try {
     await sendStaffWelcomeEmail({
       to: targetStaff.email,
-      name: targetStaff.email.split("@")[0],
-      role: "Staff",
+      name: displayName,
+      username: displayUsername,
+      role: targetStaff.role || "Staff",
       churchName: c.name,
       loginUrl,
       temporaryPassword,
@@ -705,27 +781,15 @@ export async function resendStaffCredentials(staffId: string) {
     return { ok: false, error: "Staff member not found." };
   }
 
-  const [targetUser] = targetStaff.userId
-    ? await db.select({ name: user.name }).from(user).where(eq(user.id, targetStaff.userId)).limit(1)
-    : [];
-
-  const appUrl = await resolveAppUrl();
-  const loginUrl = `${appUrl}/login`;
-  const defaultPassword = "WAMCHURCH@26";
-
-  try {
-    await sendStaffWelcomeEmail({
-      to: targetStaff.email,
-      name: targetUser?.name || targetStaff.email.split("@")[0],
-      role: targetStaff.role,
-      churchName: c.name,
-      loginUrl,
-      temporaryPassword: defaultPassword,
-    });
-    return { ok: true, message: `Login URL & default password sent to ${targetStaff.email}.` };
-  } catch (err: any) {
-    console.error("Failed to resend credentials:", err);
-    return { ok: false, error: err?.message || "Failed to send credentials email." };
+  // Actively reset the password in the database so the emailed credentials work!
+  const resetRes = await resetStaffPassword(staffId, "WAMCHURCH@26");
+  if (!resetRes.ok) {
+    return { ok: false, error: resetRes.error || "Failed to reset password." };
   }
+
+  return {
+    ok: true,
+    message: `Password reset to WAMCHURCH@26 and credentials emailed to ${targetStaff.email}.`,
+  };
 }
 

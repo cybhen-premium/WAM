@@ -21,6 +21,7 @@
     "@vercel/config": "^0.7.1",
     "ai": "^7.0.107",
     "better-auth": "^1.7.5",
+    "cloudinary": "^2.11.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.3",
     "lucide-react": "^1.47.0",

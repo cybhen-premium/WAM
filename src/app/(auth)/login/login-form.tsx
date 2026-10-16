@@ -77,13 +77,31 @@ export function LoginForm() {
     // Resolve username to email if a username was entered
     const email = await resolveLoginEmail(rawIdentifier);
 
-    const { data, error: signInError } = await authClient.signIn.email({
+    if (!email.includes("@")) {
+      setPending(false);
+      return setError(`No account found matching "${rawIdentifier}". Please check your username or use your email address.`);
+    }
+
+    let signInResult = await authClient.signIn.email({
       email,
       password,
     });
+
+    // If initial attempt fails and the password entered has leading/trailing spaces (e.g. from copy-pasting), retry with trimmed password
+    if (signInResult.error && password.trim() !== password) {
+      const retryResult = await authClient.signIn.email({
+        email,
+        password: password.trim(),
+      });
+      if (!retryResult.error) {
+        signInResult = retryResult;
+      }
+    }
+
+    const { data, error: signInError } = signInResult;
     setPending(false);
     if (signInError) {
-      return setError("Invalid email/username or password");
+      return setError("Invalid email/username or password. Please verify your credentials and try again.");
     }
     
     if ((data as any)?.twoFactorRedirect) {

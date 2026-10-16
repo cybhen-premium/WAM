@@ -14,7 +14,7 @@ import { landingHref, moduleForPath, getMyPermissions } from "@/lib/permissions"
 /**
  * Resolves a login input that could be either an email or a username.
  * If an email (contains @), returns normalized lowercase email.
- * If a username, looks up the user by name (case-insensitive) and returns their email.
+ * If a username, looks up the user by name, stripped username, or email prefix.
  */
 export async function resolveLoginEmail(identifier: string): Promise<string> {
   const trimmed = (identifier ?? "").trim();
@@ -23,14 +23,47 @@ export async function resolveLoginEmail(identifier: string): Promise<string> {
     return trimmed.toLowerCase();
   }
 
-  // Look up specific user by username (case-insensitive)
+  // 1. Direct case-insensitive match on user.name
   const [matched] = await db
     .select({ email: schema.user.email })
     .from(schema.user)
     .where(ilike(schema.user.name, trimmed))
     .limit(1);
 
-  return matched?.email ? matched.email.toLowerCase() : trimmed.toLowerCase();
+  if (matched?.email) {
+    return matched.email.toLowerCase();
+  }
+
+  // 2. Match on email username before @ (e.g. "mw6674759" from "mw6674759@gmail.com")
+  const [matchedPrefix] = await db
+    .select({ email: schema.user.email })
+    .from(schema.user)
+    .where(ilike(schema.user.email, `${trimmed}@%`))
+    .limit(1);
+
+  if (matchedPrefix?.email) {
+    return matchedPrefix.email.toLowerCase();
+  }
+
+  // 3. Normalized / stripped whitespace match (e.g. "johndoe" vs "John Doe")
+  const cleanInput = trimmed.toLowerCase().replace(/[\s._-]+/g, "");
+  if (cleanInput) {
+    const allUsers = await db
+      .select({ email: schema.user.email, name: schema.user.name })
+      .from(schema.user);
+
+    const fuzzy = allUsers.find((u) => {
+      const uName = (u.name || "").toLowerCase().replace(/[\s._-]+/g, "");
+      const uEmailPrefix = (u.email || "").split("@")[0].toLowerCase().replace(/[\s._-]+/g, "");
+      return uName === cleanInput || uEmailPrefix === cleanInput;
+    });
+
+    if (fuzzy?.email) {
+      return fuzzy.email.toLowerCase();
+    }
+  }
+
+  return trimmed.toLowerCase();
 }
 
 export async function checkLoginStatus(targetNext?: string) {
