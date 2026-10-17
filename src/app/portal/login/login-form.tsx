@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   Church,
   KeyRound,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   ArrowLeft,
   Smartphone,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -165,45 +167,37 @@ export function MemberLoginForm({
     <div className="w-full max-w-md mx-auto">
       {/* Step 1: Initial Member ID or Phone Lookup */}
       {state.step === "initial" && (
-        <form onSubmit={handleLookup} className="space-y-6">
-          <div className="space-y-2">
-            <label htmlFor="memberId" className="block text-xs font-black uppercase tracking-wider text-slate-700">
+        <form onSubmit={handleLookup} className="space-y-5">
+          <div className="space-y-1.5">
+            <span className="block px-1 text-[10px] font-extrabold uppercase tracking-tight text-slate-400">
               Member ID or Phone Number
-            </label>
-            <div className="relative">
+            </span>
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 h-12 focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/20 transition-all">
+              <Smartphone className="h-4 w-4 text-slate-400 shrink-0" />
               <input
                 id="memberId"
                 type="text"
                 autoComplete="username"
                 value={memberCode}
                 onChange={(e) => setMemberCode(e.target.value.toUpperCase())}
-                placeholder="e.g. HSC-8K2P, WAM-DE8N or 0201610477"
+                placeholder="e.g. HSC-8K2P or 0244123456"
                 required
-                className="w-full h-13 pl-4 pr-12 rounded-2xl border-2 border-slate-200 bg-white font-mono text-base sm:text-lg font-black tracking-wider text-slate-900 placeholder:text-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-100 outline-none transition-all uppercase"
+                className="w-full bg-transparent font-mono text-sm sm:text-base font-bold text-slate-900 placeholder:text-slate-400 outline-none uppercase"
               />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                <Smartphone className="h-5 w-5" />
-              </div>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-bold text-slate-500 pt-0.5">
-              <span className="inline-flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                Holy Spirit: <strong className="font-mono text-blue-700">HSC-XXXX</strong>
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                Central: <strong className="font-mono text-indigo-700">WAM-XXXX</strong>
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-slate-500 pt-1 px-1">
+              <span>Holy Spirit: <strong className="font-mono text-[#1E3A8A]">HSC-XXXX</strong></span>
+              <span>Central: <strong className="font-mono text-[#1E3A8A]">WAM-XXXX</strong></span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">
-              Registered members can sign in with either Member ID or their registered phone number.
+            <p className="text-[11px] text-slate-400 font-medium px-1">
+              Sign in with your branch Member ID or registered phone number.
             </p>
           </div>
 
           <button
             type="submit"
             disabled={pending || !memberCode.trim()}
-            className="w-full h-12 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-800 text-white font-black text-sm tracking-wide shadow-lg shadow-blue-700/25 hover:from-blue-600 hover:to-indigo-700 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1E3A8A] font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:bg-blue-900 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
           >
             {pending ? (
               <>
@@ -217,6 +211,29 @@ export function MemberLoginForm({
               </>
             )}
           </button>
+
+          <div className="pt-3 text-center space-y-2 border-t border-slate-100">
+            <p className="text-xs text-slate-500">
+              Need assistance with your Member ID?{" "}
+              <span className="font-semibold text-slate-700">Contact church office</span>
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-1 text-xs">
+              <Link
+                href="/shepherd/login"
+                className="font-bold text-[#1E3A8A] hover:underline"
+              >
+                Shepherd Portal Sign In →
+              </Link>
+              <span className="text-slate-300">•</span>
+              <Link
+                href="/login"
+                className="font-bold text-[#1E3A8A] hover:underline"
+              >
+                Staff / Admin Login →
+              </Link>
+            </div>
+          </div>
         </form>
       )}
 
@@ -329,26 +346,29 @@ export function MemberLoginForm({
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
+              <span className="block px-1 text-[10px] font-extrabold uppercase tracking-tight text-slate-400 mb-1.5">
                 6-Digit SMS Verification Code
-              </label>
-              <input
-                type="text"
-                maxLength={6}
-                inputMode="numeric"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                placeholder="123456"
-                required
-                className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white font-mono text-center text-xl font-black tracking-widest text-slate-900 placeholder:text-slate-300 focus:border-blue-600 focus:ring-3 focus:ring-blue-100 outline-none"
-              />
+              </span>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 h-12 focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/20 transition-all">
+                <input
+                  type="text"
+                  maxLength={6}
+                  inputMode="numeric"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="123456"
+                  required
+                  className="w-full bg-transparent font-mono text-center text-xl font-black tracking-widest text-slate-900 placeholder:text-slate-300 outline-none"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
+              <span className="block px-1 text-[10px] font-extrabold uppercase tracking-tight text-slate-400 mb-1.5">
                 Create a Password (min. 6 characters)
-              </label>
-              <div className="relative">
+              </span>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 h-12 focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/20 transition-all">
+                <Lock className="h-4 w-4 text-slate-400 shrink-0" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -356,12 +376,12 @@ export function MemberLoginForm({
                   placeholder="••••••••"
                   required
                   minLength={6}
-                  className="w-full h-11 pl-4 pr-11 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-3 focus:ring-blue-100 outline-none"
+                  className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="shrink-0 text-slate-400 hover:text-slate-600"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -369,25 +389,28 @@ export function MemberLoginForm({
             </div>
 
             <div>
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
+              <span className="block px-1 text-[10px] font-extrabold uppercase tracking-tight text-slate-400 mb-1.5">
                 Confirm Password
-              </label>
-              <input
-                type={showPassword ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-3 focus:ring-blue-100 outline-none"
-              />
+              </span>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 h-12 focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/20 transition-all">
+                <Lock className="h-4 w-4 text-slate-400 shrink-0" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none"
+                />
+              </div>
             </div>
           </div>
 
           <button
             type="submit"
             disabled={pending || otpCode.length < 6 || password.length < 6}
-            className="w-full h-12 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black text-sm tracking-wide shadow-lg shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-600 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1E3A8A] font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:bg-blue-900 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
           >
             {pending ? (
               <>
@@ -452,20 +475,21 @@ export function MemberLoginForm({
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-black uppercase tracking-wider text-slate-700">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-tight text-slate-400">
                 Password
-              </label>
+              </span>
               <button
                 type="button"
                 onClick={handleTriggerReset}
                 disabled={pending}
-                className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
+                className="text-xs font-bold text-[#1E3A8A] hover:underline"
               >
                 Forgot Password?
               </button>
             </div>
-            <div className="relative">
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 h-12 focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/20 transition-all">
+              <Lock className="h-4 w-4 text-slate-400 shrink-0" />
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
@@ -473,12 +497,12 @@ export function MemberLoginForm({
                 placeholder="••••••••"
                 required
                 autoFocus
-                className="w-full h-12 pl-4 pr-11 rounded-2xl border border-slate-200 bg-white text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-3 focus:ring-blue-100 outline-none"
+                className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="shrink-0 text-slate-400 hover:text-slate-600"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -488,7 +512,7 @@ export function MemberLoginForm({
           <button
             type="submit"
             disabled={pending || !password}
-            className="w-full h-12 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-800 text-white font-black text-sm tracking-wide shadow-lg shadow-blue-700/25 hover:from-blue-600 hover:to-indigo-700 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1E3A8A] font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:bg-blue-900 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
           >
             {pending ? (
               <>
@@ -532,56 +556,71 @@ export function MemberLoginForm({
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
+              <span className="block px-1 text-[10px] font-extrabold uppercase tracking-tight text-slate-400 mb-1.5">
                 6-Digit Reset Code
-              </label>
-              <input
-                type="text"
-                maxLength={6}
-                inputMode="numeric"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                placeholder="123456"
-                required
-                className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-white font-mono text-center text-xl font-black tracking-widest text-slate-900 placeholder:text-slate-300 focus:border-blue-600 focus:ring-3 focus:ring-blue-100 outline-none"
-              />
+              </span>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 h-12 focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/20 transition-all">
+                <input
+                  type="text"
+                  maxLength={6}
+                  inputMode="numeric"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="123456"
+                  required
+                  className="w-full bg-transparent font-mono text-center text-xl font-black tracking-widest text-slate-900 placeholder:text-slate-300 outline-none"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
+              <span className="block px-1 text-[10px] font-extrabold uppercase tracking-tight text-slate-400 mb-1.5">
                 New Password (min. 6 characters)
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-3 focus:ring-blue-100 outline-none"
-              />
+              </span>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 h-12 focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/20 transition-all">
+                <Lock className="h-4 w-4 text-slate-400 shrink-0" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="shrink-0 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
+              <span className="block px-1 text-[10px] font-extrabold uppercase tracking-tight text-slate-400 mb-1.5">
                 Confirm New Password
-              </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-                className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-3 focus:ring-blue-100 outline-none"
-              />
+              </span>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 h-12 focus-within:border-[#1E3A8A] focus-within:ring-2 focus-within:ring-[#1E3A8A]/20 transition-all">
+                <Lock className="h-4 w-4 text-slate-400 shrink-0" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none"
+                />
+              </div>
             </div>
           </div>
 
           <button
             type="submit"
             disabled={pending || otpCode.length < 6 || password.length < 6}
-            className="w-full h-12 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-800 text-white font-black text-sm tracking-wide shadow-lg shadow-blue-700/25 hover:from-blue-600 hover:to-indigo-700 active:scale-[0.99] transition-all cursor-pointer disabled:opacity-60"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1E3A8A] font-bold text-white shadow-lg shadow-blue-900/20 transition-all hover:bg-blue-900 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
           >
             {pending ? (
               <>
