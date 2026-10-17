@@ -103,23 +103,11 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
             staffId: schema.staff.id,
             departmentId: schema.staff.departmentId,
             departmentName: schema.department.name,
-            shepherdId: schema.shepherd.id,
             status: schema.staff.status,
           })
           .from(schema.staff)
           .innerJoin(schema.church, eq(schema.staff.churchId, schema.church.id))
           .leftJoin(schema.department, eq(schema.staff.departmentId, schema.department.id))
-          .leftJoin(
-            schema.shepherd,
-            and(
-              eq(schema.shepherd.churchId, schema.staff.churchId),
-              eq(schema.shepherd.active, true),
-              or(
-                eq(schema.shepherd.staffId, schema.staff.id),
-                eq(schema.shepherd.email, schema.staff.email)
-              )
-            )
-          )
           .where(and(eq(schema.staff.userId, userId), eq(schema.staff.status, "active"))),
       undefined,
       3,
@@ -157,7 +145,7 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
       staffId: r.staffId,
       departmentId: r.departmentId,
       departmentName: r.departmentName,
-      isShepherd: Boolean(r.shepherdId),
+      isShepherd: false,
       status: r.status,
     }));
 
@@ -238,6 +226,26 @@ export const requireChurch = cache(async () => {
     }
   }
 
+  let isShepherd = false;
+  if (row.staffId) {
+    try {
+      const [shepherdRow] = await db
+        .select({ id: schema.shepherd.id })
+        .from(schema.shepherd)
+        .where(
+          and(
+            eq(schema.shepherd.churchId, row.church.id),
+            eq(schema.shepherd.active, true),
+            eq(schema.shepherd.staffId, row.staffId)
+          )
+        )
+        .limit(1);
+      isShepherd = Boolean(shepherdRow);
+    } catch {
+      // Best effort
+    }
+  }
+
   return {
     user,
     church: row.church,
@@ -245,7 +253,7 @@ export const requireChurch = cache(async () => {
     staffId: row.staffId,
     departmentId: row.departmentId,
     assignedDepartment,
-    isShepherd: Boolean(row.isShepherd),
+    isShepherd,
     availableBranches: allBranches.map((b) => ({
       id: b.church.id,
       name: b.church.name,

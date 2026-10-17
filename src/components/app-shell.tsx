@@ -43,15 +43,10 @@ export function AppShell({
   const searchParams = useSearchParams();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [navigatingHref, setNavigatingHref] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
   const [switchingBranch, setSwitchingBranch] = useState(false);
-
-  useEffect(() => {
-    setNavigatingHref(null);
-  }, [pathname, searchParams]);
 
   async function handleSwitchBranch(branchId: string) {
     if (branchId === currentBranchId || switchingBranch) return;
@@ -223,9 +218,6 @@ export function AppShell({
 
   return (
     <div className="fixed inset-0 flex h-full w-full overflow-hidden bg-[#F8FAFC]">
-      {navigatingHref && (
-        <div className="fixed top-0 left-0 right-0 z-[100] h-1 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-300 shadow-sm shadow-amber-500/40 animate-pulse pointer-events-none" />
-      )}
       <SessionIdleTimeout />
       {open && (
         <div className="fixed inset-0 z-40 bg-slate-900/60 lg:hidden" onClick={() => setOpen(false)} />
@@ -301,30 +293,21 @@ export function AppShell({
                     } else {
                       active = pathname === href || pathname.startsWith(href + "/");
                     }
-                    const isNavigating = navigatingHref === href;
                     return (
                       <Link
                         key={href}
                         href={href}
-                        prefetch={true}
-                        onClick={() => {
-                          if (pathname !== href) setNavigatingHref(href);
-                          setOpen(false);
-                        }}
+                        onClick={() => setOpen(false)}
                         className={cn(
                           "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold transition-all duration-150",
-                          active || isNavigating
+                          active
                             ? "bg-amber-500/15 text-amber-400"
                             : "text-slate-400 hover:bg-white/5 hover:text-slate-200",
                         )}
                       >
-                        <Icon className={cn("h-3.5 w-3.5 shrink-0", active || isNavigating ? "text-amber-400" : "text-slate-500 group-hover:text-slate-300")} />
+                        <Icon className={cn("h-3.5 w-3.5 shrink-0", active ? "text-amber-400" : "text-slate-500 group-hover:text-slate-300")} />
                         <span>{label}</span>
-                        {isNavigating ? (
-                          <RotateCcw className="ml-auto h-3 w-3 animate-spin text-amber-400 shrink-0" />
-                        ) : active ? (
-                          <span className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                        ) : null}
+                        {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />}
                       </Link>
                     );
                   }
@@ -380,33 +363,24 @@ export function AppShell({
                               childActive = pathname === child.href || pathname.startsWith(child.href + "/");
                             }
 
-                            const isChildNavigating = navigatingHref === child.href;
                             return (
                               <Link
                                 key={child.href}
                                 href={child.href}
-                                prefetch={true}
-                                onClick={() => {
-                                  if (pathname !== child.href) setNavigatingHref(child.href);
-                                  setOpen(false);
-                                }}
+                                onClick={() => setOpen(false)}
                                 className={cn(
                                   "flex items-center gap-2 rounded-md px-2 py-1.5 text-[11.5px] font-medium transition-all duration-150",
-                                  childActive || isChildNavigating
+                                  childActive
                                     ? "text-amber-400 bg-amber-500/10 font-semibold"
                                     : "text-slate-500 hover:text-slate-200 hover:bg-white/5",
                                 )}
                               >
-                                {isChildNavigating ? (
-                                  <RotateCcw className="h-2.5 w-2.5 animate-spin text-amber-400 shrink-0" />
-                                ) : (
-                                  <span
-                                    className={cn(
-                                      "h-1.5 w-1.5 rounded-full shrink-0",
-                                      childActive ? "bg-amber-400" : "bg-slate-600"
-                                    )}
-                                  />
-                                )}
+                                <span
+                                  className={cn(
+                                    "h-1.5 w-1.5 rounded-full shrink-0",
+                                    childActive ? "bg-amber-400" : "bg-slate-600"
+                                  )}
+                                />
                                 {child.label}
                               </Link>
                             );

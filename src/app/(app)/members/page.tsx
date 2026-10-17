@@ -86,16 +86,11 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
         )
       );
 
-  let allChurchMembersPromise: Promise<Array<{ id: string; fullName: string; phone: string | null }>> | null = null;
-
   if (isDuplicateFilterActive) {
     const list = await fetchAllChurchMembers();
     const res = processDuplicates(list);
     duplicateNameIds = res.nameIds;
     duplicateContactIds = res.contactIds;
-  } else {
-    // Start fetching in parallel with main queries
-    allChurchMembersPromise = fetchAllChurchMembers();
   }
 
   const filters: (SQL | undefined)[] = [
@@ -122,7 +117,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
     filters.push(arr.length > 0 ? inArray(member.id, arr) : sql`1 = 0`);
   }
 
-  const [rows, counts, departments, [totalFiltered], parallelMembers] = await Promise.all([
+  const [rows, counts, departments, [totalFiltered]] = await Promise.all([
     db
       .select({ member, department: schema.department })
       .from(member)
@@ -145,14 +140,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
       .select({ total: count() })
       .from(member)
       .where(and(...filters)),
-    allChurchMembersPromise ?? Promise.resolve(null),
   ]);
-
-  if (parallelMembers) {
-    const res = processDuplicates(parallelMembers);
-    duplicateNameIds = res.nameIds;
-    duplicateContactIds = res.contactIds;
-  }
 
   const activeCount = counts.find((c) => c.active)?.n ?? 0;
   const inactiveCount = counts.find((c) => !c.active)?.n ?? 0;

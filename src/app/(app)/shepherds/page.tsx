@@ -27,7 +27,7 @@ export default async function ShepherdsAdminPage() {
         active: schema.shepherd.active,
         notes: schema.shepherd.notes,
         createdAt: schema.shepherd.createdAt,
-        discipleCount: sql<number>`coalesce(count(${schema.shepherdDisciple.id}) filter (where ${schema.shepherdDisciple.active} = true), 0)::int`,
+        discipleCount: sql<number>`(select coalesce(count(*), 0)::int from shepherd_disciple where shepherd_disciple.shepherd_id = shepherd.id and shepherd_disciple.active = true)`,
         staffRole: schema.staff.role,
       })
       .from(schema.shepherd)
@@ -35,12 +35,7 @@ export default async function ShepherdsAdminPage() {
         schema.staff,
         eq(schema.staff.id, schema.shepherd.staffId)
       )
-      .leftJoin(
-        schema.shepherdDisciple,
-        eq(schema.shepherdDisciple.shepherdId, schema.shepherd.id)
-      )
       .where(eq(schema.shepherd.churchId, church.id))
-      .groupBy(schema.shepherd.id, schema.staff.role)
       .orderBy(desc(schema.shepherd.createdAt)),
 
     // 2. Fetch active staff members to allow picking from staff when creating shepherds
