@@ -18,10 +18,15 @@ export default async function ShepherdLoginPage() {
     console.warn("[ShepherdLoginPage] Unable to fetch church branding:", err);
   }
 
+  // Remove only "Holy Spirit Citadel" from the church name
+  const churchName = churchData?.name
+    ? churchData.name.replace(/\s*[-–—]?\s*Holy Spirit Citadel/i, "").trim()
+    : "World Ark Missions";
+
   return (
     <AuthCard
       title="Shepherd Portal"
-      subtitle="Discipleship & Pastoral Care • World Ark Missions"
+      subtitle={`Discipleship & Pastoral Care • ${churchName || "World Ark Missions"}`}
       logoUrl={churchData?.logoUrl || DEFAULT_CHURCH_LOGO}
     >
       <Suspense>
