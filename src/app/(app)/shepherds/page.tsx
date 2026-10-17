@@ -35,16 +35,31 @@ export default async function ShepherdsAdminPage() {
     .groupBy(schema.shepherd.id)
     .orderBy(desc(schema.shepherd.createdAt));
 
-  // 2. Fetch candidates from members and SOB
+  // 2. Fetch all candidates from members and SOB with current shepherd assignment (if any)
   const candidates = await db
     .select({
       id: schema.member.id,
       fullName: schema.member.fullName,
       phone: schema.member.phone,
+      photoUrl: schema.member.photoUrl,
       category: schema.member.category,
       fromAkwaaba: schema.member.fromAkwaaba,
+      currentShepherdId: schema.shepherdDisciple.shepherdId,
+      currentShepherdName: schema.shepherd.fullName,
     })
     .from(schema.member)
+    .leftJoin(
+      schema.shepherdDisciple,
+      and(
+        eq(schema.shepherdDisciple.memberId, schema.member.id),
+        eq(schema.shepherdDisciple.churchId, church.id),
+        eq(schema.shepherdDisciple.active, true)
+      )
+    )
+    .leftJoin(
+      schema.shepherd,
+      eq(schema.shepherd.id, schema.shepherdDisciple.shepherdId)
+    )
     .where(
       and(
         eq(schema.member.churchId, church.id),

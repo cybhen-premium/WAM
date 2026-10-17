@@ -29,6 +29,7 @@ import {
   logoutShepherd,
   searchAvailableDisciples,
   addDiscipleToFlock,
+  addDisciplesToFlock,
   removeDiscipleFromFlock,
   recordServiceAttendance,
   recordSpiritualEvaluation,
@@ -110,6 +111,8 @@ export function ShepherdPortalClient({
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [candidateSearch, setCandidateSearch] = useState("");
+  const [candidateSourceFilter, setCandidateSourceFilter] = useState<"all" | "member" | "sob">("all");
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
   const [candidates, setCandidates] = useState<any[]>([]);
   const [searchingCandidates, setSearchingCandidates] = useState(false);
 
@@ -183,7 +186,22 @@ export function ShepherdPortalClient({
     });
   }
 
-  // Handle adding disciple
+  function toggleSelectCandidate(id: string) {
+    setSelectedCandidateIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  }
+
+  function selectAllVisibleCandidates() {
+    const visibleIds = filteredCandidates.map((c) => c.id);
+    setSelectedCandidateIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+  }
+
+  function clearCandidateSelection() {
+    setSelectedCandidateIds([]);
+  }
+
+  // Handle adding single disciple
   function handleAddDisciple(memberId: string, source: string) {
     startTransition(async () => {
       const formData = new FormData();
@@ -196,10 +214,47 @@ export function ShepherdPortalClient({
       }
       toast.success("Disciple added to your flock successfully!");
       setIsAddModalOpen(false);
+      setSelectedCandidateIds([]);
       setCandidateSearch("");
       setCandidates([]);
     });
   }
+
+  // Handle adding multiple selected disciples
+  function handleAddSelectedDisciples() {
+    if (selectedCandidateIds.length === 0) {
+      toast.error("Please select at least one candidate.");
+      return;
+    }
+    const payload = selectedCandidateIds.map((id) => {
+      const cand = candidates.find((c) => c.id === id);
+      return { memberId: id, source: cand?.source || "member" };
+    });
+
+    startTransition(async () => {
+      const res = await addDisciplesToFlock(payload);
+      if (!res.ok) {
+        toast.error(res.error || "Failed to add disciples.");
+        return;
+      }
+      toast.success(`Added ${res.count || selectedCandidateIds.length} disciple(s) to your flock!`);
+      setIsAddModalOpen(false);
+      setSelectedCandidateIds([]);
+      setCandidateSearch("");
+      setCandidates([]);
+    });
+  }
+
+  const filteredCandidates = useMemo(() => {
+    return candidates.filter((c) => {
+      if (candidateSourceFilter === "sob" && c.source !== "sob") return false;
+      if (candidateSourceFilter === "member" && c.source !== "member") return false;
+      return true;
+    });
+  }, [candidates, candidateSourceFilter]);
+
+  const sobCount = useMemo(() => candidates.filter((c) => c.source === "sob").length, [candidates]);
+  const memberCount = useMemo(() => candidates.filter((c) => c.source === "member").length, [candidates]);
 
   // Handle remove disciple
   function handleRemoveDisciple(discipleId: string, name: string) {
@@ -360,6 +415,9 @@ export function ShepherdPortalClient({
             <button
               onClick={() => {
                 setIsAddModalOpen(true);
+                setCandidateSearch("");
+                setCandidateSourceFilter("all");
+                setSelectedCandidateIds([]);
                 handleCandidateSearch("");
               }}
               className="inline-flex items-center gap-2 rounded-xl bg-[#1e3a8a] px-4 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-sm hover:bg-blue-900 active:scale-[0.98] transition-all cursor-pointer w-full sm:w-auto justify-center"
@@ -918,76 +976,188 @@ export function ShepherdPortalClient({
       {/* -------------------------------- Modal: Add Disciple to Flock -------------------------------- */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <h3 className="text-base font-black text-slate-900">Add Disciple to Flock</h3>
+                <h3 className="text-base font-black text-slate-900">Add Disciples to Flock</h3>
                 <p className="text-xs text-slate-500">
-                  Pick from Church Members or School of Baptism (SOB) candidates.
+                  Select candidates from Church Members or School of Baptism (SOB).
                 </p>
               </div>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                value={candidateSearch}
-                onChange={(e) => handleCandidateSearch(e.target.value)}
-                placeholder="Type member name, phone, or SOB candidate..."
-                className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100"
-              />
+            {/* Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-2.5">
+              <button
+                type="button"
+                onClick={() => setCandidateSourceFilter("all")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  candidateSourceFilter === "all"
+                    ? "bg-[#1e3a8a] text-white shadow-xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                All Candidates ({candidates.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCandidateSourceFilter("member")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  candidateSourceFilter === "member"
+                    ? "bg-[#1e3a8a] text-white shadow-xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Church Members ({memberCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCandidateSourceFilter("sob")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  candidateSourceFilter === "sob"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "bg-amber-50 text-amber-800 hover:bg-amber-100"
+                }`}
+              >
+                SOB Candidates ({sobCount})
+              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px]">
+            {/* Search Input & Selection Toolbar */}
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={candidateSearch}
+                  onChange={(e) => handleCandidateSearch(e.target.value)}
+                  placeholder="Type name, phone number, or ministry..."
+                  className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-xs font-semibold px-1 text-slate-500">
+                <span>
+                  Showing <strong className="text-slate-900">{filteredCandidates.length}</strong> candidate(s) •{" "}
+                  <strong className="text-[#1e3a8a]">{selectedCandidateIds.length}</strong> selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={selectAllVisibleCandidates}
+                    className="text-xs font-bold text-[#1e3a8a] hover:underline cursor-pointer"
+                  >
+                    Select All Visible
+                  </button>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={clearCandidateSelection}
+                    className="text-xs font-bold text-slate-500 hover:underline cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Candidate List */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px] max-h-72">
               {searchingCandidates ? (
-                <p className="text-center py-8 text-xs text-slate-400">Searching directory...</p>
-              ) : candidates.length === 0 ? (
-                <p className="text-center py-8 text-xs text-slate-400">
-                  {candidateSearch ? "No matching members found." : "Type a name to search candidates."}
+                <p className="text-center py-10 text-xs text-slate-400">Loading candidates...</p>
+              ) : filteredCandidates.length === 0 ? (
+                <p className="text-center py-10 text-xs text-slate-400">
+                  {candidateSearch ? "No matching candidates found." : "No candidates available to assign."}
                 </p>
               ) : (
-                candidates.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/40 transition-all"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-xl bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold text-slate-500">
-                        {c.photoUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={c.photoUrl} alt={c.fullName} className="h-full w-full object-cover" />
-                        ) : (
-                          c.fullName[0]
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-black text-slate-900 truncate">{c.fullName}</p>
-                        <p className="text-[11px] text-slate-500 font-medium">
-                          {c.phone || "No phone"} •{" "}
-                          <span className={c.source === "sob" ? "text-amber-600 font-bold" : "text-blue-600 font-bold"}>
-                            {c.sourceLabel}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
+                filteredCandidates.map((c) => {
+                  const isSelected = selectedCandidateIds.includes(c.id);
 
-                    <button
-                      onClick={() => handleAddDisciple(c.id, c.source)}
-                      disabled={pending}
-                      className="px-3 py-1.5 rounded-xl bg-[#1e3a8a] text-white text-xs font-bold hover:bg-blue-900 transition-colors shrink-0"
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => toggleSelectCandidate(c.id)}
+                      className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? "bg-blue-50/90 border-blue-400 shadow-2xs"
+                          : "border-slate-100 hover:border-blue-200 hover:bg-blue-50/40"
+                      }`}
                     >
-                      Add
-                    </button>
-                  </div>
-                ))
+                      <div className="flex items-center gap-3 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectCandidate(c.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-4 w-4 rounded text-[#1e3a8a] border-slate-300 focus:ring-[#1e3a8a] cursor-pointer"
+                        />
+                        <div className="h-9 w-9 rounded-xl bg-slate-100 overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold text-slate-500">
+                          {c.photoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={c.photoUrl} alt={c.fullName} className="h-full w-full object-cover" />
+                          ) : (
+                            c.fullName[0]
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black text-slate-900 truncate">{c.fullName}</p>
+                          <p className="text-[11px] text-slate-500 font-medium truncate">
+                            {c.phone || "No phone"} •{" "}
+                            <span className={c.source === "sob" ? "text-amber-600 font-bold" : "text-blue-600 font-bold"}>
+                              {c.sourceLabel}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddDisciple(c.id, c.source);
+                        }}
+                        disabled={pending}
+                        className="px-3 py-1.5 rounded-xl bg-[#1e3a8a] text-white text-xs font-bold hover:bg-blue-900 transition-colors shrink-0 cursor-pointer disabled:opacity-50"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  );
+                })
               )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              <span className="text-xs font-bold text-slate-600">
+                {selectedCandidateIds.length} candidate(s) selected
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddSelectedDisciples}
+                  disabled={pending || selectedCandidateIds.length === 0}
+                  className="px-5 py-2 rounded-xl bg-[#1e3a8a] text-white text-xs font-bold shadow-md hover:bg-blue-900 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {pending
+                    ? "Adding Disciples..."
+                    : `Add ${selectedCandidateIds.length > 0 ? selectedCandidateIds.length : ""} Disciple${selectedCandidateIds.length === 1 ? "" : "s"} to Flock`}
+                </button>
+              </div>
             </div>
           </div>
         </div>

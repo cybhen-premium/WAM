@@ -31,6 +31,7 @@ import {
   resetShepherdPassword,
   deleteShepherd,
   adminAssignDisciple,
+  adminAssignDisciples,
   getShepherdFlockDetails,
 } from "./actions";
 
@@ -50,8 +51,11 @@ type MemberCandidate = {
   id: string;
   fullName: string;
   phone: string | null;
+  photoUrl?: string | null;
   category: string;
   fromAkwaaba: boolean | null;
+  currentShepherdId?: string | null;
+  currentShepherdName?: string | null;
 };
 
 export function ShepherdsClient({
@@ -80,9 +84,10 @@ export function ShepherdsClient({
   } | null>(null);
   const [loadingFlock, setLoadingFlock] = useState(false);
 
-  // Candidate selection for assigning disciple
+  // Candidate selection for assigning disciples (multi-select + tabs)
   const [candidateSearch, setCandidateSearch] = useState("");
-  const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [candidateFilter, setCandidateFilter] = useState<"all" | "member" | "sob">("all");
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   // Filtered shepherds
   const filteredShepherds = shepherds.filter((s) => {
@@ -176,37 +181,75 @@ export function ShepherdsClient({
     });
   }
 
-  function handleAssignDisciple(e: React.FormEvent) {
+  // Handle multi-disciple assignment
+  function handleAssignDisciples(e: React.FormEvent) {
     e.preventDefault();
-    if (!assigningShepherd || !selectedMemberId) {
-      toast.error("Please select a member or SOB candidate.");
+    if (!assigningShepherd || selectedMemberIds.length === 0) {
+      toast.error("Please select at least one member or SOB candidate.");
       return;
     }
-    const cand = allCandidates.find((c) => c.id === selectedMemberId);
-    const isSob = cand?.category === "Regular Attendee" || cand?.fromAkwaaba;
+
+    const payload = selectedMemberIds.map((id) => {
+      const cand = allCandidates.find((c) => c.id === id);
+      const isSob = cand?.category === "Regular Attendee" || cand?.fromAkwaaba;
+      return { memberId: id, source: isSob ? "sob" : "member" };
+    });
 
     startTransition(async () => {
-      const res = await adminAssignDisciple(
-        assigningShepherd.id,
-        selectedMemberId,
-        isSob ? "sob" : "member"
-      );
+      const res = await adminAssignDisciples(assigningShepherd.id, payload);
       if (!res.ok) {
-        toast.error(res.error || "Failed to assign disciple.");
+        toast.error(res.error || "Failed to assign disciples.");
         return;
       }
-      toast.success(`Disciple assigned to ${assigningShepherd.fullName}!`);
+      toast.success(
+        `Assigned ${res.count || selectedMemberIds.length} disciple(s) to ${assigningShepherd.fullName}!`
+      );
       setAssigningShepherd(null);
-      setSelectedMemberId("");
+      setSelectedMemberIds([]);
+      setCandidateSearch("");
     });
   }
 
+  function toggleCandidate(id: string) {
+    setSelectedMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  }
+
+  function selectAllVisible() {
+    const visibleIds = filteredCandidates.map((c) => c.id);
+    setSelectedMemberIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+  }
+
+  function clearSelection() {
+    setSelectedMemberIds([]);
+  }
+
+  const sobCandidatesCount = useMemo(
+    () => allCandidates.filter((c) => c.category === "Regular Attendee" || c.fromAkwaaba).length,
+    [allCandidates]
+  );
+  const memberCandidatesCount = useMemo(
+    () => allCandidates.filter((c) => c.category !== "Regular Attendee" && !c.fromAkwaaba).length,
+    [allCandidates]
+  );
+
   // Filter candidates for assignment
-  const filteredCandidates = allCandidates.filter((c) => {
-    if (!candidateSearch.trim()) return true;
-    const q = candidateSearch.toLowerCase();
-    return c.fullName.toLowerCase().includes(q) || (c.phone && c.phone.includes(q));
-  });
+  const filteredCandidates = useMemo(() => {
+    return allCandidates.filter((c) => {
+      const isSob = c.category === "Regular Attendee" || c.fromAkwaaba;
+      if (candidateFilter === "sob" && !isSob) return false;
+      if (candidateFilter === "member" && isSob) return false;
+
+      if (!candidateSearch.trim()) return true;
+      const q = candidateSearch.toLowerCase();
+      return (
+        c.fullName.toLowerCase().includes(q) ||
+        (c.phone && c.phone.includes(q)) ||
+        c.category.toLowerCase().includes(q)
+      );
+    });
+  }, [allCandidates, candidateFilter, candidateSearch]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -428,10 +471,11 @@ export function ShepherdsClient({
                         <button
                           onClick={() => {
                             setAssigningShepherd(s);
-                            setSelectedMemberId("");
+                            setSelectedMemberIds([]);
                             setCandidateSearch("");
+                            setCandidateFilter("all");
                           }}
-                          title="Assign Disciple"
+                          title="Assign Disciples"
                           className="h-8 w-8 rounded-lg text-slate-600 hover:text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors"
                         >
                           <Plus className="h-4 w-4" />
@@ -710,82 +754,212 @@ export function ShepherdsClient({
         </div>
       )}
 
-      {/* -------------------------------- Modal: Assign Disciple to Shepherd -------------------------------- */}
+      {/* -------------------------------- Modal: Assign Disciples to Shepherd -------------------------------- */}
       {assigningShepherd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div>
-                <h3 className="text-base font-black text-slate-900">Assign Disciple</h3>
-                <p className="text-xs text-slate-500">
-                  Assign to: <span className="font-bold text-slate-800">{assigningShepherd.fullName}</span>
-                </p>
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-[#1e3a8a] text-white flex items-center justify-center font-bold text-sm">
+                  {assigningShepherd.fullName[0]}
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Assign Disciples to Shepherd
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Assigning to: <span className="font-bold text-slate-800">{assigningShepherd.fullName}</span>
+                    {assigningShepherd.shepherdCode && ` (${assigningShepherd.shepherdCode})`}
+                    {" "}• Current flock: <span className="font-semibold text-slate-700">{assigningShepherd.discipleCount}</span>
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setAssigningShepherd(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleAssignDisciple} className="space-y-4 text-xs font-semibold">
-              <div>
-                <label className="block text-slate-700 mb-1">Search Candidates</label>
+            {/* Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 pb-2.5">
+              <button
+                type="button"
+                onClick={() => setCandidateFilter("all")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  candidateFilter === "all"
+                    ? "bg-[#1e3a8a] text-white shadow-xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                All Candidates ({allCandidates.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCandidateFilter("member")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  candidateFilter === "member"
+                    ? "bg-[#1e3a8a] text-white shadow-xs"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Church Members ({memberCandidatesCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCandidateFilter("sob")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  candidateFilter === "sob"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "bg-amber-50 text-amber-800 hover:bg-amber-100"
+                }`}
+              >
+                SOB Candidates ({sobCandidatesCount})
+              </button>
+            </div>
+
+            {/* Search input & bulk action toolbar */}
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   value={candidateSearch}
                   onChange={(e) => setCandidateSearch(e.target.value)}
-                  placeholder="Search by name or phone..."
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200"
+                  placeholder="Search by candidate name, phone number, or category..."
+                  className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
               </div>
 
-              <div className="max-h-48 overflow-y-auto space-y-1.5 border border-slate-100 rounded-xl p-2 bg-slate-50">
-                {filteredCandidates.slice(0, 30).map((c) => {
-                  const isSob = c.category === "Regular Attendee" || c.fromAkwaaba;
-                  return (
-                    <label
-                      key={c.id}
-                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all ${
-                        selectedMemberId === c.id
-                          ? "bg-blue-100/70 border border-blue-300"
-                          : "hover:bg-white"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="selectedCandidate"
-                          value={c.id}
-                          checked={selectedMemberId === c.id}
-                          onChange={() => setSelectedMemberId(c.id)}
-                        />
-                        <span className="text-xs font-bold text-slate-900">{c.fullName}</span>
+              <div className="flex items-center justify-between text-xs font-semibold px-1 text-slate-500">
+                <span>
+                  Showing <strong className="text-slate-900">{filteredCandidates.length}</strong> candidate(s) •{" "}
+                  <strong className="text-[#1e3a8a]">{selectedMemberIds.length}</strong> selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={selectAllVisible}
+                    className="text-xs font-bold text-[#1e3a8a] hover:underline cursor-pointer"
+                  >
+                    Select All Visible
+                  </button>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="text-xs font-bold text-slate-500 hover:underline cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Candidate List (No limit, smooth scrolling) */}
+            <form onSubmit={handleAssignDisciples} className="flex-1 flex flex-col min-h-0 space-y-4">
+              <div className="flex-1 overflow-y-auto space-y-1.5 border border-slate-200/80 rounded-2xl p-2 bg-slate-50/70 max-h-72">
+                {filteredCandidates.length === 0 ? (
+                  <p className="text-center py-10 text-xs text-slate-400">
+                    No candidates found matching &ldquo;{candidateSearch}&rdquo;.
+                  </p>
+                ) : (
+                  filteredCandidates.map((c) => {
+                    const isSob = c.category === "Regular Attendee" || c.fromAkwaaba;
+                    const isSelected = selectedMemberIds.includes(c.id);
+                    const isAlreadyInThisFlock = c.currentShepherdId === assigningShepherd.id;
+
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => toggleCandidate(c.id)}
+                        className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-all border ${
+                          isSelected
+                            ? "bg-blue-50/90 border-blue-400 shadow-2xs"
+                            : "bg-white hover:bg-slate-100/70 border-slate-200/60"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleCandidate(c.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-4 w-4 rounded text-[#1e3a8a] border-slate-300 focus:ring-[#1e3a8a] cursor-pointer"
+                          />
+                          <div className="h-8 w-8 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0 overflow-hidden">
+                            {c.photoUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={c.photoUrl} alt={c.fullName} className="h-full w-full object-cover" />
+                            ) : (
+                              c.fullName[0]
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black text-slate-900 truncate">{c.fullName}</p>
+                            <p className="text-[11px] text-slate-400 truncate">
+                              {c.phone || "No phone registered"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isAlreadyInThisFlock ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                              In this flock
+                            </span>
+                          ) : c.currentShepherdName ? (
+                            <span
+                              className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-200/80 text-slate-700 max-w-[130px] truncate"
+                              title={`Currently assigned to ${c.currentShepherdName}`}
+                            >
+                              Shepherd: {c.currentShepherdName}
+                            </span>
+                          ) : null}
+
+                          <span
+                            className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              isSob ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
+                            }`}
+                          >
+                            {isSob ? "SOB" : `Member • ${c.category}`}
+                          </span>
+                        </div>
                       </div>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isSob ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-700"}`}>
-                        {isSob ? "SOB" : "Member"}
-                      </span>
-                    </label>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setAssigningShepherd(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={pending || !selectedMemberId}
-                  className="px-5 py-2 rounded-xl bg-[#1e3a8a] text-white font-bold shadow-md hover:bg-blue-900 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {pending ? "Assigning..." : "Assign to Shepherd"}
-                </button>
+              {/* Modal Footer */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <span className="text-xs font-bold text-slate-600">
+                  {selectedMemberIds.length} disciple(s) selected
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssigningShepherd(null);
+                      setSelectedMemberIds([]);
+                    }}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pending || selectedMemberIds.length === 0}
+                    className="px-5 py-2 rounded-xl bg-[#1e3a8a] text-white text-xs font-bold shadow-md hover:bg-blue-900 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {pending
+                      ? "Assigning Disciples..."
+                      : `Assign ${selectedMemberIds.length > 0 ? selectedMemberIds.length : ""} Disciple${selectedMemberIds.length === 1 ? "" : "s"} to ${assigningShepherd.fullName}`}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

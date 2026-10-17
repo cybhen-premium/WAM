@@ -58,7 +58,7 @@ export async function searchAvailableDisciples(query: string = "") {
       )
     )
     .orderBy(schema.member.fullName)
-    .limit(50);
+    .limit(500);
 
   // Filter out already assigned
   return members
@@ -73,56 +73,68 @@ export async function searchAvailableDisciples(query: string = "") {
     });
 }
 
-/** Assigns a disciple to the logged-in shepherd */
-export async function addDiscipleToFlock(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+/** Assigns multiple disciples to the logged-in shepherd's flock */
+export async function addDisciplesToFlock(
+  assignments: Array<{ memberId: string; source: string; notes?: string }>
+): Promise<{ ok: boolean; count?: number; error?: string }> {
   const { shepherd, church } = await requireShepherd();
+  if (!assignments || assignments.length === 0) {
+    return { ok: false, error: "Please select at least one disciple." };
+  }
+
+  try {
+    for (const item of assignments) {
+      const src = item.source === "sob" ? "sob" : "member";
+      const [existing] = await db
+        .select({ id: schema.shepherdDisciple.id, active: schema.shepherdDisciple.active })
+        .from(schema.shepherdDisciple)
+        .where(
+          and(
+            eq(schema.shepherdDisciple.churchId, church.id),
+            eq(schema.shepherdDisciple.shepherdId, shepherd.id),
+            eq(schema.shepherdDisciple.memberId, item.memberId)
+          )
+        )
+        .limit(1);
+
+      if (existing) {
+        if (!existing.active) {
+          await db
+            .update(schema.shepherdDisciple)
+            .set({ active: true, source: src, notes: item.notes || null, assignedAt: sql`CURRENT_DATE` })
+            .where(eq(schema.shepherdDisciple.id, existing.id));
+        }
+      } else {
+        await db.insert(schema.shepherdDisciple).values({
+          churchId: church.id,
+          shepherdId: shepherd.id,
+          memberId: item.memberId,
+          source: src,
+          active: true,
+          notes: item.notes || null,
+        });
+      }
+    }
+
+    revalidatePath("/shepherd-portal");
+    revalidatePath("/shepherds");
+    return { ok: true, count: assignments.length };
+  } catch (err: any) {
+    console.error("[addDisciplesToFlock] error:", err);
+    return { ok: false, error: "Failed to add disciples to flock." };
+  }
+}
+
+/** Assigns a single disciple to the logged-in shepherd (form wrapper) */
+export async function addDiscipleToFlock(formData: FormData): Promise<{ ok: boolean; error?: string }> {
   const memberId = String(formData.get("memberId") ?? "").trim();
   const source = String(formData.get("source") ?? "member").trim();
   const notes = String(formData.get("notes") ?? "").trim();
 
   if (!memberId) return { ok: false, error: "Please select a member or SOB candidate." };
 
-  try {
-    // Check if already assigned to this shepherd
-    const [existing] = await db
-      .select({ id: schema.shepherdDisciple.id, active: schema.shepherdDisciple.active })
-      .from(schema.shepherdDisciple)
-      .where(
-        and(
-          eq(schema.shepherdDisciple.churchId, church.id),
-          eq(schema.shepherdDisciple.shepherdId, shepherd.id),
-          eq(schema.shepherdDisciple.memberId, memberId)
-        )
-      )
-      .limit(1);
-
-    if (existing) {
-      if (!existing.active) {
-        await db
-          .update(schema.shepherdDisciple)
-          .set({ active: true, notes: notes || null })
-          .where(eq(schema.shepherdDisciple.id, existing.id));
-      } else {
-        return { ok: false, error: "This disciple is already part of your flock." };
-      }
-    } else {
-      await db.insert(schema.shepherdDisciple).values({
-        churchId: church.id,
-        shepherdId: shepherd.id,
-        memberId,
-        source: source === "sob" ? "sob" : "member",
-        notes: notes || null,
-        active: true,
-      });
-    }
-
-    revalidatePath("/shepherd-portal");
-    revalidatePath("/shepherds");
-    return { ok: true };
-  } catch (err: any) {
-    console.error("[addDiscipleToFlock] error:", err);
-    return { ok: false, error: "Failed to add disciple. Please try again." };
-  }
+  const res = await addDisciplesToFlock([{ memberId, source, notes }]);
+  return { ok: res.ok, error: res.error };
 }
 
 /** Removes/unassigns a disciple from the shepherd's flock */

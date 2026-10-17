@@ -187,49 +187,80 @@ export async function deleteShepherd(shepherdId: string): Promise<FormState> {
   }
 }
 
-/** Assigns a disciple to a shepherd from the admin view */
+/** Assigns one or more disciples to a shepherd from the admin view */
+export async function adminAssignDisciples(
+  shepherdId: string,
+  assignments: Array<{ memberId: string; source: string }>
+): Promise<{ ok: boolean; count?: number; error?: string }> {
+  await requireModule("shepherds");
+  const { church } = await requireChurch();
+
+  if (!shepherdId) {
+    return { ok: false, error: "Shepherd is required." };
+  }
+  if (!assignments || assignments.length === 0) {
+    return { ok: false, error: "Please select at least one disciple to assign." };
+  }
+
+  try {
+    for (const item of assignments) {
+      const src = item.source === "sob" ? "sob" : "member";
+      const [existing] = await db
+        .select({ id: schema.shepherdDisciple.id })
+        .from(schema.shepherdDisciple)
+        .where(
+          and(
+            eq(schema.shepherdDisciple.churchId, church.id),
+            eq(schema.shepherdDisciple.memberId, item.memberId)
+          )
+        )
+        .limit(1);
+
+      if (existing) {
+        await db
+          .update(schema.shepherdDisciple)
+          .set({
+            shepherdId,
+            active: true,
+            source: src,
+            assignedAt: sql`CURRENT_DATE`,
+          })
+          .where(eq(schema.shepherdDisciple.id, existing.id));
+      } else {
+        await db.insert(schema.shepherdDisciple).values({
+          churchId: church.id,
+          shepherdId,
+          memberId: item.memberId,
+          source: src,
+          active: true,
+        });
+      }
+    }
+
+    logActivity({
+      module: "care",
+      actionCode: "shepherds.assign_disciples",
+      action: `Assigned ${assignments.length} disciple(s) to Shepherd (ID: ${shepherdId})`,
+      metadata: { shepherdId, count: assignments.length },
+    });
+
+    revalidatePath("/shepherds");
+    revalidatePath("/shepherd-portal");
+    return { ok: true, count: assignments.length };
+  } catch (err: any) {
+    console.error("[adminAssignDisciples] error:", err);
+    return { ok: false, error: "Failed to assign disciples. Please try again." };
+  }
+}
+
+/** Assigns a single disciple to a shepherd from the admin view (wrapper) */
 export async function adminAssignDisciple(
   shepherdId: string,
   memberId: string,
   source: string = "member"
 ): Promise<{ ok: boolean; error?: string }> {
-  await requireModule("shepherds");
-  const { church } = await requireChurch();
-
-  try {
-    const [existing] = await db
-      .select({ id: schema.shepherdDisciple.id, active: schema.shepherdDisciple.active })
-      .from(schema.shepherdDisciple)
-      .where(
-        and(
-          eq(schema.shepherdDisciple.churchId, church.id),
-          eq(schema.shepherdDisciple.memberId, memberId)
-        )
-      )
-      .limit(1);
-
-    if (existing) {
-      await db
-        .update(schema.shepherdDisciple)
-        .set({ shepherdId, active: true, source: source === "sob" ? "sob" : "member" })
-        .where(eq(schema.shepherdDisciple.id, existing.id));
-    } else {
-      await db.insert(schema.shepherdDisciple).values({
-        churchId: church.id,
-        shepherdId,
-        memberId,
-        source: source === "sob" ? "sob" : "member",
-        active: true,
-      });
-    }
-
-    revalidatePath("/shepherds");
-    revalidatePath("/shepherd-portal");
-    return { ok: true };
-  } catch (err: any) {
-    console.error("[adminAssignDisciple] error:", err);
-    return { ok: false, error: "Failed to assign disciple." };
-  }
+  const res = await adminAssignDisciples(shepherdId, [{ memberId, source }]);
+  return { ok: res.ok, error: res.error };
 }
 
 /** Fetches full flock details for a specific shepherd (for admin drill-down) */
