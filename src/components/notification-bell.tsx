@@ -179,35 +179,35 @@ export function NotificationBell() {
 
       {/* Popover Dropdown */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-[calc(100vw-1.5rem)] min-[380px]:w-[350px] sm:w-[400px] max-w-[400px] rounded-2xl bg-white shadow-2xl border border-slate-200/80 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 top-full mt-2 w-[calc(100vw-1.5rem)] min-[380px]:w-[380px] sm:w-[420px] max-w-[420px] rounded-2xl bg-white shadow-2xl border border-slate-200/80 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-white">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-slate-800">
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
                 Notifications
-              </span>
+              </h3>
               {unreadCount > 0 ? (
-                <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-black text-rose-700">
-                  {unreadCount} new
+                <span className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-700/10 px-2 py-0.5 text-[11px] font-semibold">
+                  {unreadCount} unread
                 </span>
               ) : (
-                <span className="inline-flex items-center rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                  Caught up
+                <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-500 px-2 py-0.5 text-[11px] font-medium">
+                  All caught up
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {unreadCount > 0 && (
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
                   disabled={isPending}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline px-1.5 py-0.5 transition-colors cursor-pointer"
-                  title="Mark all as read"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-blue-700 hover:bg-blue-50/80 transition-all cursor-pointer disabled:opacity-50"
+                  title="Mark all notifications as read"
                 >
-                  <CheckCheck className="h-3.5 w-3.5" />
-                  <span>Mark all read</span>
+                  <CheckCheck className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                  <span>Mark read</span>
                 </button>
               )}
               {items.length > 0 && (
@@ -215,20 +215,20 @@ export function NotificationBell() {
                   type="button"
                   onClick={handleClearAll}
                   disabled={isPending}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:underline px-1.5 py-0.5 transition-colors cursor-pointer"
+                  className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer disabled:opacity-50"
                   title="Clear all notifications"
+                  aria-label="Clear all notifications"
                 >
-                  <Trash2 className="h-3 w-3" />
-                  <span>Clear all</span>
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="h-6 w-6 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors cursor-pointer ml-0.5"
-                aria-label="Close"
+                className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer ml-0.5"
+                aria-label="Close notifications"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
           </div>
