@@ -71,3 +71,17 @@ export function weekOptions(month: string): { week: number; label: string | null
   if (weeks.length) return weeks;
   return [1, 2, 3, 4, 5].map((week) => ({ week, label: null }));
 }
+
+/**
+ * Calculates the exact YYYY-MM-DD date for a given week number (Sunday) in a month.
+ * Ensures the date always belongs to that month's billing/reporting cycle.
+ */
+export function getSundayDate(month: string, week: number): string {
+  if (!isMonth(month)) return new Date().toISOString().slice(0, 10);
+  const year = Number(month.slice(0, 4));
+  const m = Number(month.slice(5, 7));
+  const days = daysInMonth(month);
+  const firstSunday = 1 + ((7 - new Date(Date.UTC(year, m - 1, 1)).getUTCDay()) % 7);
+  const day = Math.min(Math.max(1, firstSunday + (week - 1) * 7), days);
+  return `${month}-${String(day).padStart(2, "0")}`;
+}

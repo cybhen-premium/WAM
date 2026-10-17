@@ -388,6 +388,13 @@ function TitheModal({
         />
 
         <WeekFields defaultMonth={defaultMonth} />
+
+        <TextField 
+          label="Payment Date (optional)" 
+          name="date" 
+          type="date" 
+          placeholder="YYYY-MM-DD"
+        />
         
         <TextField 
           label="Amount (GH₵)" 
@@ -495,6 +502,13 @@ function TitheEditModal({
         />
 
         <WeekFields defaultMonth={tithe.month} defaultWeek={tithe.week} />
+
+        <TextField
+          label="Payment Date (optional)"
+          name="date"
+          type="date"
+          placeholder="YYYY-MM-DD"
+        />
 
         <TextField
           label="Amount (GH₵)"

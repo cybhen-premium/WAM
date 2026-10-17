@@ -9,6 +9,7 @@ import { sendSms, withFooter } from "@/lib/sms";
 import { cedis } from "@/lib/utils";
 import { requireModule } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
+import { getSundayDate } from "@/lib/weeks";
 
 const { tithe, transaction, member } = schema;
 
@@ -37,6 +38,10 @@ export async function recordTithe(_prev: FormState, form: FormData): Promise<For
   if ("error" in result) return { error: result.error };
   const payer = result.payer;
 
+  const rawDate = String(form.get("date") ?? "").trim();
+  const isDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate);
+  const occurredOn = isDate ? rawDate : getSundayDate(month, week);
+
   try {
     await db.insert(tithe).values({
       churchId: church.id,
@@ -52,7 +57,7 @@ export async function recordTithe(_prev: FormState, form: FormData): Promise<For
       .from(transaction)
       .where(eq(transaction.churchId, church.id));
 
-    // Also record it in the main ledger for income tracking & receipts
+    // Also record it in the main ledger for income tracking & receipts, dated to the payment date
     await db.insert(transaction).values({
       churchId: church.id,
       type: "income",
@@ -61,7 +66,7 @@ export async function recordTithe(_prev: FormState, form: FormData): Promise<For
       memberId,
       receiptNo: Number(n),
       description: `Week ${week}, ${month}`,
-      // We set occurredOn to now, which is default
+      occurredOn,
     });
   } catch (err) {
     if ((err as { code?: string })?.code === "23505") { // Unique violation
@@ -71,6 +76,8 @@ export async function recordTithe(_prev: FormState, form: FormData): Promise<For
   }
 
   revalidatePath("/tithes");
+  revalidatePath("/finances");
+  revalidatePath("/giving-analytics");
   revalidatePath("/dashboard");
   logActivity({
     module: "tithes",
@@ -143,6 +150,10 @@ export async function updateTithe(_prev: FormState, form: FormData): Promise<For
   const payer = await tithePayer(church.id, memberId);
   if ("error" in payer) return { error: payer.error };
 
+  const rawDate = String(form.get("date") ?? "").trim();
+  const isDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate);
+  const occurredOn = isDate ? rawDate : getSundayDate(month, week);
+
   try {
     await db
       .update(tithe)
@@ -174,7 +185,12 @@ export async function updateTithe(_prev: FormState, form: FormData): Promise<For
     if (ledger) {
       await db
         .update(transaction)
-        .set({ amount: amount.toString(), memberId, description: `Week ${week}, ${month}` })
+        .set({
+          amount: amount.toString(),
+          memberId,
+          description: `Week ${week}, ${month}`,
+          occurredOn,
+        })
         .where(eq(transaction.id, ledger.id));
     }
   } catch {
@@ -182,8 +198,9 @@ export async function updateTithe(_prev: FormState, form: FormData): Promise<For
   }
 
   revalidatePath("/tithes");
-  revalidatePath("/dashboard");
   revalidatePath("/finances");
+  revalidatePath("/giving-analytics");
+  revalidatePath("/dashboard");
   logActivity({
     module: "tithes",
     action: `Updated tithe of ₵${amount} for Week ${week}, ${month}`,
@@ -236,8 +253,9 @@ export async function deleteTithe(titheId: string): Promise<FormState> {
     }
 
     revalidatePath("/tithes");
-    revalidatePath("/dashboard");
     revalidatePath("/finances");
+    revalidatePath("/giving-analytics");
+    revalidatePath("/dashboard");
 
     logActivity({
       module: "tithes",
