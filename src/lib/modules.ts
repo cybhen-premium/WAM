@@ -21,6 +21,7 @@ export const MODULES = {
   announcements: { label: "Announcements", routes: ["/announcements"] },
   messaging: { label: "SMS Messages", routes: ["/message-center"] },
   analytics: { label: "Analytics & Activity", routes: ["/analytics"] },
+  shepherds: { label: "Shepherds & Disciples", routes: ["/shepherds"] },
   staffs: { label: "Staff Management", routes: ["/staffs"] },
   settings: { label: "System Settings", routes: ["/settings"] },
 } as const;

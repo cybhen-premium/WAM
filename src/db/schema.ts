@@ -628,4 +628,127 @@ export const memberNotification = pgTable(
   ],
 );
 
+/* -------------------------------------------------------------- shepherds ---- */
+
+export const shepherd = pgTable(
+  "shepherd",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    fullName: text("full_name").notNull(),
+    phone: text("phone").notNull(),
+    email: text("email"),
+    passwordHash: text("password_hash").notNull(),
+    shepherdCode: text("shepherd_code"),
+    photoUrl: text("photo_url"),
+    notes: text("notes"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("shepherd_church_idx").on(t.churchId),
+    index("shepherd_phone_idx").on(t.phone),
+  ],
+);
+
+export const shepherdSession = pgTable(
+  "shepherd_session",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    shepherdId: uuid("shepherd_id")
+      .notNull()
+      .references(() => shepherd.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("shepherd_session_shepherd_idx").on(t.shepherdId)],
+);
+
+export const shepherdDisciple = pgTable(
+  "shepherd_disciple",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    shepherdId: uuid("shepherd_id")
+      .notNull()
+      .references(() => shepherd.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    source: text("source").notNull().default("member"), // "member" | "sob"
+    assignedAt: date("assigned_at").defaultNow(),
+    active: boolean("active").notNull().default(true),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("shepherd_disciple_shepherd_idx").on(t.shepherdId),
+    index("shepherd_disciple_member_idx").on(t.memberId),
+    uniqueIndex("shepherd_disciple_church_member_idx").on(t.churchId, t.memberId),
+  ],
+);
+
+export const shepherdAttendance = pgTable(
+  "shepherd_attendance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    shepherdId: uuid("shepherd_id")
+      .notNull()
+      .references(() => shepherd.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    serviceDate: date("service_date").notNull(),
+    serviceType: text("service_type").notNull(), // "Wednesday (KJMC)" | "Friday (Rescue Hour)" | "Sunday Service" | "Custom"
+    customProgramName: text("custom_program_name"),
+    status: text("status").notNull().default("Present"), // "Present" | "Absent" | "Late" | "Excused"
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("shepherd_att_shepherd_idx").on(t.shepherdId),
+    index("shepherd_att_member_idx").on(t.memberId),
+    index("shepherd_att_date_idx").on(t.serviceDate),
+  ],
+);
+
+export const shepherdSpiritualLog = pgTable(
+  "shepherd_spiritual_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    churchId: uuid("church_id")
+      .notNull()
+      .references(() => church.id, { onDelete: "cascade" }),
+    shepherdId: uuid("shepherd_id")
+      .notNull()
+      .references(() => shepherd.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => member.id, { onDelete: "cascade" }),
+    logDate: date("log_date").notNull(),
+    quietTimeConsistency: text("quiet_time_consistency").notNull().default("Daily"), // "Daily" | "4-6 Days" | "1-3 Days" | "Inconsistent" | "None"
+    quietTimeScripture: text("quiet_time_scripture"),
+    prayerLifeRating: text("prayer_life_rating").notNull().default("Consistent"), // "Vibrant" | "Consistent" | "Needs Growth" | "Struggling"
+    prayerFocusNotes: text("prayer_focus_notes"),
+    spiritualStatus: text("spiritual_status").notNull().default("Steady"), // "Thriving" | "Steady" | "Needs Attention" | "Critical"
+    shepherdRemarks: text("shepherd_remarks"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("shepherd_spirit_shepherd_idx").on(t.shepherdId),
+    index("shepherd_spirit_member_idx").on(t.memberId),
+    index("shepherd_spirit_date_idx").on(t.logDate),
+  ],
+);
+
+
 

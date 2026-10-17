@@ -16,6 +16,7 @@ import {
   HandHeart,
   UserCog,
   Building2,
+  Compass,
   type LucideIcon,
 } from "lucide-react";
 
@@ -75,6 +76,10 @@ export const NAV_CATEGORIES: NavCategory[] = [
       {
         type: "item",
         item: { href: "/sob", module: "sob", label: "School of Baptism", icon: GraduationCap },
+      },
+      {
+        type: "item",
+        item: { href: "/shepherds", module: "shepherds", label: "Shepherds & Disciples", icon: Compass },
       },
     ],
   },
