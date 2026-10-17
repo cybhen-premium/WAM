@@ -24,6 +24,7 @@ import {
   Flame,
   Sparkles,
   UserCheck,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -429,14 +430,17 @@ export function ShepherdsClient({
               ) : (
                 filteredShepherds.map((s) => (
                   <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3.5 px-5">
+                    <td
+                      className="py-3.5 px-5 cursor-pointer group/shep"
+                      onClick={() => handleInspectFlock(s)}
+                    >
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-[#1e3a8a] to-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                        <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-[#1e3a8a] to-blue-600 text-white font-bold text-xs flex items-center justify-center shrink-0 group-hover/shep:scale-105 transition-transform shadow-2xs">
                           {s.fullName[0]}
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-black text-slate-900 block">{s.fullName}</span>
+                            <span className="font-black text-slate-900 block group-hover/shep:text-[#1e3a8a] transition-colors">{s.fullName}</span>
                             {s.staffId ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[9.5px] font-bold text-purple-700 border border-purple-200">
                                 Staff ({s.staffRole || "Member"})
@@ -1147,7 +1151,10 @@ export function ShepherdsClient({
             </div>
 
             {loadingFlock ? (
-              <p className="text-center py-12 text-xs text-slate-400">Loading flock overview...</p>
+              <div className="py-16 flex flex-col items-center justify-center space-y-3 animate-in fade-in duration-150">
+                <RotateCcw className="h-6 w-6 animate-spin text-[#1e3a8a]" />
+                <p className="text-xs font-semibold text-slate-500">Loading flock overview &amp; attendance...</p>
+              </div>
             ) : !flockDetails || flockDetails.disciples.length === 0 ? (
               <div className="text-center py-12 text-slate-400 text-xs">
                 No disciples assigned to this shepherd yet.
