@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db, schema } from "@/db";
 
@@ -77,6 +77,7 @@ export type UserBranchInfo = {
   staffId: string;
   departmentId: string | null;
   departmentName?: string | null;
+  isShepherd?: boolean;
   status: string;
 };
 
@@ -102,11 +103,23 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
             staffId: schema.staff.id,
             departmentId: schema.staff.departmentId,
             departmentName: schema.department.name,
+            shepherdId: schema.shepherd.id,
             status: schema.staff.status,
           })
           .from(schema.staff)
           .innerJoin(schema.church, eq(schema.staff.churchId, schema.church.id))
           .leftJoin(schema.department, eq(schema.staff.departmentId, schema.department.id))
+          .leftJoin(
+            schema.shepherd,
+            and(
+              eq(schema.shepherd.churchId, schema.staff.churchId),
+              eq(schema.shepherd.active, true),
+              or(
+                eq(schema.shepherd.staffId, schema.staff.id),
+                eq(schema.shepherd.email, schema.staff.email)
+              )
+            )
+          )
           .where(and(eq(schema.staff.userId, userId), eq(schema.staff.status, "active"))),
       undefined,
       3,
@@ -131,13 +144,24 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
             staffId: "",
             departmentId: null,
             departmentName: null,
+            isShepherd: false,
             status: "active",
           }))
         );
       }
     }
 
-    return prioritizeSalvation(rows);
+    const branches: UserBranchInfo[] = rows.map((r) => ({
+      church: r.church,
+      role: r.role,
+      staffId: r.staffId,
+      departmentId: r.departmentId,
+      departmentName: r.departmentName,
+      isShepherd: Boolean(r.shepherdId),
+      status: r.status,
+    }));
+
+    return prioritizeSalvation(branches);
   } catch (err) {
     console.error("[Session] Error fetching user branches:", err);
     return [];
@@ -221,6 +245,7 @@ export const requireChurch = cache(async () => {
     staffId: row.staffId,
     departmentId: row.departmentId,
     assignedDepartment,
+    isShepherd: Boolean(row.isShepherd),
     availableBranches: allBranches.map((b) => ({
       id: b.church.id,
       name: b.church.name,
