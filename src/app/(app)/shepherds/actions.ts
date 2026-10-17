@@ -10,11 +10,13 @@ import { generateShepherdCode, hashPassword } from "@/lib/shepherd-portal";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
-/** Creates a new Shepherd in the church */
+/** Creates a new Shepherd in the church (either standalone or picked from staff) */
 export async function createShepherd(_prev: FormState, formData: FormData): Promise<FormState> {
   await requireModule("shepherds");
   const { church } = await requireChurch();
 
+  const source = String(formData.get("source") ?? "new").trim();
+  const staffId = String(formData.get("staffId") ?? "").trim() || null;
   const fullName = String(formData.get("fullName") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
@@ -23,12 +25,34 @@ export async function createShepherd(_prev: FormState, formData: FormData): Prom
 
   if (!fullName) return { error: "Shepherd full name is required." };
   if (!phone) return { error: "Shepherd phone number is required." };
-  if (!password || password.length < 6) {
-    return { error: "A password of at least 6 characters is required." };
+
+  if (source === "new" && (!password || password.length < 6)) {
+    return { error: "A password of at least 6 characters is required for new shepherds." };
+  }
+  if (password && password.length < 6) {
+    return { error: "Password must be at least 6 characters." };
   }
 
   try {
-    // Check if phone or email already registered as shepherd in this church
+    // If staff member is selected, ensure they are not already registered as a shepherd
+    if (staffId) {
+      const [existingStaff] = await db
+        .select({ id: schema.shepherd.id })
+        .from(schema.shepherd)
+        .where(
+          and(
+            eq(schema.shepherd.churchId, church.id),
+            eq(schema.shepherd.staffId, staffId)
+          )
+        )
+        .limit(1);
+
+      if (existingStaff) {
+        return { error: "This staff member is already registered as a Shepherd." };
+      }
+    }
+
+    // Check if phone already registered as shepherd in this church
     const [existing] = await db
       .select({ id: schema.shepherd.id })
       .from(schema.shepherd)
@@ -45,12 +69,14 @@ export async function createShepherd(_prev: FormState, formData: FormData): Prom
     }
 
     const shepherdCode = await generateShepherdCode();
-    const passwordHash = hashPassword(password);
+    const effectivePassword = password || crypto.randomUUID();
+    const passwordHash = hashPassword(effectivePassword);
 
     const [created] = await db
       .insert(schema.shepherd)
       .values({
         churchId: church.id,
+        staffId: staffId || null,
         fullName,
         phone,
         email: email ? email.toLowerCase() : null,
@@ -64,11 +90,12 @@ export async function createShepherd(_prev: FormState, formData: FormData): Prom
     logActivity({
       module: "care",
       actionCode: "shepherds.create",
-      action: `Registered new Shepherd "${fullName}" (${shepherdCode})`,
-      metadata: { shepherdId: created.id, fullName, shepherdCode },
+      action: `Registered ${staffId ? "staff member " : ""}Shepherd "${fullName}" (${shepherdCode})`,
+      metadata: { shepherdId: created.id, staffId, fullName, shepherdCode },
     });
 
     revalidatePath("/shepherds");
+    revalidatePath("/shepherd-portal");
     return { ok: true };
   } catch (err: any) {
     console.error("[createShepherd] error:", err);
@@ -82,6 +109,7 @@ export async function updateShepherd(_prev: FormState, formData: FormData): Prom
   const { church } = await requireChurch();
 
   const id = String(formData.get("id") ?? "").trim();
+  const staffId = String(formData.get("staffId") ?? "").trim() || null;
   const fullName = String(formData.get("fullName") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
@@ -96,6 +124,7 @@ export async function updateShepherd(_prev: FormState, formData: FormData): Prom
     await db
       .update(schema.shepherd)
       .set({
+        staffId: staffId || null,
         fullName,
         phone,
         email: email ? email.toLowerCase() : null,

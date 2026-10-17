@@ -21,6 +21,7 @@ type Props = {
   smsCredits: number;
   isAdmin?: boolean;
   assignedDepartment?: { id: string; name: string } | null;
+  isShepherd?: boolean;
   /** Modules this user may access — the sidebar only shows these (superadmins get all of them). */
   modules: ModuleKey[];
   children: React.ReactNode;
@@ -34,6 +35,7 @@ export function AppShell({
   smsCredits,
   isAdmin = false,
   assignedDepartment,
+  isShepherd = false,
   modules,
   children,
 }: Props) {
@@ -173,6 +175,30 @@ export function AppShell({
                 icon: e.item.icon,
               },
             });
+          }
+
+          return items;
+        }
+
+        if (e.item.module === "shepherds") {
+          const items: NavEntry[] = [];
+
+          // 1. If this staff member is a shepherd, their personal Shepherd Portal is ALWAYS in their portal!
+          if (isShepherd) {
+            items.push({
+              type: "item" as const,
+              item: {
+                href: "/shepherd-portal",
+                module: "shepherds" as const,
+                label: "Shepherd Portal",
+                icon: e.item.icon,
+              },
+            });
+          }
+
+          // 2. If they have the admin shepherds module permission or are admin, also include "Shepherds & Disciples"
+          if (hasModule(modules, "shepherds") || isAdmin) {
+            items.push(e);
           }
 
           return items;

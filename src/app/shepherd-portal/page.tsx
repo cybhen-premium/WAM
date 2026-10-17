@@ -112,6 +112,7 @@ export default async function ShepherdPortalPage() {
       disciples={disciples}
       recentAttendance={recentAttendance}
       recentSpiritualLogs={recentSpiritualLogs}
+      isStaffMember={Boolean(shepherd.staffId)}
     />
   );
 }

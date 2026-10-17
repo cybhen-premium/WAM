@@ -23,6 +23,7 @@ import {
   BookOpen,
   Flame,
   Sparkles,
+  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -37,6 +38,7 @@ import {
 
 type ShepherdItem = {
   id: string;
+  staffId?: string | null;
   fullName: string;
   phone: string;
   email: string | null;
@@ -45,6 +47,15 @@ type ShepherdItem = {
   notes: string | null;
   createdAt: Date;
   discipleCount: number;
+  staffRole?: string | null;
+};
+
+export type StaffMemberItem = {
+  id: string;
+  userId: string | null;
+  name: string | null;
+  email: string;
+  role: string;
 };
 
 type MemberCandidate = {
@@ -61,9 +72,11 @@ type MemberCandidate = {
 export function ShepherdsClient({
   shepherds,
   allCandidates,
+  staffMembers = [],
 }: {
   shepherds: ShepherdItem[];
   allCandidates: MemberCandidate[];
+  staffMembers?: StaffMemberItem[];
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
@@ -71,6 +84,10 @@ export function ShepherdsClient({
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createSource, setCreateSource] = useState<"staff" | "new">("staff");
+  const [selectedStaffId, setSelectedStaffId] = useState("");
+  const [staffName, setStaffName] = useState("");
+  const [staffEmail, setStaffEmail] = useState("");
   const [editingShepherd, setEditingShepherd] = useState<ShepherdItem | null>(null);
   const [resetPasswordShepherd, setResetPasswordShepherd] = useState<ShepherdItem | null>(null);
   const [assigningShepherd, setAssigningShepherd] = useState<ShepherdItem | null>(null);
@@ -136,6 +153,9 @@ export function ShepherdsClient({
       }
       toast.success("Shepherd registered successfully!");
       setIsCreateOpen(false);
+      setSelectedStaffId("");
+      setStaffName("");
+      setStaffEmail("");
     });
   }
 
@@ -415,7 +435,18 @@ export function ShepherdsClient({
                           {s.fullName[0]}
                         </div>
                         <div>
-                          <span className="font-black text-slate-900 block">{s.fullName}</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-black text-slate-900 block">{s.fullName}</span>
+                            {s.staffId ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[9.5px] font-bold text-purple-700 border border-purple-200">
+                                Staff ({s.staffRole || "Member"})
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9.5px] font-bold text-slate-500">
+                                Standalone
+                              </span>
+                            )}
+                          </div>
                           <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#1e3a8a] mt-0.5">
                             {s.shepherdCode || "SHP-ID"}
                           </span>
@@ -517,28 +548,118 @@ export function ShepherdsClient({
       {/* -------------------------------- Modal: Register New Shepherd -------------------------------- */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
-                <h3 className="text-base font-black text-slate-900">Register New Shepherd</h3>
+                <h3 className="text-base font-black text-slate-900">Register Shepherd</h3>
                 <p className="text-xs text-slate-500">
-                  Separate from staff. Dedicated access to shepherd portal.
+                  Pick from church staff or register a new standalone shepherd.
                 </p>
               </div>
               <button
-                onClick={() => setIsCreateOpen(false)}
+                onClick={() => {
+                  setIsCreateOpen(false);
+                  setCreateSource("staff");
+                  setSelectedStaffId("");
+                  setStaffName("");
+                  setStaffEmail("");
+                }}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
                 ✕
               </button>
             </div>
 
+            {/* Source Switcher: Pick from Staff vs Create New */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100/80 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateSource("staff");
+                }}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  createSource === "staff"
+                    ? "bg-white text-[#1e3a8a] shadow-xs font-black"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <UserCheck className="h-3.5 w-3.5" />
+                <span>Pick from Staff ({staffMembers.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateSource("new");
+                  setSelectedStaffId("");
+                  setStaffName("");
+                  setStaffEmail("");
+                }}
+                className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  createSource === "new"
+                    ? "bg-white text-[#1e3a8a] shadow-xs font-black"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Create New Shepherd</span>
+              </button>
+            </div>
+
             <form onSubmit={handleCreate} className="space-y-4 text-xs font-semibold">
+              <input type="hidden" name="source" value={createSource} />
+              <input type="hidden" name="staffId" value={selectedStaffId} />
+
+              {createSource === "staff" && (
+                <div className="space-y-3 p-3.5 rounded-2xl bg-blue-50/50 border border-blue-100">
+                  <div>
+                    <label className="block text-slate-700 mb-1 font-bold">
+                      Select Staff Member *
+                    </label>
+                    <select
+                      value={selectedStaffId}
+                      onChange={(e) => {
+                        const staffId = e.target.value;
+                        setSelectedStaffId(staffId);
+                        const selectedStaff = staffMembers.find((s) => s.id === staffId);
+                        if (selectedStaff) {
+                          setStaffName(selectedStaff.name || selectedStaff.email);
+                          setStaffEmail(selectedStaff.email || "");
+                        } else {
+                          setStaffName("");
+                          setStaffEmail("");
+                        }
+                      }}
+                      required
+                      className="w-full h-10 px-3 rounded-xl border border-blue-200 bg-white text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">-- Choose a staff member --</option>
+                      {staffMembers.map((sm) => {
+                        const alreadyAssigned = shepherds.some((s) => s.staffId === sm.id);
+                        return (
+                          <option key={sm.id} value={sm.id} disabled={alreadyAssigned}>
+                            {sm.name || sm.email} ({sm.role}) {alreadyAssigned ? "— [Already Shepherd]" : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div className="flex items-start gap-2 text-[11px] text-blue-900 bg-white/70 p-2.5 rounded-xl border border-blue-100">
+                    <Sparkles className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Seamless Portal Access:</strong> This staff member will have the <strong>Shepherd Portal</strong> in their main portal sidebar alongside their other roles!
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-slate-700 mb-1">Full Name *</label>
                 <input
                   type="text"
                   name="fullName"
+                  value={createSource === "staff" ? staffName : undefined}
+                  onChange={(e) => createSource === "staff" && setStaffName(e.target.value)}
                   required
                   placeholder="e.g. Bro. Emmanuel Mensah"
                   className="w-full h-10 px-3 rounded-xl border border-slate-200"
@@ -554,29 +675,54 @@ export function ShepherdsClient({
                   placeholder="024XXXXXXX"
                   className="w-full h-10 px-3 rounded-xl border border-slate-200"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Used for contact and discipleship notifications.
+                </p>
               </div>
 
               <div>
-                <label className="block text-slate-700 mb-1">Email (Optional)</label>
+                <label className="block text-slate-700 mb-1">
+                  Email {createSource === "new" ? "(Optional)" : ""}
+                </label>
                 <input
                   type="email"
                   name="email"
+                  value={createSource === "staff" ? staffEmail : undefined}
+                  onChange={(e) => createSource === "staff" && setStaffEmail(e.target.value)}
                   placeholder="shepherd@example.com"
                   className="w-full h-10 px-3 rounded-xl border border-slate-200"
                 />
               </div>
 
-              <div>
-                <label className="block text-slate-700 mb-1">Initial Password *</label>
-                <input
-                  type="password"
-                  name="password"
-                  required
-                  minLength={6}
-                  placeholder="At least 6 characters"
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200"
-                />
-              </div>
+              {createSource === "new" ? (
+                <div>
+                  <label className="block text-slate-700 mb-1">Initial Password *</label>
+                  <input
+                    type="password"
+                    name="password"
+                    required
+                    minLength={6}
+                    placeholder="At least 6 characters"
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-slate-700 mb-1">
+                    Standalone Shepherd Password (Optional)
+                  </label>
+                  <input
+                    type="password"
+                    name="password"
+                    minLength={6}
+                    placeholder="Leave blank to use staff login only"
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Staff members can access the Shepherd Portal directly within their staff dashboard without needing a separate password.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-slate-700 mb-1">Pastoral Notes (Optional)</label>
@@ -588,7 +734,7 @@ export function ShepherdsClient({
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
@@ -598,10 +744,14 @@ export function ShepherdsClient({
                 </button>
                 <button
                   type="submit"
-                  disabled={pending}
-                  className="px-5 py-2 rounded-xl bg-[#1e3a8a] text-white font-bold shadow-md hover:bg-blue-900 transition-all cursor-pointer"
+                  disabled={pending || (createSource === "staff" && !selectedStaffId)}
+                  className="px-5 py-2 rounded-xl bg-[#1e3a8a] text-white font-bold shadow-md hover:bg-blue-900 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  {pending ? "Registering..." : "Register Shepherd"}
+                  {pending
+                    ? "Registering..."
+                    : createSource === "staff"
+                    ? "Assign Staff as Shepherd"
+                    : "Register Shepherd"}
                 </button>
               </div>
             </form>

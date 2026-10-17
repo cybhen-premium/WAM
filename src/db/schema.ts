@@ -637,6 +637,7 @@ export const shepherd = pgTable(
     churchId: uuid("church_id")
       .notNull()
       .references(() => church.id, { onDelete: "cascade" }),
+    staffId: uuid("staff_id").references(() => staff.id, { onDelete: "set null" }),
     fullName: text("full_name").notNull(),
     phone: text("phone").notNull(),
     email: text("email"),
@@ -650,6 +651,7 @@ export const shepherd = pgTable(
   },
   (t) => [
     index("shepherd_church_idx").on(t.churchId),
+    index("shepherd_staff_idx").on(t.staffId),
     index("shepherd_phone_idx").on(t.phone),
   ],
 );

@@ -87,6 +87,7 @@ export function ShepherdPortalClient({
   disciples,
   recentAttendance,
   recentSpiritualLogs,
+  isStaffMember = false,
 }: {
   shepherd: {
     id: string;
@@ -103,6 +104,7 @@ export function ShepherdPortalClient({
   disciples: DiscipleRow[];
   recentAttendance: AttendanceRow[];
   recentSpiritualLogs: SpiritualLogRow[];
+  isStaffMember?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<"disciples" | "attendance" | "spiritual">("disciples");
   const [searchTerm, setSearchTerm] = useState("");
@@ -343,6 +345,14 @@ export function ShepherdPortalClient({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {isStaffMember && (
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-2xs transition-all cursor-pointer"
+              >
+                <span>← Back to Staff Portal</span>
+              </Link>
+            )}
             <div className="hidden sm:flex flex-col text-right">
               <span className="text-xs font-black text-slate-800">{shepherd.fullName}</span>
               <span className="text-[10px] font-mono font-bold text-slate-400">

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq, gt, or } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { getUser, getChurchForUser } from "@/lib/session";
 
 export const SHEPHERD_SESSION_COOKIE = "wam_shepherd_session";
 
@@ -78,34 +79,73 @@ export async function createShepherdSession(shepherdId: string): Promise<string>
 export async function getShepherdSession(): Promise<{ shepherd: Shepherd; church: Church } | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SHEPHERD_SESSION_COOKIE)?.value;
-  if (!token) return null;
+  if (token) {
+    const now = new Date();
+    const [sessionRow] = await db
+      .select()
+      .from(schema.shepherdSession)
+      .where(and(eq(schema.shepherdSession.token, token), gt(schema.shepherdSession.expiresAt, now)))
+      .limit(1);
 
-  const now = new Date();
-  const [sessionRow] = await db
-    .select()
-    .from(schema.shepherdSession)
-    .where(and(eq(schema.shepherdSession.token, token), gt(schema.shepherdSession.expiresAt, now)))
-    .limit(1);
+    if (sessionRow) {
+      const [shepherdRow] = await db
+        .select()
+        .from(schema.shepherd)
+        .where(eq(schema.shepherd.id, sessionRow.shepherdId))
+        .limit(1);
 
-  if (!sessionRow) return null;
+      if (shepherdRow && shepherdRow.active) {
+        const [churchRow] = await db
+          .select()
+          .from(schema.church)
+          .where(eq(schema.church.id, shepherdRow.churchId))
+          .limit(1);
 
-  const [shepherdRow] = await db
-    .select()
-    .from(schema.shepherd)
-    .where(eq(schema.shepherd.id, sessionRow.shepherdId))
-    .limit(1);
+        if (churchRow) {
+          return { shepherd: shepherdRow, church: churchRow };
+        }
+      }
+    }
+  }
 
-  if (!shepherdRow || !shepherdRow.active) return null;
+  // Fallback: If signed in as staff, check if linked to a shepherd record in this church
+  try {
+    const user = await getUser();
+    if (user) {
+      const churchInfo = await getChurchForUser(user.id);
+      if (churchInfo) {
+        const matchOr = [];
+        if (churchInfo.staffId) {
+          matchOr.push(eq(schema.shepherd.staffId, churchInfo.staffId));
+        }
+        if (user.email) {
+          matchOr.push(eq(schema.shepherd.email, user.email.toLowerCase()));
+        }
 
-  const [churchRow] = await db
-    .select()
-    .from(schema.church)
-    .where(eq(schema.church.id, shepherdRow.churchId))
-    .limit(1);
+        if (matchOr.length > 0) {
+          const [staffShepherd] = await db
+            .select()
+            .from(schema.shepherd)
+            .where(
+              and(
+                eq(schema.shepherd.churchId, churchInfo.church.id),
+                eq(schema.shepherd.active, true),
+                or(...matchOr)
+              )
+            )
+            .limit(1);
 
-  if (!churchRow) return null;
+          if (staffShepherd) {
+            return { shepherd: staffShepherd, church: churchInfo.church };
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[getShepherdSession] Staff session fallback lookup error:", err);
+  }
 
-  return { shepherd: shepherdRow, church: churchRow };
+  return null;
 }
 
 /** Requires an active shepherd session or redirects to shepherd login */
