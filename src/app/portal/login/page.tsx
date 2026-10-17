@@ -27,11 +27,7 @@ export default async function MemberLoginPage({
   return (
     <AuthCard
       title="Member Portal"
-      subtitle={
-        churchData?.name
-          ? `Member Self-Service • ${churchData.name}`
-          : "Sign in with your Member ID or phone number"
-      }
+      subtitle="Member Self-Service • World Ark Missions"
       logoUrl={churchData?.logoUrl || DEFAULT_CHURCH_LOGO}
     >
       {isTimedOut && (

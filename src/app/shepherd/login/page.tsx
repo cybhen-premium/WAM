@@ -21,7 +21,7 @@ export default async function ShepherdLoginPage() {
   return (
     <AuthCard
       title="Shepherd Portal"
-      subtitle={churchData?.name ? `Discipleship & Pastoral Care • ${churchData.name}` : "Discipleship & Pastoral Care"}
+      subtitle="Discipleship & Pastoral Care • World Ark Missions"
       logoUrl={churchData?.logoUrl || DEFAULT_CHURCH_LOGO}
     >
       <Suspense>

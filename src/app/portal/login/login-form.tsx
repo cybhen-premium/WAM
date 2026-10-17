@@ -27,6 +27,11 @@ import {
   type LoginState,
 } from "./actions";
 
+function formatChurchName(name?: string | null) {
+  if (!name) return "World Ark Missions";
+  return name.replace(/\s*[-–—]\s*Holy Spirit.*$/i, "").trim() || "World Ark Missions";
+}
+
 export function MemberLoginForm({
   defaultLogoUrl,
   defaultChurchName,
@@ -180,17 +185,13 @@ export function MemberLoginForm({
                 autoComplete="username"
                 value={memberCode}
                 onChange={(e) => setMemberCode(e.target.value.toUpperCase())}
-                placeholder="e.g. HSC-8K2P or 0244123456"
+                placeholder="e.g. WAM-8K2P or 0244123456"
                 required
                 className="w-full bg-transparent font-mono text-sm sm:text-base font-bold text-slate-900 placeholder:text-slate-400 outline-none uppercase"
               />
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold text-slate-500 pt-1 px-1">
-              <span>Holy Spirit: <strong className="font-mono text-[#1E3A8A]">HSC-XXXX</strong></span>
-              <span>Central: <strong className="font-mono text-[#1E3A8A]">WAM-XXXX</strong></span>
-            </div>
             <p className="text-[11px] text-slate-400 font-medium px-1">
-              Sign in with your branch Member ID or registered phone number.
+              Sign in with your Member ID (e.g. <strong className="font-mono text-[#1E3A8A]">WAM-XXXX</strong>) or registered phone number.
             </p>
           </div>
 
@@ -285,7 +286,7 @@ export function MemberLoginForm({
                     </span>
                   </div>
                   <p className="text-xs font-semibold text-slate-500 truncate mt-0.5">
-                    {acc.churchName}
+                    {formatChurchName(acc.churchName)}
                   </p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
@@ -313,7 +314,7 @@ export function MemberLoginForm({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={state.churchLogo || defaultLogoUrl!}
-                    alt={state.churchName || defaultChurchName || "Church Logo"}
+                    alt={formatChurchName(state.churchName || defaultChurchName)}
                     className="h-full w-full object-contain"
                   />
                 </div>
@@ -326,7 +327,7 @@ export function MemberLoginForm({
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-900 text-[10px] font-black uppercase tracking-wider truncate max-w-[190px]">
-                    {state.churchName}
+                    {formatChurchName(state.churchName)}
                   </span>
                   <span className="text-[10px] font-mono font-bold text-amber-800">
                     ({state.code})
@@ -445,7 +446,7 @@ export function MemberLoginForm({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={state.churchLogo || defaultLogoUrl!}
-                    alt={state.churchName || defaultChurchName || "Church Logo"}
+                    alt={formatChurchName(state.churchName || defaultChurchName)}
                     className="h-full w-full object-contain"
                   />
                 </div>
@@ -460,7 +461,7 @@ export function MemberLoginForm({
                   </span>
                   <span className="text-slate-300">•</span>
                   <span className="text-[10px] font-black uppercase tracking-wider text-blue-900 bg-blue-100/80 px-2 py-0.5 rounded-md truncate max-w-[170px]">
-                    {state.churchName}
+                    {formatChurchName(state.churchName)}
                   </span>
                 </div>
               </div>
