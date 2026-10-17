@@ -40,11 +40,20 @@ async function retry<T>(
 
 export const getUser = cache(async () => {
   try {
+    const cookieStore = await cookies();
+    const hasAuthCookie =
+      cookieStore.has("better-auth.session_token") ||
+      cookieStore.has("__Secure-better-auth.session_token");
+
+    if (!hasAuthCookie) {
+      return null;
+    }
+
     const requestHeaders = await headers();
     const session = await retry(
       () => auth.api.getSession({ headers: requestHeaders }),
-      (s) => !s,
-      4,
+      undefined,
+      2,
     );
     return session?.user ?? null;
   } catch (err: any) {
@@ -67,6 +76,7 @@ export type UserBranchInfo = {
   role: string;
   staffId: string;
   departmentId: string | null;
+  departmentName?: string | null;
   status: string;
 };
 
@@ -91,13 +101,15 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
             role: schema.staff.role,
             staffId: schema.staff.id,
             departmentId: schema.staff.departmentId,
+            departmentName: schema.department.name,
             status: schema.staff.status,
           })
           .from(schema.staff)
           .innerJoin(schema.church, eq(schema.staff.churchId, schema.church.id))
+          .leftJoin(schema.department, eq(schema.staff.departmentId, schema.department.id))
           .where(and(eq(schema.staff.userId, userId), eq(schema.staff.status, "active"))),
       undefined,
-      4,
+      3,
     );
 
     // If no staff row was found, check if the user is a church owner (superadmin)
@@ -109,7 +121,7 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
             .from(schema.church)
             .where(eq(schema.church.ownerId, userId)),
         undefined,
-        4,
+        3,
       );
       if (ownedChurches.length > 0) {
         return prioritizeSalvation(
@@ -118,6 +130,7 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
             role: "admin",
             staffId: "",
             departmentId: null,
+            departmentName: null,
             status: "active",
           }))
         );
@@ -158,8 +171,8 @@ export const getChurchForUser = cache(async (userId: string) => {
   }
 });
 
-/** Use in every app page and server action: guarantees a user and their church. */
-export async function requireChurch() {
+/** Use in every app page and server action: guarantees a user and their church. Memoized per request. */
+export const requireChurch = cache(async () => {
   const user = await requireUser();
   const row = await getChurchForUser(user.id);
   if (!row) {
@@ -168,7 +181,7 @@ export async function requireChurch() {
         () =>
           db.select({ status: schema.staff.status }).from(schema.staff).where(eq(schema.staff.userId, user.id)).limit(1),
         undefined,
-        4,
+        3,
       );
       if (staffRow) {
         redirect(`/login?status=${staffRow.status}`);
@@ -184,17 +197,21 @@ export async function requireChurch() {
 
   let assignedDepartment: { id: string; name: string } | null = null;
   if (row.departmentId) {
-    const [dept] = await retry(
-      () =>
-        db
-          .select({ id: schema.department.id, name: schema.department.name })
-          .from(schema.department)
-          .where(eq(schema.department.id, row.departmentId!))
-          .limit(1),
-      undefined,
-      4,
-    );
-    if (dept) assignedDepartment = dept;
+    if (row.departmentName) {
+      assignedDepartment = { id: row.departmentId, name: row.departmentName };
+    } else {
+      const [dept] = await retry(
+        () =>
+          db
+            .select({ id: schema.department.id, name: schema.department.name })
+            .from(schema.department)
+            .where(eq(schema.department.id, row.departmentId!))
+            .limit(1),
+        undefined,
+        3,
+      );
+      if (dept) assignedDepartment = dept;
+    }
   }
 
   return {
@@ -210,4 +227,5 @@ export async function requireChurch() {
       role: b.role,
     })),
   };
-}
+});
+

@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import crypto from "crypto";
 import { cookies } from "next/headers";
 import { and, eq, gt } from "drizzle-orm";
@@ -222,39 +223,34 @@ export async function createMemberSession(memberId: string): Promise<string> {
   return token;
 }
 
-/** Retrieves the current authenticated member and church */
-export async function getMemberSession(): Promise<{ member: Member; church: Church } | null> {
+/** Retrieves the current authenticated member and church (memoized per request) */
+export const getMemberSession = cache(async (): Promise<{ member: Member; church: Church } | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get(MEMBER_SESSION_COOKIE)?.value;
   if (!token) return null;
 
   const now = new Date();
-  const [sessionRow] = await db
-    .select()
+  const [row] = await db
+    .select({
+      member: schema.member,
+      church: schema.church,
+    })
     .from(schema.memberSession)
-    .where(and(eq(schema.memberSession.id, token), gt(schema.memberSession.expiresAt, now)))
+    .innerJoin(schema.member, eq(schema.member.id, schema.memberSession.memberId))
+    .innerJoin(schema.church, eq(schema.church.id, schema.member.churchId))
+    .where(
+      and(
+        eq(schema.memberSession.id, token),
+        gt(schema.memberSession.expiresAt, now),
+        eq(schema.member.active, true)
+      )
+    )
     .limit(1);
 
-  if (!sessionRow) return null;
+  if (!row) return null;
 
-  const [memberRow] = await db
-    .select()
-    .from(schema.member)
-    .where(eq(schema.member.id, sessionRow.memberId))
-    .limit(1);
-
-  if (!memberRow || !memberRow.active) return null;
-
-  const [churchRow] = await db
-    .select()
-    .from(schema.church)
-    .where(eq(schema.church.id, memberRow.churchId))
-    .limit(1);
-
-  if (!churchRow) return null;
-
-  return { member: memberRow, church: churchRow };
-}
+  return { member: row.member, church: row.church };
+});
 
 /** Destroys the member session and clears the cookie */
 export async function destroyMemberSession(): Promise<void> {

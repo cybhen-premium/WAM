@@ -35,6 +35,7 @@ import {
   adminAssignDisciple,
   adminAssignDisciples,
   getShepherdFlockDetails,
+  getAvailableCandidates,
 } from "./actions";
 
 type ShepherdItem = {
@@ -72,11 +73,11 @@ type MemberCandidate = {
 
 export function ShepherdsClient({
   shepherds,
-  allCandidates,
+  allCandidates = [],
   staffMembers = [],
 }: {
   shepherds: ShepherdItem[];
-  allCandidates: MemberCandidate[];
+  allCandidates?: MemberCandidate[];
   staffMembers?: StaffMemberItem[];
 }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -102,10 +103,32 @@ export function ShepherdsClient({
   } | null>(null);
   const [loadingFlock, setLoadingFlock] = useState(false);
 
-  // Candidate selection for assigning disciples (multi-select + tabs)
+  // Candidate selection for assigning disciples (multi-select + tabs, loaded on-demand)
+  const [candidates, setCandidates] = useState<MemberCandidate[]>(allCandidates);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
   const [candidateSearch, setCandidateSearch] = useState("");
   const [candidateFilter, setCandidateFilter] = useState<"all" | "member" | "sob">("all");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
+  function handleOpenAssignModal(s: ShepherdItem) {
+    setAssigningShepherd(s);
+    setSelectedMemberIds([]);
+    setCandidateSearch("");
+    setCandidateFilter("all");
+    if (candidates.length === 0) {
+      setLoadingCandidates(true);
+      startTransition(async () => {
+        try {
+          const list = await getAvailableCandidates();
+          setCandidates(list);
+        } catch {
+          toast.error("Failed to load candidates list");
+        } finally {
+          setLoadingCandidates(false);
+        }
+      });
+    }
+  }
 
   // Filtered shepherds
   const filteredShepherds = shepherds.filter((s) => {
@@ -211,7 +234,7 @@ export function ShepherdsClient({
     }
 
     const payload = selectedMemberIds.map((id) => {
-      const cand = allCandidates.find((c) => c.id === id);
+      const cand = candidates.find((c) => c.id === id);
       const isSob = cand?.category === "Regular Attendee" || cand?.fromAkwaaba;
       return { memberId: id, source: isSob ? "sob" : "member" };
     });
@@ -224,6 +247,17 @@ export function ShepherdsClient({
       }
       toast.success(
         `Assigned ${res.count || selectedMemberIds.length} disciple(s) to ${assigningShepherd.fullName}!`
+      );
+      setCandidates((prev) =>
+        prev.map((c) =>
+          selectedMemberIds.includes(c.id)
+            ? {
+                ...c,
+                currentShepherdId: assigningShepherd.id,
+                currentShepherdName: assigningShepherd.fullName,
+              }
+            : c
+        )
       );
       setAssigningShepherd(null);
       setSelectedMemberIds([]);
@@ -247,17 +281,17 @@ export function ShepherdsClient({
   }
 
   const sobCandidatesCount = useMemo(
-    () => allCandidates.filter((c) => c.category === "Regular Attendee" || c.fromAkwaaba).length,
-    [allCandidates]
+    () => candidates.filter((c) => c.category === "Regular Attendee" || c.fromAkwaaba).length,
+    [candidates]
   );
   const memberCandidatesCount = useMemo(
-    () => allCandidates.filter((c) => c.category !== "Regular Attendee" && !c.fromAkwaaba).length,
-    [allCandidates]
+    () => candidates.filter((c) => c.category !== "Regular Attendee" && !c.fromAkwaaba).length,
+    [candidates]
   );
 
   // Filter candidates for assignment
   const filteredCandidates = useMemo(() => {
-    return allCandidates.filter((c) => {
+    return candidates.filter((c) => {
       const isSob = c.category === "Regular Attendee" || c.fromAkwaaba;
       if (candidateFilter === "sob" && !isSob) return false;
       if (candidateFilter === "member" && isSob) return false;
@@ -270,7 +304,7 @@ export function ShepherdsClient({
         c.category.toLowerCase().includes(q)
       );
     });
-  }, [allCandidates, candidateFilter, candidateSearch]);
+  }, [candidates, candidateFilter, candidateSearch]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -504,12 +538,7 @@ export function ShepherdsClient({
                         </button>
 
                         <button
-                          onClick={() => {
-                            setAssigningShepherd(s);
-                            setSelectedMemberIds([]);
-                            setCandidateSearch("");
-                            setCandidateFilter("all");
-                          }}
+                          onClick={() => handleOpenAssignModal(s)}
                           title="Assign Disciples"
                           className="h-8 w-8 rounded-lg text-slate-600 hover:text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors"
                         >
@@ -948,7 +977,7 @@ export function ShepherdsClient({
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                All Candidates ({allCandidates.length})
+                All Candidates ({candidates.length})
               </button>
               <button
                 type="button"
@@ -1015,7 +1044,12 @@ export function ShepherdsClient({
             {/* Candidate List (No limit, smooth scrolling) */}
             <form onSubmit={handleAssignDisciples} className="flex-1 flex flex-col min-h-0 space-y-4">
               <div className="flex-1 overflow-y-auto space-y-1.5 border border-slate-200/80 rounded-2xl p-2 bg-slate-50/70 max-h-72">
-                {filteredCandidates.length === 0 ? (
+                {loadingCandidates ? (
+                  <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400">
+                    <RotateCcw className="h-5 w-5 animate-spin text-[#1e3a8a]" />
+                    <span className="text-xs font-semibold">Loading candidates...</span>
+                  </div>
+                ) : filteredCandidates.length === 0 ? (
                   <p className="text-center py-10 text-xs text-slate-400">
                     No candidates found matching &ldquo;{candidateSearch}&rdquo;.
                   </p>

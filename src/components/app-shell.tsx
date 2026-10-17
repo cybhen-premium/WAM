@@ -306,6 +306,7 @@ export function AppShell({
                       <Link
                         key={href}
                         href={href}
+                        prefetch={true}
                         onClick={() => {
                           if (pathname !== href) setNavigatingHref(href);
                           setOpen(false);
@@ -384,6 +385,7 @@ export function AppShell({
                               <Link
                                 key={child.href}
                                 href={child.href}
+                                prefetch={true}
                                 onClick={() => {
                                   if (pathname !== child.href) setNavigatingHref(child.href);
                                   setOpen(false);

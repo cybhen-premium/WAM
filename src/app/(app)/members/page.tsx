@@ -22,58 +22,80 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
   const page = Math.max(1, Number(sp.page) || 1);
   const pageSize = Math.max(10, Number(sp.pageSize) || 50);
 
-  // Retrieve lightweight records to calculate duplicate names and contacts in this church
-  const allChurchMembers = await db
-    .select({
-      id: member.id,
-      fullName: member.fullName,
-      phone: member.phone,
-    })
-    .from(member)
-    .where(
-      and(
-        eq(member.churchId, church.id),
-        sql`${member.category} not in ('Visitor', 'Regular Attendee')`
-      )
-    );
+  // Optimize duplicate check: run in parallel with main queries unless duplicate filter is actively filtering
+  const isDuplicateFilterActive = Boolean(duplicate);
 
-  const normalizeName = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-  const getNameTokens = (s: string) => normalizeName(s).split(" ").filter(Boolean).sort().join(" ");
-  const getPhoneCore = (p: string | null) => {
-    if (!p) return "";
-    const d = p.replace(/\D/g, "");
-    return d.length >= 8 ? d.slice(-9) : "";
-  };
+  let duplicateNameIds = new Set<string>();
+  let duplicateContactIds = new Set<string>();
 
-  const nameCounts = new Map<string, number>();
-  const tokenCounts = new Map<string, number>();
-  const phoneCounts = new Map<string, number>();
+  function processDuplicates(membersList: Array<{ id: string; fullName: string; phone: string | null }>) {
+    const normalizeName = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+    const getNameTokens = (s: string) => normalizeName(s).split(" ").filter(Boolean).sort().join(" ");
+    const getPhoneCore = (p: string | null) => {
+      if (!p) return "";
+      const d = p.replace(/\D/g, "");
+      return d.length >= 8 ? d.slice(-9) : "";
+    };
 
-  for (const m of allChurchMembers) {
-    const norm = normalizeName(m.fullName);
-    const tokens = getNameTokens(m.fullName);
-    if (norm) nameCounts.set(norm, (nameCounts.get(norm) ?? 0) + 1);
-    if (tokens && tokens !== norm) tokenCounts.set(tokens, (tokenCounts.get(tokens) ?? 0) + 1);
-    const pc = getPhoneCore(m.phone);
-    if (pc) phoneCounts.set(pc, (phoneCounts.get(pc) ?? 0) + 1);
+    const nameCounts = new Map<string, number>();
+    const tokenCounts = new Map<string, number>();
+    const phoneCounts = new Map<string, number>();
+
+    for (const m of membersList) {
+      const norm = normalizeName(m.fullName);
+      const tokens = getNameTokens(m.fullName);
+      if (norm) nameCounts.set(norm, (nameCounts.get(norm) ?? 0) + 1);
+      if (tokens && tokens !== norm) tokenCounts.set(tokens, (tokenCounts.get(tokens) ?? 0) + 1);
+      const pc = getPhoneCore(m.phone);
+      if (pc) phoneCounts.set(pc, (phoneCounts.get(pc) ?? 0) + 1);
+    }
+
+    const nameIds = new Set<string>();
+    const contactIds = new Set<string>();
+
+    for (const m of membersList) {
+      const norm = normalizeName(m.fullName);
+      const tokens = getNameTokens(m.fullName);
+      const pc = getPhoneCore(m.phone);
+      if (
+        (norm && (nameCounts.get(norm) ?? 0) > 1) ||
+        (tokens && (tokenCounts.get(tokens) ?? 0) > 1)
+      ) {
+        nameIds.add(m.id);
+      }
+      if (pc && (phoneCounts.get(pc) ?? 0) > 1) {
+        contactIds.add(m.id);
+      }
+    }
+
+    return { nameIds, contactIds };
   }
 
-  const duplicateNameIds = new Set<string>();
-  const duplicateContactIds = new Set<string>();
+  const fetchAllChurchMembers = () =>
+    db
+      .select({
+        id: member.id,
+        fullName: member.fullName,
+        phone: member.phone,
+      })
+      .from(member)
+      .where(
+        and(
+          eq(member.churchId, church.id),
+          sql`${member.category} not in ('Visitor', 'Regular Attendee')`
+        )
+      );
 
-  for (const m of allChurchMembers) {
-    const norm = normalizeName(m.fullName);
-    const tokens = getNameTokens(m.fullName);
-    const pc = getPhoneCore(m.phone);
-    if (
-      (norm && (nameCounts.get(norm) ?? 0) > 1) ||
-      (tokens && (tokenCounts.get(tokens) ?? 0) > 1)
-    ) {
-      duplicateNameIds.add(m.id);
-    }
-    if (pc && (phoneCounts.get(pc) ?? 0) > 1) {
-      duplicateContactIds.add(m.id);
-    }
+  let allChurchMembersPromise: Promise<Array<{ id: string; fullName: string; phone: string | null }>> | null = null;
+
+  if (isDuplicateFilterActive) {
+    const list = await fetchAllChurchMembers();
+    const res = processDuplicates(list);
+    duplicateNameIds = res.nameIds;
+    duplicateContactIds = res.contactIds;
+  } else {
+    // Start fetching in parallel with main queries
+    allChurchMembersPromise = fetchAllChurchMembers();
   }
 
   const filters: (SQL | undefined)[] = [
@@ -100,7 +122,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
     filters.push(arr.length > 0 ? inArray(member.id, arr) : sql`1 = 0`);
   }
 
-  const [rows, counts, departments, [totalFiltered]] = await Promise.all([
+  const [rows, counts, departments, [totalFiltered], parallelMembers] = await Promise.all([
     db
       .select({ member, department: schema.department })
       .from(member)
@@ -123,7 +145,15 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
       .select({ total: count() })
       .from(member)
       .where(and(...filters)),
+    allChurchMembersPromise ?? Promise.resolve(null),
   ]);
+
+  if (parallelMembers) {
+    const res = processDuplicates(parallelMembers);
+    duplicateNameIds = res.nameIds;
+    duplicateContactIds = res.contactIds;
+  }
+
   const activeCount = counts.find((c) => c.active)?.n ?? 0;
   const inactiveCount = counts.find((c) => !c.active)?.n ?? 0;
   const totalFilteredCount = totalFiltered?.total ?? 0;

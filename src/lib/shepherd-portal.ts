@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import crypto from "crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -75,36 +76,31 @@ export async function createShepherdSession(shepherdId: string): Promise<string>
   return token;
 }
 
-/** Retrieves the current authenticated shepherd and church */
-export async function getShepherdSession(): Promise<{ shepherd: Shepherd; church: Church } | null> {
+/** Retrieves the current authenticated shepherd and church (memoized per request) */
+export const getShepherdSession = cache(async (): Promise<{ shepherd: Shepherd; church: Church } | null> => {
   const cookieStore = await cookies();
   const token = cookieStore.get(SHEPHERD_SESSION_COOKIE)?.value;
   if (token) {
     const now = new Date();
-    const [sessionRow] = await db
-      .select()
+    const [row] = await db
+      .select({
+        shepherd: schema.shepherd,
+        church: schema.church,
+      })
       .from(schema.shepherdSession)
-      .where(and(eq(schema.shepherdSession.token, token), gt(schema.shepherdSession.expiresAt, now)))
+      .innerJoin(schema.shepherd, eq(schema.shepherd.id, schema.shepherdSession.shepherdId))
+      .innerJoin(schema.church, eq(schema.church.id, schema.shepherd.churchId))
+      .where(
+        and(
+          eq(schema.shepherdSession.token, token),
+          gt(schema.shepherdSession.expiresAt, now),
+          eq(schema.shepherd.active, true)
+        )
+      )
       .limit(1);
 
-    if (sessionRow) {
-      const [shepherdRow] = await db
-        .select()
-        .from(schema.shepherd)
-        .where(eq(schema.shepherd.id, sessionRow.shepherdId))
-        .limit(1);
-
-      if (shepherdRow && shepherdRow.active) {
-        const [churchRow] = await db
-          .select()
-          .from(schema.church)
-          .where(eq(schema.church.id, shepherdRow.churchId))
-          .limit(1);
-
-        if (churchRow) {
-          return { shepherd: shepherdRow, church: churchRow };
-        }
-      }
+    if (row) {
+      return { shepherd: row.shepherd, church: row.church };
     }
   }
 
@@ -146,7 +142,8 @@ export async function getShepherdSession(): Promise<{ shepherd: Shepherd; church
   }
 
   return null;
-}
+});
+
 
 /** Requires an active shepherd session or redirects to shepherd login */
 export async function requireShepherd(): Promise<{ shepherd: Shepherd; church: Church }> {

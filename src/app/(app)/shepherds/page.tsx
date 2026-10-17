@@ -13,8 +13,8 @@ export default async function ShepherdsAdminPage() {
   const { church } = await requireChurch();
   await requireModule("shepherds");
 
-  // Fetch shepherds, disciple candidates, and active staff in parallel for high performance
-  const [shepherds, candidates, staffMembers] = await Promise.all([
+  // Fetch shepherds and active staff in parallel for high speed initial load
+  const [shepherds, staffMembers] = await Promise.all([
     // 1. Fetch all registered shepherds with disciple counts and linked staff role
     db
       .select({
@@ -43,40 +43,7 @@ export default async function ShepherdsAdminPage() {
       .groupBy(schema.shepherd.id, schema.staff.role)
       .orderBy(desc(schema.shepherd.createdAt)),
 
-    // 2. Fetch all candidates from members and SOB with current shepherd assignment (if any)
-    db
-      .select({
-        id: schema.member.id,
-        fullName: schema.member.fullName,
-        phone: schema.member.phone,
-        photoUrl: schema.member.photoUrl,
-        category: schema.member.category,
-        fromAkwaaba: schema.member.fromAkwaaba,
-        currentShepherdId: schema.shepherdDisciple.shepherdId,
-        currentShepherdName: schema.shepherd.fullName,
-      })
-      .from(schema.member)
-      .leftJoin(
-        schema.shepherdDisciple,
-        and(
-          eq(schema.shepherdDisciple.memberId, schema.member.id),
-          eq(schema.shepherdDisciple.churchId, church.id),
-          eq(schema.shepherdDisciple.active, true)
-        )
-      )
-      .leftJoin(
-        schema.shepherd,
-        eq(schema.shepherd.id, schema.shepherdDisciple.shepherdId)
-      )
-      .where(
-        and(
-          eq(schema.member.churchId, church.id),
-          eq(schema.member.active, true)
-        )
-      )
-      .orderBy(schema.member.fullName),
-
-    // 3. Fetch active staff members to allow picking from staff when creating shepherds
+    // 2. Fetch active staff members to allow picking from staff when creating shepherds
     db
       .select({
         id: schema.staff.id,
@@ -94,8 +61,8 @@ export default async function ShepherdsAdminPage() {
   return (
     <ShepherdsClient
       shepherds={shepherds}
-      allCandidates={candidates}
       staffMembers={staffMembers}
     />
   );
 }
+

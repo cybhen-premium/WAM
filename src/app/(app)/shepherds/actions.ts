@@ -349,3 +349,56 @@ export async function getShepherdFlockDetails(shepherdId: string) {
 
   return { disciples, attendance, spiritualLogs };
 }
+
+/**
+ * Loads discipleship candidates on-demand only when the assignment modal is opened.
+ * This keeps the main /shepherds page load lightweight and instantaneous.
+ */
+export async function getAvailableCandidates(): Promise<
+  Array<{
+    id: string;
+    fullName: string;
+    phone: string | null;
+    photoUrl?: string | null;
+    category: string;
+    fromAkwaaba: boolean | null;
+    currentShepherdId?: string | null;
+    currentShepherdName?: string | null;
+  }>
+> {
+  await requireModule("shepherds");
+  const { church } = await requireChurch();
+
+  return db
+    .select({
+      id: schema.member.id,
+      fullName: schema.member.fullName,
+      phone: schema.member.phone,
+      photoUrl: schema.member.photoUrl,
+      category: schema.member.category,
+      fromAkwaaba: schema.member.fromAkwaaba,
+      currentShepherdId: schema.shepherdDisciple.shepherdId,
+      currentShepherdName: schema.shepherd.fullName,
+    })
+    .from(schema.member)
+    .leftJoin(
+      schema.shepherdDisciple,
+      and(
+        eq(schema.shepherdDisciple.memberId, schema.member.id),
+        eq(schema.shepherdDisciple.churchId, church.id),
+        eq(schema.shepherdDisciple.active, true)
+      )
+    )
+    .leftJoin(
+      schema.shepherd,
+      eq(schema.shepherd.id, schema.shepherdDisciple.shepherdId)
+    )
+    .where(
+      and(
+        eq(schema.member.churchId, church.id),
+        eq(schema.member.active, true)
+      )
+    )
+    .orderBy(schema.member.fullName);
+}
+
