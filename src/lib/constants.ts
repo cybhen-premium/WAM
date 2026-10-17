@@ -1,4 +1,4 @@
-export const MEMBER_CATEGORIES = [
+export const MINISTRY_CATEGORIES = [
   "General Member",
   "Choir",
   "Deacon",
@@ -14,6 +14,10 @@ export const MEMBER_CATEGORIES = [
   "Prayer Warriors",
   "Akwaaba",
   "Secretary",
+] as const;
+
+export const MEMBER_CATEGORIES = [
+  ...MINISTRY_CATEGORIES,
   "Children",
   "Regular Attendee",
   "Visitor",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useFormAction } from "@/components/use-form-action";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -38,7 +38,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import type { schema } from "@/db";
 import { Modal, SelectField, TextField, buttonStyles } from "@/components/ui";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { MARITAL_STATUSES, MEMBER_CATEGORIES } from "@/lib/constants";
+import { MARITAL_STATUSES, MEMBER_CATEGORIES, MINISTRY_CATEGORIES } from "@/lib/constants";
 import {
   checkMemberDuplicate,
   deleteMember,
@@ -153,15 +153,7 @@ export function MembersToolbar({ departments }: { departments: Department[] }) {
 
 /* Search + filters (URL driven) -------------------------------------------- */
 
-/**
- * Groups offered by the "All Groups" filter. Visitors and regular attendees are still in the Akwaaba
- * journey (they are not members yet) and children belong with the juniors, so none of them are
- * offered here — they stay valid member categories in the forms, and anyone already carrying one is
- * still listed under "All Groups".
- */
-const GROUP_FILTERS = MEMBER_CATEGORIES.filter(
-  (c) => !["Visitor", "Regular Attendee", "Children"].includes(c),
-);
+const GROUP_FILTERS = MINISTRY_CATEGORIES;
 
 export function MemberFilters(props: {
   q: string;
@@ -1206,6 +1198,13 @@ function MemberFormModal({ open, onClose, member, departments }: { open: boolean
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const ministryOptions = useMemo(() => {
+    if (member?.category && !MINISTRY_CATEGORIES.includes(member.category as any)) {
+      return [member.category, ...MINISTRY_CATEGORIES];
+    }
+    return MINISTRY_CATEGORIES;
+  }, [member?.category]);
+
   useEffect(() => {
     setPhoto(member?.photoUrl ?? "");
     setFullName(member?.fullName ?? "");
@@ -1368,7 +1367,7 @@ function MemberFormModal({ open, onClose, member, departments }: { open: boolean
           />
           <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue={member?.gender === "female" ? "Female" : "Male"} />
 
-          <SelectField label="Ministry" name="category" options={MEMBER_CATEGORIES} defaultValue={member?.category ?? "General Member"} />
+          <SelectField label="Ministry" name="category" options={ministryOptions} defaultValue={member?.category ?? "General Member"} />
           <SelectField
             label="Department"
             name="departmentId"
