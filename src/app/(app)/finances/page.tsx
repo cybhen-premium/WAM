@@ -37,18 +37,12 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
   const pageSize = Math.max(1, Number(sp.pageSize) || 50);
 
   const where = and(inPeriod(church.id, period), notInArray(transaction.category, [...WELFARE_CATEGORIES]));
-  const [totals, breakdown, projects, yearRows] = await Promise.all([
+  const [totals, projects, yearRows] = await Promise.all([
     db
       .select({ type: transaction.type, total: sumAmount })
       .from(transaction)
       .where(where)
       .groupBy(transaction.type),
-    db
-      .select({ category: transaction.category, type: transaction.type, total: sumAmount })
-      .from(transaction)
-      .where(where)
-      .groupBy(transaction.category, transaction.type)
-      .orderBy(sql`2, 3 desc`),
     db
       .select({ id: projectFund.id, name: projectFund.name })
       .from(projectFund)
@@ -103,33 +97,6 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
           hint={periodLabel(period)}
           className="bg-blue-50/50 sm:col-span-2 lg:col-span-1"
         />
-      </div>
-
-      <div className="bg-slate-50/50 rounded-[2rem] shadow-sm">
-        <div className="p-5 pb-2">
-          <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-            <ChartPie className="h-4 w-4" /> Category Breakdown
-          </h3>
-        </div>
-        <div className="p-5 pt-0">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {breakdown.length === 0 ? (
-              <div className="col-span-full text-center text-slate-400 py-6 text-xs font-bold uppercase tracking-widest">
-                No transaction data available
-              </div>
-            ) : (
-              breakdown.map((b) => (
-                <div key={b.type + b.category} className="rounded-2xl bg-white p-3 shadow-sm border border-slate-100">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 truncate">{b.category}</p>
-                  <p className={cn("text-base font-black mt-0.5 truncate", b.type === "income" ? "text-green-600" : "text-red-600")}>
-                    {b.type === "expense" ? "−" : ""}
-                    {cedis(b.total)}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
       </div>
 
       <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden">
