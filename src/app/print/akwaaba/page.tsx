@@ -65,14 +65,17 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
           : group === "visiting"
             ? or(
                 eq(schema.member.akwaabaStatus, "visiting"),
-                isNotNull(schema.member.convertedAt),
-                and(isNull(schema.member.akwaabaStatus), isNull(schema.member.convertedAt), eq(schema.member.category, "Visitor"))
+                and(
+                  isNull(schema.member.akwaabaStatus),
+                  or(eq(schema.member.category, "Visitor"), isNotNull(schema.member.convertedAt))
+                )
               )
-            : and(
-                isNull(schema.member.convertedAt),
-                or(
-                  eq(schema.member.akwaabaStatus, "staying"),
-                  and(isNull(schema.member.akwaabaStatus), ne(schema.member.category, "Visitor"))
+            : or(
+                eq(schema.member.akwaabaStatus, "staying"),
+                and(
+                  isNull(schema.member.akwaabaStatus),
+                  isNull(schema.member.convertedAt),
+                  ne(schema.member.category, "Visitor")
                 )
               ),
       ),
@@ -81,7 +84,7 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
 
   const monthLabel = new Date(month + "-01").toLocaleString("default", { month: "long", year: "numeric" });
   const isVisitingPerson = (p: { akwaabaStatus: string | null; convertedAt: string | null; category: string }) =>
-    p.akwaabaStatus === "visiting" || p.convertedAt !== null || (!p.akwaabaStatus && p.category === "Visitor");
+    p.akwaabaStatus ? p.akwaabaStatus === "visiting" : (p.category === "Visitor" || p.convertedAt !== null);
 
   const sections = (
     group === "all" ? (["visiting", "staying", "members"] as SectionKey[]) : [group]

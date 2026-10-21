@@ -57,18 +57,21 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
     tableFilters.push(
       or(
         eq(schema.member.akwaabaStatus, "visiting"),
-        sql`${schema.member.convertedAt} is not null`,
-        and(isNull(schema.member.akwaabaStatus), eq(schema.member.category, "Visitor"))
+        and(
+          isNull(schema.member.akwaabaStatus),
+          or(eq(schema.member.category, "Visitor"), sql`${schema.member.convertedAt} is not null`)
+        )
       )
     );
   }
   if (status === "staying") {
     tableFilters.push(
-      and(
-        sql`${schema.member.convertedAt} is null`,
-        or(
-          eq(schema.member.akwaabaStatus, "staying"),
-          and(isNull(schema.member.akwaabaStatus), ne(schema.member.category, "Visitor"))
+      or(
+        eq(schema.member.akwaabaStatus, "staying"),
+        and(
+          isNull(schema.member.akwaabaStatus),
+          sql`${schema.member.convertedAt} is null`,
+          ne(schema.member.category, "Visitor")
         )
       )
     );
@@ -133,7 +136,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   if (!years.includes(currentYear)) years.unshift(currentYear);
 
   const isVisitingRow = (c: { category: string; akwaabaStatus: string | null; convertedAt?: string | null }) =>
-    c.akwaabaStatus === "visiting" || !!c.convertedAt || (!c.akwaabaStatus && c.category === "Visitor");
+    c.akwaabaStatus ? c.akwaabaStatus === "visiting" : (c.category === "Visitor" || !c.convertedAt);
 
   const visitingCount = counts.filter(isVisitingRow).reduce((sum, c) => sum + c.n, 0);
   const stayingCount = counts.filter((c) => !isVisitingRow(c)).reduce((sum, c) => sum + c.n, 0);
@@ -271,7 +274,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
                   <td className="px-4 py-3 text-slate-600 text-xs">{person.invitedBy ?? "—"}</td>
                   <td className="px-4 py-3">
                     {(() => {
-                      const isVisiting = person.akwaabaStatus === "visiting" || person.convertedAt !== null || (!person.akwaabaStatus && person.category === "Visitor");
+                      const isVisiting = person.akwaabaStatus ? person.akwaabaStatus === "visiting" : (person.category === "Visitor" || person.convertedAt !== null);
                       return (
                         <span className={cn(
                           "inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-tight",
