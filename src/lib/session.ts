@@ -103,11 +103,23 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
             staffId: schema.staff.id,
             departmentId: schema.staff.departmentId,
             departmentName: schema.department.name,
+            shepherdId: schema.shepherd.id,
             status: schema.staff.status,
           })
           .from(schema.staff)
           .innerJoin(schema.church, eq(schema.staff.churchId, schema.church.id))
           .leftJoin(schema.department, eq(schema.staff.departmentId, schema.department.id))
+          .leftJoin(
+            schema.shepherd,
+            and(
+              eq(schema.shepherd.churchId, schema.staff.churchId),
+              eq(schema.shepherd.active, true),
+              or(
+                eq(schema.shepherd.staffId, schema.staff.id),
+                eq(schema.shepherd.email, schema.staff.email)
+              )
+            )
+          )
           .where(and(eq(schema.staff.userId, userId), eq(schema.staff.status, "active"))),
       undefined,
       3,
@@ -145,7 +157,7 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
       staffId: r.staffId,
       departmentId: r.departmentId,
       departmentName: r.departmentName,
-      isShepherd: false,
+      isShepherd: Boolean(r.shepherdId),
       status: r.status,
     }));
 
@@ -207,44 +219,12 @@ export const requireChurch = cache(async () => {
 
   const allBranches = await getUserBranches(user.id);
 
-  let assignedDepartment: { id: string; name: string } | null = null;
-  if (row.departmentId) {
-    if (row.departmentName) {
-      assignedDepartment = { id: row.departmentId, name: row.departmentName };
-    } else {
-      const [dept] = await retry(
-        () =>
-          db
-            .select({ id: schema.department.id, name: schema.department.name })
-            .from(schema.department)
-            .where(eq(schema.department.id, row.departmentId!))
-            .limit(1),
-        undefined,
-        3,
-      );
-      if (dept) assignedDepartment = dept;
-    }
-  }
+  const assignedDepartment =
+    row.departmentId && row.departmentName
+      ? { id: row.departmentId, name: row.departmentName }
+      : null;
 
-  let isShepherd = false;
-  if (row.staffId) {
-    try {
-      const [shepherdRow] = await db
-        .select({ id: schema.shepherd.id })
-        .from(schema.shepherd)
-        .where(
-          and(
-            eq(schema.shepherd.churchId, row.church.id),
-            eq(schema.shepherd.active, true),
-            eq(schema.shepherd.staffId, row.staffId)
-          )
-        )
-        .limit(1);
-      isShepherd = Boolean(shepherdRow);
-    } catch {
-      // Best effort
-    }
-  }
+  const isShepherd = Boolean(row.isShepherd);
 
   return {
     user,

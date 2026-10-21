@@ -306,6 +306,9 @@ export function AppShell({
                       <Link
                         key={href}
                         href={href}
+                        prefetch={true}
+                        onMouseEnter={() => router.prefetch(href)}
+                        onTouchStart={() => router.prefetch(href)}
                         onClick={() => {
                           if (pathname !== href) setNavigatingHref(href);
                           setOpen(false);
@@ -384,6 +387,9 @@ export function AppShell({
                               <Link
                                 key={child.href}
                                 href={child.href}
+                                prefetch={true}
+                                onMouseEnter={() => router.prefetch(child.href)}
+                                onTouchStart={() => router.prefetch(child.href)}
                                 onClick={() => {
                                   if (pathname !== child.href) setNavigatingHref(child.href);
                                   setOpen(false);
