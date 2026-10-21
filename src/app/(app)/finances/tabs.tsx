@@ -7,6 +7,7 @@ import { TITHE, WELFARE_CATEGORIES, WELFARE_DUES, WELFARE_SUPPORT } from "@/lib/
 import { cedis, cn, fmtDate } from "@/lib/utils";
 import {
   AddProjectButton,
+  EditTransactionButton,
   GivingTrendsChart,
   ReceiptTypeFilter,
   RecordContributionForm,
@@ -45,22 +46,39 @@ export async function GeneralTab({
   q,
   page = 1,
   pageSize = 50,
+  projects = [],
 }: {
   churchId: string;
   period: Period;
   q: string;
   page?: number;
   pageSize?: number;
+  projects?: { id: string; name: string }[];
 }) {
-  const like = `%${q}%`;
+  const trimmedQ = q.trim();
+  const like = `%${trimmedQ}%`;
+  const searchFilter = trimmedQ
+    ? or(
+        ilike(transaction.category, like),
+        ilike(transaction.description, like),
+        ilike(member.fullName, like),
+        sql`to_char(${transaction.occurredOn}, 'YYYY-MM-DD FMDD Mon YYYY FMMonth Day') ilike ${like}`,
+        sql`cast(${transaction.amount} as text) ilike ${like}`
+      )
+    : undefined;
+
   const where = and(
     inPeriod(churchId, period),
     notInArray(transaction.category, [...WELFARE_CATEGORIES]),
-    q ? or(ilike(transaction.category, like), ilike(transaction.description, like)) : undefined,
+    searchFilter,
   );
 
   const [totalCountResult, rows] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(transaction).where(where),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(transaction)
+      .leftJoin(member, eq(member.id, transaction.memberId))
+      .where(where),
     db
       .select({
         t: transaction,
@@ -78,7 +96,7 @@ export async function GeneralTab({
   return (
     <div>
       <div className="p-4 border-b border-slate-100 bg-slate-50/30">
-        <SearchBox placeholder="Search by category or description..." initial={q} />
+        <SearchBox placeholder="Search by category, date (e.g. 16 Aug, August), description, or amount..." initial={q} />
       </div>
       {rows.length === 0 ? (
         <Empty>No transactions recorded</Empty>
@@ -116,8 +134,20 @@ export async function GeneralTab({
                     {cedis(t.amount)}
                   </td>
                   <td className={cn(TD, "pr-6 text-right")}>
-                    <div className="inline-flex gap-1">
+                    <div className="inline-flex items-center justify-end gap-1">
                       {t.receiptNo && <PrintReceiptLink id={t.id} />}
+                      <EditTransactionButton
+                        transaction={{
+                          id: t.id,
+                          type: t.type,
+                          category: t.category,
+                          amount: t.amount,
+                          occurredOn: t.occurredOn,
+                          description: t.description,
+                          projectId: t.projectId,
+                        }}
+                        projects={projects}
+                      />
                       <DeleteButton action={deleteTransaction.bind(null, t.id)} />
                     </div>
                   </td>

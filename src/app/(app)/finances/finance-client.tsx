@@ -7,6 +7,7 @@ import {
   ChevronDown,
   FileChartColumnIncreasing,
   Heart,
+  Pencil,
   Plus,
   Sparkles,
   Target,
@@ -19,6 +20,7 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
   addTransaction,
+  updateTransaction,
   recordContribution,
   recordWelfareOut,
   saveProject,
@@ -523,5 +525,151 @@ export function GivingTrendsChart({
         </div>
       </div>
     </div>
+  );
+}
+
+
+/* Edit Transaction --------------------------------------------------------- */
+
+export function EditTransactionButton({
+  transaction: t,
+  projects = [],
+}: {
+  transaction: {
+    id: string;
+    type: "income" | "expense";
+    category: string;
+    amount: string;
+    occurredOn: string;
+    description?: string | null;
+    projectId?: string | null;
+  };
+  projects?: Named[];
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
+        title="Edit transaction"
+        aria-label="Edit transaction"
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+      {open && (
+        <EditTransactionModal
+          open={open}
+          onClose={() => setOpen(false)}
+          transaction={t}
+          projects={projects}
+        />
+      )}
+    </>
+  );
+}
+
+function EditTransactionModal({
+  open,
+  onClose,
+  transaction: t,
+  projects = [],
+}: {
+  open: boolean;
+  onClose: () => void;
+  transaction: {
+    id: string;
+    type: "income" | "expense";
+    category: string;
+    amount: string;
+    occurredOn: string;
+    description?: string | null;
+    projectId?: string | null;
+  };
+  projects?: Named[];
+}) {
+  const [state, action, pending] = useFormAction(updateTransaction, onClose);
+  const [type, setType] = useState<"income" | "expense">(t.type);
+  const [category, setCategory] = useState(t.category);
+
+  const categories = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const defaultDate = typeof t.occurredOn === "string" ? t.occurredOn.slice(0, 10) : today();
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit Transaction" subtitle="Financial Ledger" icon={Wallet}>
+      <form action={action} className="space-y-5 text-left">
+        <input type="hidden" name="id" value={t.id} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SelectField
+            label="Type"
+            name="type"
+            value={type}
+            onChange={(e) => {
+              setType(e.target.value as "income" | "expense");
+            }}
+            options={[
+              { value: "income", label: "Income" },
+              { value: "expense", label: "Expense" },
+            ]}
+          />
+          <ComboField
+            label="Category"
+            name="category"
+            required
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="Select or type…"
+            options={categories}
+          />
+          <TextField
+            label="Amount (GH₵)"
+            name="amount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            required
+            defaultValue={t.amount}
+            placeholder="0.00"
+          />
+          <TextField
+            label="Date"
+            name="date"
+            type="date"
+            defaultValue={defaultDate}
+          />
+          <div className="sm:col-span-2">
+            <TextField
+              label="Description / Details"
+              name="description"
+              defaultValue={t.description ?? ""}
+              placeholder="Optional notes or details..."
+            />
+          </div>
+          {category === "Project Fund" && projects.length > 0 && (
+            <SelectField
+              className="sm:col-span-2"
+              label="Project"
+              name="projectId"
+              defaultValue={t.projectId ?? ""}
+              options={[{ value: "", label: "Select project..." }, ...projects.map((p) => ({ value: p.id, label: p.name }))]}
+            />
+          )}
+        </div>
+        <ErrorText state={state} />
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button type="submit" disabled={pending} className={buttonStyles.submit}>
+            {pending ? "Saving…" : "Save Changes"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

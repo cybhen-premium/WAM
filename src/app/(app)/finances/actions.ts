@@ -83,6 +83,56 @@ export async function addTransaction(_prev: FormState, f: FormData): Promise<For
   return done();
 }
 
+/** "Edit Transaction" dialog: updates an existing transaction. */
+export async function updateTransaction(_prev: FormState, f: FormData): Promise<FormState> {
+  await requireModule("finances");
+  const { church } = await requireChurch();
+
+  const id = s(f, "id");
+  if (!id) return { error: "Transaction ID is missing." };
+
+  const [existing] = await db
+    .select()
+    .from(transaction)
+    .where(and(eq(transaction.id, id), eq(transaction.churchId, church.id)))
+    .limit(1);
+
+  if (!existing) return { error: "Transaction not found." };
+
+  const type = s(f, "type") === "expense" ? "expense" : "income";
+  const category = s(f, "category");
+  if (!category) return { error: "Choose or type a category." };
+  const amount = amountOf(f);
+  if (!amount) return { error: "Enter an amount greater than zero." };
+
+  const occurredOn = isDate(s(f, "date")) ? s(f, "date") : existing.occurredOn;
+  const description = s(f, "description") || null;
+  const projectId = category === "Project Fund" ? await owned(projectFund, s(f, "projectId"), church.id) : null;
+  const receiptNo = existing.receiptNo || (type === "income" ? await nextReceiptNo(church.id) : null);
+
+  await db
+    .update(transaction)
+    .set({
+      type,
+      category,
+      amount,
+      occurredOn,
+      description,
+      projectId,
+      receiptNo,
+    })
+    .where(and(eq(transaction.id, id), eq(transaction.churchId, church.id)));
+
+  logActivity({
+    module: "finances",
+    action: `Updated transaction: ${type} of ₵${amount} (${category})`,
+    metadata: { id, type, category, amount, description, occurredOn },
+  });
+
+  return done();
+}
+
+
 /** Tithes and Welfare Dues tabs: an income tied to a member, with a receipt number. */
 export async function recordContribution(_prev: FormState, f: FormData): Promise<FormState> {
   await requireModule("finances");

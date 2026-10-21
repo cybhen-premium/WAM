@@ -119,7 +119,7 @@ export default async function FinancesPage({ searchParams }: PageProps<"/finance
           </nav>
         </div>
 
-        {tab === "general" && <GeneralTab churchId={church.id} period={period} q={q} page={page} pageSize={pageSize} />}
+        {tab === "general" && <GeneralTab churchId={church.id} period={period} q={q} page={page} pageSize={pageSize} projects={projects} />}
         {tab === "analytics" && <AnalyticsTab churchId={church.id} />}
         {tab === "receipts" && (
           <ReceiptsTab churchId={church.id} period={period} category={typeof sp.category === "string" ? sp.category : ""} page={page} pageSize={pageSize} />
