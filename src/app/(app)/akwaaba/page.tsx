@@ -136,7 +136,7 @@ export default async function AkwaabaPage({ searchParams }: PageProps<"/akwaaba"
   if (!years.includes(currentYear)) years.unshift(currentYear);
 
   const isVisitingRow = (c: { category: string; akwaabaStatus: string | null; convertedAt?: string | null }) =>
-    c.akwaabaStatus ? c.akwaabaStatus === "visiting" : (c.category === "Visitor" || !c.convertedAt);
+    c.akwaabaStatus ? c.akwaabaStatus === "visiting" : (c.category === "Visitor" || c.convertedAt != null);
 
   const visitingCount = counts.filter(isVisitingRow).reduce((sum, c) => sum + c.n, 0);
   const stayingCount = counts.filter((c) => !isVisitingRow(c)).reduce((sum, c) => sum + c.n, 0);

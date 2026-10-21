@@ -166,6 +166,8 @@ export async function registerPerson(_prev: FormState, form: FormData): Promise<
   }
 
   revalidatePath("/akwaaba");
+  revalidatePath("/akwaaba", "page");
+  revalidatePath("/visitor-conversion");
   revalidatePath("/members");
   revalidatePath("/dashboard");
 
@@ -187,6 +189,8 @@ export async function setPersonActive(id: string, active: boolean) {
     metadata: { memberId: id, fullName: updated?.fullName, active },
   });
   revalidatePath("/akwaaba");
+  revalidatePath("/akwaaba", "page");
+  revalidatePath("/visitor-conversion");
   revalidatePath("/members");
   revalidatePath("/dashboard");
 }
@@ -205,6 +209,8 @@ export async function deletePerson(id: string) {
     metadata: { memberId: id, fullName: deleted?.fullName },
   });
   revalidatePath("/akwaaba");
+  revalidatePath("/akwaaba", "page");
+  revalidatePath("/visitor-conversion");
   revalidatePath("/members");
   revalidatePath("/dashboard");
 }

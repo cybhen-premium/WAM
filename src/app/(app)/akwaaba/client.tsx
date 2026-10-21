@@ -179,6 +179,7 @@ export function AkwaabaFilters(props: {
 /* Per-row actions ---------------------------------------------------------- */
 
 export function PersonRowActions({ person, departments = [] }: { person: any; departments?: DepartmentOption[] }) {
+  const router = useRouter();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -199,6 +200,7 @@ export function PersonRowActions({ person, departments = [] }: { person: any; de
         onClick={() => {
           startTransition(async () => {
             await setPersonActive(person.id, !person.active);
+            router.refresh();
           });
         }}
         className={buttonStyles.ghost}
@@ -213,6 +215,7 @@ export function PersonRowActions({ person, departments = [] }: { person: any; de
           onClick={() => {
             startTransition(async () => {
               await deletePerson(person.id);
+              router.refresh();
             });
           }}
           onBlur={() => setConfirmDelete(false)}
@@ -231,7 +234,13 @@ export function PersonRowActions({ person, departments = [] }: { person: any; de
           <Trash2 />
         </button>
       )}
-      <PersonFormModal open={editing} onClose={() => setEditing(false)} person={person} departments={departments} />
+      <PersonFormModal
+        key={editing ? `${person.id}-${person.akwaabaStatus || person.category}` : "closed"}
+        open={editing}
+        onClose={() => setEditing(false)}
+        person={person}
+        departments={departments}
+      />
     </div>
   );
 }
@@ -249,7 +258,11 @@ function PersonFormModal({
   person?: any;
   departments?: DepartmentOption[];
 }) {
-  const [state, action, pending] = useFormAction(registerPerson, onClose);
+  const router = useRouter();
+  const [state, action, pending] = useFormAction(registerPerson, () => {
+    router.refresh();
+    onClose();
+  });
   const isEditing = !!person;
 
   return (
@@ -264,7 +277,13 @@ function PersonFormModal({
         {isEditing && <input type="hidden" name="id" value={person.id} />}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           <TextField className="sm:col-span-2" label="Full Name" name="fullName" required placeholder="Enter person's full name" defaultValue={person?.fullName} />
-          <TextField label="Date" name="joinedAt" type="date" defaultValue={person?.joinedAt || new Date().toISOString().split("T")[0]} required />
+          <TextField
+            label="Date"
+            name="joinedAt"
+            type="date"
+            defaultValue={person?.joinedAt ? String(person.joinedAt).slice(0, 10) : new Date().toISOString().split("T")[0]}
+            required
+          />
           <TextField label="Phone Number" name="phone" type="tel" icon={Phone} placeholder="024XXXXXXX" defaultValue={person?.phone} />
           <SelectField label="Gender" name="gender" options={["Male", "Female"]} defaultValue={person?.gender || "Male"} />
           <SelectField
