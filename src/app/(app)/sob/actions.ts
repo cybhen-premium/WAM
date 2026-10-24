@@ -335,11 +335,12 @@ export async function undoSobLesson(memberId: string, lesson: number): Promise<v
       const hadAutoGraduated =
         current.category !== "Visitor" &&
         current.category !== "Regular Attendee" &&
-        lessonsLeft.length === 0;
+        current.convertedAt !== null;
       await db
         .update(member)
         .set({
           baptized: false,
+          baptismStatus: "Not Baptized",
           ...(hadAutoGraduated ? { category: "Regular Attendee", convertedAt: null } : {}),
         })
         .where(and(eq(member.id, memberId), eq(member.churchId, church.id)));
