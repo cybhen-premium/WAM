@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { AiError, runAi } from "@/lib/ai";
@@ -39,17 +39,38 @@ export async function refineMessage(style: RefineStyle, topic: string, body: str
   }
 }
 
-/** Audience values: "all", "at-risk", or "category:<name>". */
+/** Audience values: "all", "at-risk", "dept:<id>", or legacy "category:<name>". */
 async function audiencePhones(church: Awaited<ReturnType<typeof requireChurch>>["church"], audience: string) {
-  const where =
-    audience === "at-risk"
-      ? atRiskWhere(church)
-      : and(
-          eq(member.churchId, church.id),
-          eq(member.active, true),
-          audience.startsWith("category:") ? eq(member.category, audience.slice(9)) : undefined,
-        );
-  const rows = await db.select({ phone: member.phone }).from(member).where(where);
+  let where;
+  if (audience === "at-risk") {
+    where = atRiskWhere(church);
+  } else if (audience.startsWith("dept:")) {
+    where = and(
+      eq(member.churchId, church.id),
+      eq(member.active, true),
+      sql`${member.category} not in ('Visitor', 'Regular Attendee')`,
+      eq(member.departmentId, audience.slice(5)),
+    );
+  } else if (audience.startsWith("category:")) {
+    where = and(
+      eq(member.churchId, church.id),
+      eq(member.active, true),
+      sql`${member.category} not in ('Visitor', 'Regular Attendee')`,
+      eq(member.category, audience.slice(9)),
+    );
+  } else {
+    // "all" — Entire Congregation (all active members)
+    where = and(
+      eq(member.churchId, church.id),
+      eq(member.active, true),
+      sql`${member.category} not in ('Visitor', 'Regular Attendee')`,
+    );
+  }
+
+  const rows = await db
+    .select({ phone: member.phone })
+    .from(member)
+    .where(and(where, sql`${member.phone} is not null and trim(${member.phone}) != ''`));
   return rows.map((r) => r.phone);
 }
 

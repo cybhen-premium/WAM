@@ -7,10 +7,23 @@ import { refineMessage, sendAnnouncement, type RefineStyle } from "./actions";
 
 type Audience = { value: string; label: string; count: number };
 
-export function Composer({ credits, audiences }: { credits: number; audiences: Audience[] }) {
+export function Composer({
+  credits,
+  audiences,
+  initialAudience,
+}: {
+  credits: number;
+  audiences: Audience[];
+  initialAudience?: string;
+}) {
   const [topic, setTopic] = useState("");
   const [body, setBody] = useState("");
-  const [audience, setAudience] = useState(audiences[0]?.value ?? "all");
+  const [audience, setAudience] = useState(() => {
+    if (initialAudience && audiences.some((a) => a.value === initialAudience)) {
+      return initialAudience;
+    }
+    return audiences[0]?.value ?? "all";
+  });
   const [flash, setFlash] = useState<{ ok: boolean; text: string } | null>(null);
   const [aiPending, startAi] = useTransition();
   const [sendPending, startSend] = useTransition();

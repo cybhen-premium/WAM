@@ -209,7 +209,7 @@ export default async function DashboardPage() {
                 <p className="text-[10px] font-bold text-orange-600/60 uppercase">Absent for {church.absenceThresholdWeeks}+ weeks</p>
               </div>
               <Link
-                href="/message-center?audience=at-risk"
+                href="/announcements?audience=at-risk"
                 className="inline-flex items-center justify-center text-xs sm:text-sm border bg-background h-8 sm:h-9 rounded-md px-3 border-orange-200 text-orange-700 hover:bg-orange-50 font-bold shrink-0"
               >
                 Reach Out All
