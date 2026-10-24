@@ -483,6 +483,7 @@ export async function importMembers(_prev: FormState, form: FormData): Promise<F
       f.set("baptismStatus", bStatus);
       f.set("baptized", bStatus === "Baptized" ? "Baptized" : "");
       f.set("occupation", col(row, "occupation", "profession"));
+      f.set("category", col(row, "category", "ministry", "group"));
       f.set("address", col(row, "address", "residentialaddress"));
       f.set("departmentId", col(row, "department", "departmentid"));
       f.set("dateOfBirth", col(row, "dateofbirth", "birthday"));

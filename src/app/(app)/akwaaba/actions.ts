@@ -21,6 +21,7 @@ function readPerson(form: FormData) {
   const status = s("status").toLowerCase(); // "visiting" or "staying"
   const akwaabaStatus = status === "staying" ? "staying" : "visiting";
   const id = s("id");
+  const departmentId = opt("departmentId");
   return {
     id: id || null,
     fullName: s("fullName"),
@@ -31,7 +32,7 @@ function readPerson(form: FormData) {
     akwaabaStatus,
     address: opt("address"),
     invitedBy: opt("invitedBy"),
-    departmentId: opt("departmentId"),
+    departmentId,
     joinedAt: date("joinedAt") || undefined,
   } as const;
 }

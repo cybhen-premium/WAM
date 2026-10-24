@@ -106,6 +106,7 @@ export default async function DepartmentPortalPage({
         eq(schema.member.churchId, church.id),
         eq(schema.member.departmentId, activeDept.id),
         eq(schema.member.active, true),
+        sql`${schema.member.category} not in ('Visitor', 'Regular Attendee')`,
       ),
     )
     .orderBy(asc(schema.member.fullName));

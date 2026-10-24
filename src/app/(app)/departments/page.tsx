@@ -1,4 +1,4 @@
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, sql } from "drizzle-orm";
 import { Users, KeyRound, ExternalLink, CheckCircle2, Clock } from "lucide-react";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
@@ -42,7 +42,12 @@ export default async function DepartmentsPage({ searchParams }: PageProps<"/depa
         count: count(),
       })
       .from(schema.member)
-      .where(eq(schema.member.churchId, church.id))
+      .where(
+        and(
+          eq(schema.member.churchId, church.id),
+          sql`${schema.member.category} not in ('Visitor', 'Regular Attendee')`,
+        ),
+      )
       .groupBy(schema.member.departmentId),
     db
       .select({

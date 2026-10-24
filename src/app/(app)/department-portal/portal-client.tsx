@@ -56,6 +56,14 @@ type HistoryPoint = {
   rate: number;
 };
 
+function DeptCategoryBadge({ category }: { category: string }) {
+  return (
+    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-slate-600 shrink-0">
+      {category}
+    </span>
+  );
+}
+
 type Props = {
   department: Department;
   allDepartments: Department[];
@@ -509,9 +517,7 @@ export function DepartmentPortalClient({
                             <span className="font-bold text-slate-900 text-sm truncate">
                               {member.fullName}
                             </span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-slate-600 shrink-0">
-                              {member.category}
-                            </span>
+                            <DeptCategoryBadge category={member.category} />
                           </div>
                           <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-400 mt-0.5 truncate">
                             <span className="truncate">{member.phone || "No phone"}</span>
@@ -712,9 +718,7 @@ export function DepartmentPortalClient({
                     <tr key={m.id} className="hover:bg-slate-50 transition-colors">
                       <td className="py-3 pl-6 font-bold text-slate-900">{m.fullName}</td>
                       <td className="py-3">
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                          {m.category}
-                        </span>
+                        <DeptCategoryBadge category={m.category} />
                       </td>
                       <td className="py-3 text-slate-600">{m.phone || "—"}</td>
                       <td className="py-3 text-slate-600">

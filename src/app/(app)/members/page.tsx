@@ -82,8 +82,8 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
       .where(
         and(
           eq(member.churchId, church.id),
-          sql`${member.category} not in ('Visitor', 'Regular Attendee')`
-        )
+          sql`${member.category} not in ('Visitor', 'Regular Attendee')`,
+        ),
       );
 
   if (isDuplicateFilterActive) {
@@ -96,7 +96,6 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
   const filters: (SQL | undefined)[] = [
     eq(member.churchId, church.id),
     eq(member.active, status === "active"),
-    // Exclude visitors and regular attendees - only show full members
     sql`${member.category} not in ('Visitor', 'Regular Attendee')`,
   ];
   if (group) filters.push(eq(member.category, group));
@@ -129,7 +128,12 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
     db
       .select({ active: member.active, n: count() })
       .from(member)
-      .where(and(eq(member.churchId, church.id), sql`${member.category} not in ('Visitor', 'Regular Attendee')`))
+      .where(
+        and(
+          eq(member.churchId, church.id),
+          sql`${member.category} not in ('Visitor', 'Regular Attendee')`,
+        ),
+      )
       .groupBy(member.active),
     db
       .select()
@@ -193,7 +197,7 @@ export default async function MembersPage({ searchParams }: PageProps<"/members"
                     <div className="flex flex-col items-center justify-center text-slate-400">
                       <UserCheck className="h-10 w-10 mb-3 opacity-20" />
                       <p className="text-sm font-medium italic">
-                        {q || group || duplicate ? "No members match your filters." : "The member directory is currently empty."}
+                        {q || group || departmentId || duplicate ? "No members match your filters." : "The member directory is currently empty."}
                       </p>
                     </div>
                   </td>
