@@ -29,8 +29,14 @@ export default async function TithesPrintPage({ searchParams }: PageProps<"/prin
 
   // Tithes are for members only — visitors / regular attendees are still in the Akwaaba → SOB journey.
   const members = await db
-    .select({ id: schema.member.id, fullName: schema.member.fullName, category: schema.member.category })
+    .select({
+      id: schema.member.id,
+      fullName: schema.member.fullName,
+      category: schema.member.category,
+      departmentName: schema.department.name,
+    })
     .from(schema.member)
+    .leftJoin(schema.department, eq(schema.member.departmentId, schema.department.id))
     .where(
       and(
         eq(schema.member.churchId, church.id),
@@ -190,7 +196,9 @@ export default async function TithesPrintPage({ searchParams }: PageProps<"/prin
                       <tr key={m.id} className="border-b border-slate-100">
                         <td className="py-1.5 pl-2">
                           <p className="font-bold">{m.fullName}</p>
-                          <p className="text-[9px] uppercase text-slate-400">{m.category}</p>
+                          <p className="text-[9px] uppercase text-slate-400">
+                            {m.departmentName ? (m.category && m.category !== "General Member" ? `${m.departmentName} · ${m.category}` : m.departmentName) : m.category}
+                          </p>
                         </td>
                         {s.weekCols.map(({ week }) => (
                           <td key={week} className="py-1.5 text-center">

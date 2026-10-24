@@ -78,8 +78,10 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
       fullName: schema.member.fullName,
       photoUrl: schema.member.photoUrl,
       category: schema.member.category,
+      departmentName: schema.department.name,
     })
     .from(schema.member)
+    .leftJoin(schema.department, eq(schema.member.departmentId, schema.department.id))
     .where(
       and(
         eq(schema.member.churchId, church.id),
@@ -313,7 +315,9 @@ export default async function TithesPage({ searchParams }: PageProps<"/tithes">)
                                 <MemberAvatar name={m.fullName} photoUrl={m.photoUrl} size="md" />
                                 <div className="min-w-0">
                                   <p className="font-bold text-slate-900 truncate leading-tight">{m.fullName}</p>
-                                  <p className="text-[10px] font-bold uppercase text-slate-400 truncate mt-0.5">{m.category}</p>
+                                  <p className="text-[10px] font-bold uppercase text-slate-400 truncate mt-0.5">
+                                    {m.departmentName ? (m.category && m.category !== "General Member" ? `${m.departmentName} · ${m.category}` : m.departmentName) : m.category}
+                                  </p>
                                 </div>
                               </div>
                             </td>

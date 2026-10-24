@@ -326,8 +326,12 @@ export async function saveMember(_prev: FormState, form: FormData): Promise<Form
   revalidatePath("/members");
   revalidatePath("/dashboard");
   revalidatePath("/visitor-conversion");
-
   revalidatePath("/sob");
+  revalidatePath("/departments");
+  revalidatePath("/department-portal");
+  revalidatePath("/tithes");
+  revalidatePath("/print/tithes");
+  revalidatePath("/welfare-dues");
   return { ok: true };
 }
 
@@ -420,6 +424,11 @@ export async function deleteMember(id: string) {
   });
   revalidatePath("/members");
   revalidatePath("/dashboard");
+  revalidatePath("/departments");
+  revalidatePath("/department-portal");
+  revalidatePath("/tithes");
+  revalidatePath("/print/tithes");
+  revalidatePath("/welfare-dues");
 }
 
 /** Import members from a CSV with duplicate detection and automated Member ID generation. */
