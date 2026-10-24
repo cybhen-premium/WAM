@@ -238,13 +238,15 @@ export function AppShell({
       >
         {/* Logo / Church name */}
         <div className="flex h-[60px] items-center gap-3 px-4 shrink-0 border-b border-white/5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-600 shadow-lg shrink-0 overflow-hidden">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={churchName} className="h-full w-full object-contain" />
-            ) : (
-              <Church className="h-4 w-4 text-white" />
-            )}
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-md shrink-0 overflow-hidden p-1 border border-white/10">
+            <img
+              src={logoUrl || "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png"}
+              alt={churchName}
+              className="h-full w-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/logo.png";
+              }}
+            />
           </div>
           <div className="flex flex-col min-w-0 flex-1">
             <span className="text-[11px] font-black text-white truncate leading-none uppercase tracking-tight">
@@ -524,7 +526,16 @@ export function AppShell({
                   className="inline-flex items-center gap-1.5 sm:gap-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 px-2 sm:px-3 py-1.5 text-xs font-black uppercase tracking-tight text-slate-800 transition-all cursor-pointer shadow-2xs max-w-full"
                   title="Click to switch church branch"
                 >
-                  <Church className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                  <div className="h-4 w-4 rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-white border border-slate-200">
+                    <img
+                      src={logoUrl || "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png"}
+                      alt=""
+                      className="h-full w-full object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/logo.png";
+                      }}
+                    />
+                  </div>
                   <span className="max-w-[110px] min-[380px]:max-w-[160px] sm:max-w-[320px] truncate">{churchName}</span>
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
                   <ChevronDown
@@ -561,13 +572,15 @@ export function AppShell({
                               )}
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <div
-                                  className={cn(
-                                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-black",
-                                    isCurrent ? "bg-amber-500 text-slate-950" : "bg-slate-100 text-slate-500"
-                                  )}
-                                >
-                                  <Church className="h-3.5 w-3.5" />
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white border border-slate-200 p-0.5 overflow-hidden">
+                                  <img
+                                    src={logoUrl || "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png"}
+                                    alt=""
+                                    className="h-full w-full object-contain"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = "/logo.png";
+                                    }}
+                                  />
                                 </div>
                                 <div className="min-w-0">
                                   <p className="truncate text-xs font-black">{b.name}</p>
@@ -585,6 +598,16 @@ export function AppShell({
               </div>
             ) : (
               <div className="flex items-center gap-2 min-w-0">
+                <div className="h-6 w-6 rounded-lg overflow-hidden shrink-0 flex items-center justify-center bg-white border border-slate-200 p-0.5 shadow-2xs">
+                  <img
+                    src={logoUrl || "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png"}
+                    alt=""
+                    className="h-full w-full object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/logo.png";
+                    }}
+                  />
+                </div>
                 <span className="text-[11px] font-black uppercase tracking-tight text-slate-900 truncate max-w-[130px] min-[380px]:max-w-[200px] sm:max-w-none">{churchName}</span>
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
               </div>

@@ -6,7 +6,7 @@ import { Lock, Mail, User } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { AuthCard, Field, SubmitButton } from "@/components/auth-card";
 
-export function SignupForm() {
+export function SignupForm({ logoUrl }: { logoUrl?: string | null }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -28,7 +28,11 @@ export function SignupForm() {
   }
 
   return (
-    <AuthCard title="Create your account" subtitle="Start managing your church in minutes">
+    <AuthCard
+      title="Create your account"
+      subtitle="Start managing your church in minutes"
+      logoUrl={logoUrl}
+    >
       <Suspense>
         <form onSubmit={onSubmit} className="space-y-5">
           <Field label="Full Name" name="name" required placeholder="e.g., John Mensah" icon={<User />} autoComplete="name" />

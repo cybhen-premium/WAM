@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Church, Eye, EyeOff } from "lucide-react";
 
 export const DEFAULT_CHURCH_LOGO =
@@ -20,8 +20,15 @@ export function AuthCard({
   const [currentSrc, setCurrentSrc] = useState<string>(logoUrl || DEFAULT_CHURCH_LOGO);
   const [hasError, setHasError] = useState(false);
 
+  useEffect(() => {
+    setCurrentSrc(logoUrl || DEFAULT_CHURCH_LOGO);
+    setHasError(false);
+  }, [logoUrl]);
+
   function handleError() {
-    if (currentSrc !== "/wam.png") {
+    if (currentSrc !== "/logo.png" && currentSrc !== "/wam.png") {
+      setCurrentSrc("/logo.png");
+    } else if (currentSrc === "/logo.png") {
       setCurrentSrc("/wam.png");
     } else {
       setHasError(true);

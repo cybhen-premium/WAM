@@ -310,13 +310,15 @@ export function MemberPortalClient({
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           {/* Brand */}
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-700 to-indigo-800 text-white shadow-md">
-              {church.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={church.logoUrl} alt={church.name} className="h-full w-full object-contain rounded-2xl p-1" />
-              ) : (
-                <Church className="h-5 w-5" />
-              )}
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden p-1">
+              <img
+                src={church.logoUrl || "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png"}
+                alt={church.name}
+                className="h-full w-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/logo.png";
+                }}
+              />
             </div>
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-tight text-slate-900 leading-tight truncate max-w-[130px] min-[390px]:max-w-[200px] sm:max-w-none">

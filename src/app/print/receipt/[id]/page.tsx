@@ -29,14 +29,32 @@ export default async function ReceiptPage({ params }: PageProps<"/print/receipt/
         <div className="flex justify-end">
           <PrintButton />
         </div>
-        <div className="rounded-3xl bg-white shadow-xl print:shadow-none overflow-hidden border border-slate-200">
+        <div className="relative rounded-3xl bg-white shadow-xl print:shadow-none overflow-hidden border border-slate-200">
           <div className="bg-[#1e3a8a] p-6 text-white text-center">
-            <Church className="mx-auto h-8 w-8" />
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-md p-1.5 overflow-hidden">
+              <img
+                src={church.logoUrl || "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png"}
+                alt={church.name}
+                className="h-full w-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/logo.png";
+                }}
+              />
+            </div>
             <h1 className="mt-2 text-xl font-black uppercase tracking-tight">{church.name}</h1>
             {church.location && <p className="text-xs text-blue-100">{church.location}</p>}
             {church.phone && <p className="text-xs text-blue-100">{church.phone}</p>}
           </div>
-          <div className="p-6 space-y-4">
+          <div className="relative p-6 space-y-4">
+            {church.receiptWatermark && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.04]">
+                <img
+                  src={church.logoUrl || "/logo.png"}
+                  alt=""
+                  className="w-48 h-48 object-contain"
+                />
+              </div>
+            )}
             <div className="flex justify-between items-center">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Official Receipt</p>
               <p className="font-mono text-sm font-bold">{receiptLabel(t.receiptNo)}</p>

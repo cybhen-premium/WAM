@@ -8,6 +8,33 @@ import { MemberPortalClient } from "./portal-client";
 export const metadata = {
   title: "Member Portal Dashboard",
   description: "View your tithes, welfare contributions, and personal profile.",
+  openGraph: {
+    type: "website",
+    title: "World Ark Missions • Member Portal Dashboard",
+    description: "View your tithes, welfare contributions, announcements, and personal profile.",
+    images: [
+      {
+        url: "/logo.png",
+        width: 512,
+        height: 512,
+        alt: "World Ark Missions Logo",
+        type: "image/png",
+      },
+      {
+        url: "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png",
+        width: 512,
+        height: 512,
+        alt: "World Ark Missions Logo",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "World Ark Missions • Member Portal Dashboard",
+    description: "View your tithes, welfare contributions, and personal profile.",
+    images: ["/logo.png"],
+  },
 };
 
 export default async function MemberPortalDashboardPage() {

@@ -8,6 +8,33 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Shepherd Portal",
   description: "Discipleship tracking, attendance roll-call, and spiritual walk evaluations.",
+  openGraph: {
+    type: "website",
+    title: "World Ark Missions • Shepherd Portal",
+    description: "Discipleship tracking, attendance roll-call, and spiritual walk evaluations.",
+    images: [
+      {
+        url: "/logo.png",
+        width: 512,
+        height: 512,
+        alt: "World Ark Missions Logo",
+        type: "image/png",
+      },
+      {
+        url: "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png",
+        width: 512,
+        height: 512,
+        alt: "World Ark Missions Logo",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "World Ark Missions • Shepherd Portal",
+    description: "Discipleship tracking, attendance roll-call, and spiritual walk evaluations.",
+    images: ["/logo.png"],
+  },
 };
 
 export default async function ShepherdPortalPage() {

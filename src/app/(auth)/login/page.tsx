@@ -5,6 +5,38 @@ import { db } from "@/db";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  title: "Sign In",
+  description: "Sign in to World Ark Missions church management platform.",
+  openGraph: {
+    type: "website",
+    title: "World Ark Missions • Sign In",
+    description: "Sign in to World Ark Missions church management platform.",
+    images: [
+      {
+        url: "/logo.png",
+        width: 512,
+        height: 512,
+        alt: "World Ark Missions Logo",
+        type: "image/png",
+      },
+      {
+        url: "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png",
+        width: 512,
+        height: 512,
+        alt: "World Ark Missions Logo",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "World Ark Missions • Sign In",
+    description: "Sign in to World Ark Missions church management platform.",
+    images: ["/logo.png"],
+  },
+};
+
 export default async function LoginPage() {
   let churchData = null;
   try {

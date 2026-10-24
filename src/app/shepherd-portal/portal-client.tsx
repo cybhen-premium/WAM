@@ -327,6 +327,9 @@ export function ShepherdPortalClient({
                 src={church.logoUrl || "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png"}
                 alt={church.name}
                 className="h-full w-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/logo.png";
+                }}
               />
             </div>
             <div className="min-w-0">

@@ -109,10 +109,22 @@ export default async function AkwaabaPrintPage({ searchParams }: PageProps<"/pri
       <AkwaabaPrintControls month={month} />
 
       <div className="flex items-start justify-between gap-4 border-b-2 border-[#1e3a8a] pb-4">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight">{church.name}</h1>
-          <p className="text-sm text-slate-500">Akwaaba Reception Report · {monthLabel}</p>
-          <p className="text-xs text-slate-400">Generated {fmtDate(new Date())}</p>
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-slate-50 border border-slate-200 p-1 overflow-hidden">
+            <img
+              src={church.logoUrl || "https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png"}
+              alt={church.name}
+              className="h-full w-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/logo.png";
+              }}
+            />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black uppercase tracking-tight">{church.name}</h1>
+            <p className="text-sm text-slate-500">Akwaaba Reception Report · {monthLabel}</p>
+            <p className="text-xs text-slate-400">Generated {fmtDate(new Date())}</p>
+          </div>
         </div>
       </div>
 

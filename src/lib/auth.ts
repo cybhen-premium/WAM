@@ -73,6 +73,7 @@ export const auth = betterAuth({
             subject: "Your Login Code – World Ark Missions",
             html: `
               <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;text-align:center;">
+                <img src="https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png" alt="World Ark Missions" width="60" height="60" style="display:block;margin:0 auto 16px;border-radius:14px;background:#ffffff;padding:4px;" />
                 <h2 style="color:#1e3a8a;margin-bottom:8px;">Login Code</h2>
                 <p style="color:#475569;margin-bottom:24px;">
                   Use the following code to continue logging in. This code expires in 5 minutes.
@@ -94,6 +95,7 @@ export const auth = betterAuth({
             subject: "Your Password Reset Code – World Ark Missions",
             html: `
               <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;text-align:center;">
+                <img src="https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png" alt="World Ark Missions" width="60" height="60" style="display:block;margin:0 auto 16px;border-radius:14px;background:#ffffff;padding:4px;" />
                 <h2 style="color:#1e3a8a;margin-bottom:8px;">Password Reset Code</h2>
                 <p style="color:#475569;margin-bottom:24px;">
                   Use the following code to reset your password. This code expires in 5 minutes.

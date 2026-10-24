@@ -60,6 +60,7 @@ export async function sendStaffWelcomeEmail({
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center">
+                    <img src="https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png" alt="World Ark Missions" width="60" height="60" style="display: block; margin: 0 auto 16px; border-radius: 14px; background: #ffffff; padding: 4px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />
                     <div style="display: inline-block; padding: 8px 18px; background-color: rgba(255, 255, 255, 0.15); border-radius: 9999px; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.25);">
                       <span style="color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">
                         World Ark Missions Portal
