@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
+import { verifyPassword } from "@/lib/shepherd-portal";
 import { ShepherdsClient } from "./shepherds-client";
 
 export const metadata = {
@@ -23,6 +24,7 @@ export default async function ShepherdsAdminPage() {
         fullName: schema.shepherd.fullName,
         phone: schema.shepherd.phone,
         email: schema.shepherd.email,
+        passwordHash: schema.shepherd.passwordHash,
         shepherdCode: schema.shepherd.shepherdCode,
         active: schema.shepherd.active,
         notes: schema.shepherd.notes,
@@ -61,9 +63,24 @@ export default async function ShepherdsAdminPage() {
       .orderBy(schema.user.name, schema.staff.email),
   ]);
 
+  const shepherdItems = shepherds.map((s) => ({
+    id: s.id,
+    staffId: s.staffId,
+    fullName: s.fullName,
+    phone: s.phone,
+    email: s.email,
+    shepherdCode: s.shepherdCode,
+    active: s.active,
+    notes: s.notes,
+    createdAt: s.createdAt,
+    discipleCount: s.discipleCount,
+    staffRole: s.staffRole,
+    isUsingInitialPassword: !s.staffId && verifyPassword("WAM@2026", s.passwordHash),
+  }));
+
   return (
     <ShepherdsClient
-      shepherds={shepherds}
+      shepherds={shepherdItems}
       staffMembers={staffMembers}
     />
   );

@@ -23,6 +23,11 @@ import {
   Filter,
   Flame,
   BookOpen,
+  ShieldAlert,
+  KeyRound,
+  Eye,
+  EyeOff,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -33,6 +38,7 @@ import {
   removeDiscipleFromFlock,
   recordServiceAttendance,
   recordSpiritualEvaluation,
+  updateShepherdSelfPassword,
 } from "./actions";
 
 type DiscipleRow = {
@@ -88,6 +94,7 @@ export function ShepherdPortalClient({
   recentAttendance,
   recentSpiritualLogs,
   isStaffMember = false,
+  isUsingInitialPassword = false,
 }: {
   shepherd: {
     id: string;
@@ -105,10 +112,56 @@ export function ShepherdPortalClient({
   recentAttendance: AttendanceRow[];
   recentSpiritualLogs: SpiritualLogRow[];
   isStaffMember?: boolean;
+  isUsingInitialPassword?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<"disciples" | "attendance" | "spiritual">("disciples");
   const [searchTerm, setSearchTerm] = useState("");
   const [pending, startTransition] = useTransition();
+
+  // Password change / creation state
+  const [initialPasswordActive, setInitialPasswordActive] = useState(Boolean(isUsingInitialPassword));
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(Boolean(isUsingInitialPassword));
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordPending, setPasswordPending] = useState(false);
+  const [dismissInitialBanner, setDismissInitialBanner] = useState(false);
+
+  async function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword === "WAM@2026") {
+      toast.error("Please create a unique personal password different from the initial default (WAM@2026).");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match. Please re-enter.");
+      return;
+    }
+
+    setPasswordPending(true);
+    try {
+      const res = await updateShepherdSelfPassword(newPassword);
+      if (!res.ok) {
+        toast.error(res.error || "Failed to update password.");
+        setPasswordPending(false);
+        return;
+      }
+      toast.success("Your personal password has been successfully created and saved!");
+      setInitialPasswordActive(false);
+      setIsPasswordModalOpen(false);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      toast.error("An unexpected error occurred while updating your password.");
+    } finally {
+      setPasswordPending(false);
+    }
+  }
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -348,13 +401,32 @@ export function ShepherdPortalClient({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {isStaffMember && (
+            {isStaffMember ? (
               <Link
                 href="/dashboard"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-2xs transition-all cursor-pointer"
               >
                 <span>← Back to Staff Portal</span>
               </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsPasswordModalOpen(true)}
+                title="Create or Change Shepherd Password"
+                className={`h-9 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  initialPasswordActive
+                    ? "bg-amber-500 text-white border-amber-600 shadow-sm animate-pulse"
+                    : "border-slate-200 bg-white text-slate-700 hover:text-[#1e3a8a] hover:bg-blue-50/70 hover:border-blue-200 shadow-2xs"
+                }`}
+              >
+                <KeyRound className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden md:inline">
+                  {initialPasswordActive ? "Set Password" : "Change Password"}
+                </span>
+                {initialPasswordActive && (
+                  <span className="h-2 w-2 rounded-full bg-white shrink-0 md:hidden" />
+                )}
+              </button>
             )}
             <div className="hidden sm:flex flex-col text-right">
               <span className="text-xs font-black text-slate-800">{shepherd.fullName}</span>
@@ -374,7 +446,7 @@ export function ShepherdPortalClient({
                 }
               }}
               title="Sign Out"
-              className="h-9 w-9 rounded-xl border border-slate-200 text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-all flex items-center justify-center"
+              className="h-9 w-9 rounded-xl border border-slate-200 text-slate-500 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-all flex items-center justify-center cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -384,6 +456,47 @@ export function ShepherdPortalClient({
 
       {/* Main Content Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+        {/* Security Alert: Initial Password Change Prompt */}
+        {initialPasswordActive && !dismissInitialBanner && !isStaffMember && (
+          <div className="rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-2 border-amber-400/50 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-300">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-xs sm:text-sm font-black text-amber-950">
+                    Security Notice: Create Your Own Personal Password
+                  </h4>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-200/90 text-amber-900 border border-amber-300">
+                    Initial Password (WAM@2026) Active
+                  </span>
+                </div>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  You are currently signed in with the default initial password (<strong>WAM@2026</strong>). For the security of your disciples, please create your own unique password now.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setDismissInitialBanner(true)}
+                className="px-3 py-2 text-xs font-bold text-amber-800 hover:text-amber-950 transition-colors cursor-pointer"
+              >
+                Remind Later
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPasswordModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                <span>Create My Password</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Navigation Tabs */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
           <div className="flex items-center gap-1.5 p-1 bg-slate-200/60 rounded-2xl w-full sm:w-auto">
@@ -1299,6 +1412,123 @@ export function ShepherdPortalClient({
                   className="px-5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold shadow-md hover:from-red-700 hover:to-pink-700 transition-all cursor-pointer"
                 >
                   {pending ? "Saving..." : "Save Evaluation"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------- Modal: Create or Change Password -------------------------------- */}
+      {isPasswordModalOpen && !isStaffMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-7 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200">
+                  <KeyRound className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    {initialPasswordActive ? "Create Your Own Password" : "Change Shepherd Password"}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {initialPasswordActive
+                      ? "Replace the temporary default initial password (WAM@2026)"
+                      : `Update your login credentials (${shepherd.fullName})`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPasswordModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {initialPasswordActive && (
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
+                <p className="font-bold flex items-center gap-1.5 text-amber-950">
+                  <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span>Temporary Initial Password Active</span>
+                </p>
+                <p className="text-[11.5px] text-amber-800 leading-relaxed font-normal">
+                  Your shepherd account was created with the initial password <strong>WAM@2026</strong>. Please choose a strong password that only you know to protect your disciples.
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={handlePasswordSubmit} className="space-y-4 text-xs font-semibold">
+              <div>
+                <label className="block text-slate-700 mb-1 font-bold">New Password (min. 6 characters) *</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="Enter your new password"
+                    className="w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 mb-1 font-bold">Confirm New Password *</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="Re-enter your new password"
+                    className="w-full h-11 px-3.5 pr-10 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  {initialPasswordActive ? "Remind Me Later" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordPending || newPassword.length < 6 || confirmPassword.length < 6}
+                  className="px-5 py-2.5 rounded-xl bg-[#1e3a8a] text-white font-bold shadow-md hover:bg-blue-900 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {passwordPending ? (
+                    <>
+                      <RotateCcw className="h-4 w-4 animate-spin" />
+                      <span>Saving Password...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="h-4 w-4" />
+                      <span>{initialPasswordActive ? "Set My Password" : "Save Password"}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Smartphone, Lock, ArrowRight } from "lucide-react";
+import { Smartphone, Lock, ArrowRight, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { Field, SubmitButton } from "@/components/auth-card";
 import { loginShepherd } from "./actions";
@@ -50,16 +50,24 @@ export function ShepherdLoginForm() {
         placeholder="e.g. 0244123456 or SHP-8K2X"
       />
 
-      <Field
-        label="Password"
-        name="password"
-        type="password"
-        required
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        icon={<Lock />}
-        placeholder="••••••••"
-      />
+      <div>
+        <Field
+          label="Password"
+          name="password"
+          type="password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          icon={<Lock />}
+          placeholder="••••••••"
+        />
+        <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1.5 px-0.5">
+          <KeyRound className="h-3 w-3 text-amber-500 shrink-0" />
+          <span>
+            First time logging in? Your initial password is <strong className="font-mono text-slate-800">WAM@2026</strong>
+          </span>
+        </p>
+      </div>
 
       <SubmitButton pending={pending}>
         <span className="inline-flex items-center justify-center gap-2">

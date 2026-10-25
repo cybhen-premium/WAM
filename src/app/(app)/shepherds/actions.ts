@@ -26,10 +26,12 @@ export async function createShepherd(_prev: FormState, formData: FormData): Prom
   if (!fullName) return { error: "Shepherd full name is required." };
   if (!phone) return { error: "Shepherd phone number is required." };
 
-  if (source === "new" && (!password || password.length < 6)) {
-    return { error: "A password of at least 6 characters is required for new shepherds." };
-  }
-  if (password && password.length < 6) {
+  const isStaffShepherd = source === "staff" || Boolean(staffId);
+  const effectivePassword = isStaffShepherd
+    ? crypto.randomUUID() // staff accounts use their staff portal credentials, no standalone password
+    : password || "WAM@2026"; // standalone shepherds get default initial password WAM@2026
+
+  if (!isStaffShepherd && effectivePassword.length < 6) {
     return { error: "Password must be at least 6 characters." };
   }
 
@@ -69,7 +71,6 @@ export async function createShepherd(_prev: FormState, formData: FormData): Prom
     }
 
     const shepherdCode = await generateShepherdCode();
-    const effectivePassword = password || crypto.randomUUID();
     const passwordHash = hashPassword(effectivePassword);
 
     const [created] = await db
@@ -96,6 +97,7 @@ export async function createShepherd(_prev: FormState, formData: FormData): Prom
 
     revalidatePath("/shepherds");
     revalidatePath("/shepherd-portal");
+    revalidatePath("/", "layout");
     return { ok: true };
   } catch (err: any) {
     console.error("[createShepherd] error:", err);
@@ -157,14 +159,15 @@ export async function resetShepherdPassword(_prev: FormState, formData: FormData
 
   const id = String(formData.get("id") ?? "").trim();
   const newPassword = String(formData.get("newPassword") ?? "").trim();
+  const effectivePassword = newPassword || "WAM@2026";
 
   if (!id) return { error: "Shepherd ID is missing." };
-  if (!newPassword || newPassword.length < 6) {
+  if (effectivePassword.length < 6) {
     return { error: "New password must be at least 6 characters." };
   }
 
   try {
-    const passwordHash = hashPassword(newPassword);
+    const passwordHash = hashPassword(effectivePassword);
 
     await db
       .update(schema.shepherd)

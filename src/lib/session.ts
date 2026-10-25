@@ -137,6 +137,36 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
         3,
       );
       if (ownedChurches.length > 0) {
+        const [userRow] = await retry(
+          () =>
+            db
+              .select({ email: schema.user.email })
+              .from(schema.user)
+              .where(eq(schema.user.id, userId))
+              .limit(1),
+          undefined,
+          3,
+        );
+
+        let ownerShepherdChurches = new Set<string>();
+        if (userRow?.email) {
+          const shepherds = await retry(
+            () =>
+              db
+                .select({ churchId: schema.shepherd.churchId })
+                .from(schema.shepherd)
+                .where(
+                  and(
+                    eq(schema.shepherd.email, userRow.email.toLowerCase()),
+                    eq(schema.shepherd.active, true)
+                  )
+                ),
+            undefined,
+            3,
+          );
+          ownerShepherdChurches = new Set(shepherds.map((s) => s.churchId));
+        }
+
         return prioritizeSalvation(
           ownedChurches.map((c) => ({
             church: c,
@@ -144,7 +174,7 @@ export const getUserBranches = cache(async (userId: string): Promise<UserBranchI
             staffId: "",
             departmentId: null,
             departmentName: null,
-            isShepherd: false,
+            isShepherd: ownerShepherdChurches.has(c.id),
             status: "active",
           }))
         );

@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { requireShepherd } from "@/lib/shepherd-portal";
+import { requireShepherd, verifyPassword } from "@/lib/shepherd-portal";
 import { ShepherdPortalClient } from "./portal-client";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +39,7 @@ export const metadata = {
 
 export default async function ShepherdPortalPage() {
   const { shepherd, church } = await requireShepherd();
+  const isUsingInitialPassword = !shepherd.staffId && verifyPassword("WAM@2026", shepherd.passwordHash);
 
   // Fetch disciples, attendance history, and spiritual evaluations in parallel for speed
   const [disciples, recentAttendance, recentSpiritualLogs] = await Promise.all([
@@ -143,6 +144,7 @@ export default async function ShepherdPortalPage() {
       recentAttendance={recentAttendance}
       recentSpiritualLogs={recentSpiritualLogs}
       isStaffMember={Boolean(shepherd.staffId)}
+      isUsingInitialPassword={isUsingInitialPassword}
     />
   );
 }

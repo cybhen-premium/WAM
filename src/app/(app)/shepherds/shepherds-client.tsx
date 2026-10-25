@@ -25,6 +25,7 @@ import {
   Sparkles,
   UserCheck,
   RotateCcw,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -50,6 +51,7 @@ type ShepherdItem = {
   createdAt: Date;
   discipleCount: number;
   staffRole?: string | null;
+  isUsingInitialPassword?: boolean;
 };
 
 export type StaffMemberItem = {
@@ -92,6 +94,9 @@ export function ShepherdsClient({
   const [staffEmail, setStaffEmail] = useState("");
   const [editingShepherd, setEditingShepherd] = useState<ShepherdItem | null>(null);
   const [resetPasswordShepherd, setResetPasswordShepherd] = useState<ShepherdItem | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState("WAM@2026");
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [assigningShepherd, setAssigningShepherd] = useState<ShepherdItem | null>(null);
 
   // Flock inspection drawer / modal
@@ -476,13 +481,33 @@ export function ShepherdsClient({
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-black text-slate-900 block group-hover/shep:text-[#1e3a8a] transition-colors">{s.fullName}</span>
                             {s.staffId ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-[9.5px] font-bold text-purple-700 border border-purple-200">
-                                Staff ({s.staffRole || "Member"})
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[9.5px] font-bold text-blue-700 border border-blue-200"
+                                title="Linked to church staff account. Seamlessly accesses Shepherd Portal directly from sidebar."
+                              >
+                                <Sparkles className="h-2.5 w-2.5" /> Staff ({s.staffRole || "Member"}) • Sidebar Access
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9.5px] font-bold text-slate-500">
-                                Standalone
-                              </span>
+                              <>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9.5px] font-bold text-slate-500">
+                                  Standalone
+                                </span>
+                                {s.isUsingInitialPassword ? (
+                                  <span
+                                    className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[9.5px] font-bold text-amber-700 border border-amber-200"
+                                    title="Using default initial password WAM@2026. Prompted to create own password upon portal login."
+                                  >
+                                    <KeyRound className="h-2.5 w-2.5" /> Initial Password (WAM@2026)
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[9.5px] font-bold text-emerald-700 border border-emerald-200"
+                                    title="Shepherd has created their own personal password."
+                                  >
+                                    Personal Password Set
+                                  </span>
+                                )}
+                              </>
                             )}
                           </div>
                           <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-mono font-bold text-[#1e3a8a] mt-0.5">
@@ -677,11 +702,14 @@ export function ShepherdsClient({
                     </select>
                   </div>
 
-                  <div className="flex items-start gap-2 text-[11px] text-blue-900 bg-white/70 p-2.5 rounded-xl border border-blue-100">
+                  <div className="flex items-start gap-2.5 text-[11px] text-blue-900 bg-white/90 p-3 rounded-2xl border border-blue-200/80 shadow-2xs">
                     <Sparkles className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                    <span>
-                      <strong>Seamless Portal Access:</strong> This staff member will have the <strong>Shepherd Portal</strong> in their main portal sidebar alongside their other roles!
-                    </span>
+                    <div className="space-y-0.5">
+                      <strong className="block text-blue-950 font-black">Direct Sidebar Access (No Password Needed)</strong>
+                      <span className="text-blue-800 leading-relaxed font-normal">
+                        This staff member will not receive an initial password. The <strong>Shepherd Portal</strong> will be added directly to their church portal sidebar, accessed seamlessly with their existing staff credentials.
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -727,33 +755,38 @@ export function ShepherdsClient({
                 />
               </div>
 
-              {createSource === "new" ? (
+              {createSource === "new" && (
                 <div>
-                  <label className="block text-slate-700 mb-1">Initial Password *</label>
-                  <input
-                    type="password"
-                    name="password"
-                    required
-                    minLength={6}
-                    placeholder="At least 6 characters"
-                    className="w-full h-10 px-3 rounded-xl border border-slate-200"
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-slate-700 mb-1">
-                    Standalone Shepherd Password (Optional)
-                  </label>
-                  <input
-                    type="password"
-                    name="password"
-                    minLength={6}
-                    placeholder="Leave blank to use staff login only"
-                    className="w-full h-10 px-3 rounded-xl border border-slate-200"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Staff members can access the Shepherd Portal directly within their staff dashboard without needing a separate password.
-                  </p>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-slate-700 font-bold">Initial Password *</label>
+                    <span className="text-[10px] font-black uppercase text-amber-700 tracking-wider">
+                      Default: WAM@2026
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showCreatePassword ? "text" : "password"}
+                      name="password"
+                      defaultValue="WAM@2026"
+                      required
+                      minLength={6}
+                      placeholder="e.g. WAM@2026"
+                      className="w-full h-10 px-3 pr-10 rounded-xl border border-slate-200 bg-slate-50/70 font-mono font-bold text-slate-800 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCreatePassword(!showCreatePassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {showCreatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <div className="flex items-start gap-1.5 text-[11px] text-amber-800 bg-amber-50/80 p-2.5 rounded-xl border border-amber-200/60 mt-1.5">
+                    <KeyRound className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                    <span>
+                      Initial password is set to <strong>WAM@2026</strong>. When the shepherd signs in to the Shepherd Portal, they will be prompted to create their own personal password.
+                    </span>
+                  </div>
                 </div>
               )}
 
@@ -901,38 +934,87 @@ export function ShepherdsClient({
               </button>
             </div>
 
-            <form onSubmit={handleResetPassword} className="space-y-4 text-xs font-semibold">
-              <input type="hidden" name="id" value={resetPasswordShepherd.id} />
-
-              <div>
-                <label className="block text-slate-700 mb-1">New Password *</label>
-                <input
-                  type="password"
-                  name="newPassword"
-                  required
-                  minLength={6}
-                  placeholder="At least 6 characters"
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200"
-                />
+            {resetPasswordShepherd.staffId ? (
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200/80 text-xs text-blue-900 space-y-1.5">
+                  <div className="flex items-center gap-2 font-black text-blue-950">
+                    <Sparkles className="h-4 w-4 text-blue-600 shrink-0" />
+                    <span>Church Staff Account</span>
+                  </div>
+                  <p className="text-[11.5px] text-blue-800 leading-relaxed font-normal">
+                    This shepherd is registered from the church staff. They access the <strong>Shepherd Portal</strong> directly from their main church portal sidebar using their staff credentials. No standalone shepherd password is required or used.
+                  </p>
+                </div>
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setResetPasswordShepherd(null)}
+                    className="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
+            ) : (
+              <form onSubmit={handleResetPassword} className="space-y-4 text-xs font-semibold">
+                <input type="hidden" name="id" value={resetPasswordShepherd.id} />
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setResetPasswordShepherd(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={pending}
-                  className="px-5 py-2 rounded-xl bg-amber-600 text-white font-bold shadow-md hover:bg-amber-700 transition-all cursor-pointer"
-                >
-                  {pending ? "Resetting..." : "Reset Password"}
-                </button>
-              </div>
-            </form>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-slate-700 font-bold">New Password *</label>
+                    <button
+                      type="button"
+                      onClick={() => setResetPasswordValue("WAM@2026")}
+                      className="text-[11px] font-bold text-[#1e3a8a] hover:underline cursor-pointer"
+                    >
+                      Reset to WAM@2026
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showResetPassword ? "text" : "password"}
+                      name="newPassword"
+                      value={resetPasswordValue}
+                      onChange={(e) => setResetPasswordValue(e.target.value)}
+                      required
+                      minLength={6}
+                      placeholder="e.g. WAM@2026"
+                      className="w-full h-10 px-3 pr-10 rounded-xl border border-slate-200 font-mono font-bold text-slate-800 bg-slate-50/70 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowResetPassword(!showResetPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1.5 flex items-start gap-1">
+                    <KeyRound className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <span>
+                      If reset to <strong>WAM@2026</strong>, the shepherd will be prompted to create their own personal password upon their next login.
+                    </span>
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setResetPasswordShepherd(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="px-5 py-2 rounded-xl bg-amber-600 text-white font-bold shadow-md hover:bg-amber-700 transition-all cursor-pointer"
+                  >
+                    {pending ? "Resetting..." : "Reset Password"}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, desc, eq, ilike, inArray, notInArray, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { requireShepherd, destroyShepherdSession } from "@/lib/shepherd-portal";
+import { requireShepherd, destroyShepherdSession, hashPassword } from "@/lib/shepherd-portal";
 
 /** Signs the shepherd out and redirects to login */
 export async function logoutShepherd() {
@@ -273,3 +273,42 @@ export async function recordSpiritualEvaluation(formData: FormData): Promise<{ o
     return { ok: false, error: "Failed to record spiritual evaluation." };
   }
 }
+
+/** Allows an authenticated shepherd to create/update their personal password */
+export async function updateShepherdSelfPassword(
+  newPassword: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { shepherd } = await requireShepherd();
+  const cleanPass = newPassword.trim();
+
+  if (!cleanPass || cleanPass.length < 6) {
+    return { ok: false, error: "Password must be at least 6 characters." };
+  }
+
+  if (cleanPass === "WAM@2026") {
+    return {
+      ok: false,
+      error:
+        "Please create a unique personal password different from the initial default password (WAM@2026).",
+    };
+  }
+
+  try {
+    const passwordHash = hashPassword(cleanPass);
+    await db
+      .update(schema.shepherd)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.shepherd.id, shepherd.id));
+
+    revalidatePath("/shepherd-portal");
+    revalidatePath("/shepherds");
+    return { ok: true };
+  } catch (err: any) {
+    console.error("[updateShepherdSelfPassword] error:", err);
+    return { ok: false, error: "Failed to update password. Please try again." };
+  }
+}
+

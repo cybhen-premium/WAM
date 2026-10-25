@@ -36,6 +36,13 @@ export async function loginShepherd(
 
     const isValid = verifyPassword(cleanPass, shepherd.passwordHash);
     if (!isValid) {
+      if (shepherd.staffId) {
+        return {
+          ok: false,
+          error:
+            "This shepherd account is linked to church staff. Please sign in to the Church Staff Portal (/login) to access the Shepherd Portal directly from your sidebar.",
+        };
+      }
       return { ok: false, error: "Invalid password. Please check your credentials and try again." };
     }
 
