@@ -6,7 +6,8 @@ import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
-import { generateShepherdCode, hashPassword } from "@/lib/shepherd-portal";
+import { generateShepherdCode, hashPassword, getShepherdPortalUrl } from "@/lib/shepherd-portal";
+import { sendShepherdWelcomeEmail } from "@/lib/email";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -94,6 +95,20 @@ export async function createShepherd(_prev: FormState, formData: FormData): Prom
       action: `Registered ${staffId ? "staff member " : ""}Shepherd "${fullName}" (${shepherdCode})`,
       metadata: { shepherdId: created.id, staffId, fullName, shepherdCode },
     });
+
+    // If standalone shepherd and email is provided, send them their welcome credentials email
+    if (!isStaffShepherd && email) {
+      const loginUrl = await getShepherdPortalUrl(shepherdCode);
+      sendShepherdWelcomeEmail({
+        to: email,
+        name: fullName,
+        shepherdCode,
+        phone,
+        churchName: church.name,
+        loginUrl,
+        initialPassword: effectivePassword,
+      }).catch((mailErr) => console.error("[createShepherd] Welcome email error:", mailErr));
+    }
 
     revalidatePath("/shepherds");
     revalidatePath("/shepherd-portal");
@@ -185,6 +200,33 @@ export async function resetShepherdPassword(_prev: FormState, formData: FormData
       action: `Reset password for Shepherd ID: ${id}`,
       metadata: { shepherdId: id },
     });
+
+    // If standalone shepherd and email is configured, send reset notification email
+    const [shepherdRecord] = await db
+      .select({
+        email: schema.shepherd.email,
+        fullName: schema.shepherd.fullName,
+        shepherdCode: schema.shepherd.shepherdCode,
+        phone: schema.shepherd.phone,
+        staffId: schema.shepherd.staffId,
+      })
+      .from(schema.shepherd)
+      .where(and(eq(schema.shepherd.id, id), eq(schema.shepherd.churchId, church.id)))
+      .limit(1);
+
+    if (shepherdRecord?.email && !shepherdRecord.staffId) {
+      const loginUrl = await getShepherdPortalUrl(shepherdRecord.shepherdCode);
+      sendShepherdWelcomeEmail({
+        to: shepherdRecord.email,
+        name: shepherdRecord.fullName,
+        shepherdCode: shepherdRecord.shepherdCode,
+        phone: shepherdRecord.phone,
+        churchName: church.name,
+        loginUrl,
+        initialPassword: effectivePassword,
+        isReset: true,
+      }).catch((mailErr) => console.error("[resetShepherdPassword] Email error:", mailErr));
+    }
 
     revalidatePath("/shepherds");
     return { ok: true };
@@ -404,4 +446,115 @@ export async function getAvailableCandidates(): Promise<
     )
     .orderBy(schema.member.fullName);
 }
+
+/** Sends credentials email to a specific standalone shepherd */
+export async function sendShepherdCredentialsEmail(
+  shepherdId: string
+): Promise<{ ok: boolean; error?: string }> {
+  await requireModule("shepherds");
+  const { church } = await requireChurch();
+
+  try {
+    const [shepherd] = await db
+      .select()
+      .from(schema.shepherd)
+      .where(and(eq(schema.shepherd.id, shepherdId), eq(schema.shepherd.churchId, church.id)))
+      .limit(1);
+
+    if (!shepherd) return { ok: false, error: "Shepherd not found." };
+    if (!shepherd.email) {
+      return { ok: false, error: "This shepherd does not have an email address configured." };
+    }
+    if (shepherd.staffId) {
+      return {
+        ok: false,
+        error: "This shepherd is registered from church staff and accesses the Shepherd Portal via their staff dashboard.",
+      };
+    }
+
+    const loginUrl = await getShepherdPortalUrl(shepherd.shepherdCode);
+    await sendShepherdWelcomeEmail({
+      to: shepherd.email,
+      name: shepherd.fullName,
+      shepherdCode: shepherd.shepherdCode,
+      phone: shepherd.phone,
+      churchName: church.name,
+      loginUrl,
+      initialPassword: "WAM@2026",
+    });
+
+    logActivity({
+      module: "care",
+      actionCode: "shepherds.send_email",
+      action: `Sent Shepherd Portal credentials email to "${shepherd.fullName}" (${shepherd.email})`,
+      metadata: { shepherdId, email: shepherd.email },
+    });
+
+    return { ok: true };
+  } catch (err: any) {
+    console.error("[sendShepherdCredentialsEmail] error:", err);
+    return { ok: false, error: "Failed to send email. Please check SMTP configuration." };
+  }
+}
+
+/** Sends credentials email to all standalone shepherds who have an email address */
+export async function sendAllStandaloneShepherdsCredentials(): Promise<{
+  ok: boolean;
+  count?: number;
+  error?: string;
+}> {
+  await requireModule("shepherds");
+  const { church } = await requireChurch();
+
+  try {
+    const standaloneShepherds = await db
+      .select()
+      .from(schema.shepherd)
+      .where(
+        and(
+          eq(schema.shepherd.churchId, church.id),
+          eq(schema.shepherd.active, true),
+          sql`${schema.shepherd.staffId} IS NULL`,
+          sql`${schema.shepherd.email} IS NOT NULL`
+        )
+      );
+
+    if (standaloneShepherds.length === 0) {
+      return {
+        ok: false,
+        error: "No standalone shepherds with email addresses were found in this church.",
+      };
+    }
+
+    let sentCount = 0;
+    for (const s of standaloneShepherds) {
+      if (s.email) {
+        const loginUrl = await getShepherdPortalUrl(s.shepherdCode);
+        await sendShepherdWelcomeEmail({
+          to: s.email,
+          name: s.fullName,
+          shepherdCode: s.shepherdCode,
+          phone: s.phone,
+          churchName: church.name,
+          loginUrl,
+          initialPassword: "WAM@2026",
+        });
+        sentCount++;
+      }
+    }
+
+    logActivity({
+      module: "care",
+      actionCode: "shepherds.broadcast_email",
+      action: `Broadcast Shepherd Portal credentials to ${sentCount} standalone shepherd(s)`,
+      metadata: { count: sentCount },
+    });
+
+    return { ok: true, count: sentCount };
+  } catch (err: any) {
+    console.error("[sendAllStandaloneShepherdsCredentials] error:", err);
+    return { ok: false, error: "Failed to send broadcast emails. Please try again." };
+  }
+}
+
 

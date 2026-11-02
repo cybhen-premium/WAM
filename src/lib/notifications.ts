@@ -10,27 +10,43 @@ export async function resolveAppUrl(fallbackOrigin?: string | null): Promise<str
     return fallbackOrigin.trim().replace(/\/+$/, "");
   }
 
-  // 1. Dynamically detect from incoming request headers
+  // 1. Explicit public app URL from environment
+  const configuredEnvUrl =
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : undefined);
+
+  // 2. Dynamically detect from incoming request headers
   try {
     const h = await headers();
     const host = h.get("x-forwarded-host") || h.get("host");
     if (host) {
+      const isLocal =
+        host.startsWith("localhost") ||
+        host.startsWith("127.0.0.1") ||
+        host.startsWith("0.0.0.0") ||
+        host.includes("::1");
+
+      // When testing locally, if an explicit public APP_URL is configured, prefer it
+      // so outbound emails/SMS sent during local development point to the live website.
+      if (isLocal && configuredEnvUrl) {
+        return configuredEnvUrl.replace(/\/+$/, "");
+      }
+
       const proto =
         h.get("x-forwarded-proto") ||
-        (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+        (isLocal ? "http" : "https");
       return `${proto}://${host}`.replace(/\/+$/, "");
     }
   } catch {
     // Outside active request context
   }
 
-  // 2. Check environment variables
+  // 3. Fallback to environment variables
   const envUrl =
-    process.env.APP_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : undefined) ||
+    configuredEnvUrl ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
     process.env.BETTER_AUTH_URL;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Smartphone, Lock, ArrowRight, KeyRound } from "lucide-react";
 import { toast } from "sonner";
@@ -10,8 +10,11 @@ import { loginShepherd } from "./actions";
 
 export function ShepherdLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
-  const [identifier, setIdentifier] = useState("");
+  const [identifier, setIdentifier] = useState(
+    () => searchParams.get("id") || searchParams.get("code") || ""
+  );
   const [password, setPassword] = useState("");
 
   function handleSubmit(e: React.FormEvent) {

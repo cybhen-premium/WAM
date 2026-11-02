@@ -37,6 +37,8 @@ import {
   adminAssignDisciples,
   getShepherdFlockDetails,
   getAvailableCandidates,
+  sendShepherdCredentialsEmail,
+  sendAllStandaloneShepherdsCredentials,
 } from "./actions";
 
 type ShepherdItem = {
@@ -98,6 +100,8 @@ export function ShepherdsClient({
   const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [assigningShepherd, setAssigningShepherd] = useState<ShepherdItem | null>(null);
+  const [pendingEmailId, setPendingEmailId] = useState<string | null>(null);
+  const [pendingEmailAll, setPendingEmailAll] = useState(false);
 
   // Flock inspection drawer / modal
   const [inspectingShepherd, setInspectingShepherd] = useState<ShepherdItem | null>(null);
@@ -230,6 +234,65 @@ export function ShepherdsClient({
     });
   }
 
+  async function handleSendCredentialsEmail(shepherd: ShepherdItem) {
+    if (!shepherd.email) {
+      toast.error("This shepherd has no email address configured.");
+      return;
+    }
+    setPendingEmailId(shepherd.id);
+    const toastId = toast.loading(`Sending credentials email to ${shepherd.email}...`);
+    try {
+      const res = await sendShepherdCredentialsEmail(shepherd.id);
+      if (res.ok) {
+        toast.success(`Credentials sent to ${shepherd.fullName} (${shepherd.email})`, {
+          id: toastId,
+        });
+      } else {
+        toast.error(res.error || "Failed to send email", { id: toastId });
+      }
+    } catch {
+      toast.error("Error sending credentials email", { id: toastId });
+    } finally {
+      setPendingEmailId(null);
+    }
+  }
+
+  async function handleSendAllStandaloneEmails() {
+    const standaloneShepherds = shepherds.filter((s) => !s.staffId && s.email && s.active);
+    if (standaloneShepherds.length === 0) {
+      toast.error("No active non-staff shepherds with email addresses found.");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Send Shepherd Portal login credentials (initial password: WAM@2026) to ${standaloneShepherds.length} non-staff shepherd(s)?`
+      )
+    ) {
+      return;
+    }
+
+    setPendingEmailAll(true);
+    const toastId = toast.loading(
+      `Sending credentials to ${standaloneShepherds.length} non-staff shepherd(s)...`
+    );
+    try {
+      const res = await sendAllStandaloneShepherdsCredentials();
+      if (res.ok) {
+        toast.success(
+          `Credentials successfully sent to ${res.count ?? standaloneShepherds.length} non-staff shepherd(s)!`,
+          { id: toastId }
+        );
+      } else {
+        toast.error(res.error || "Failed to send emails", { id: toastId });
+      }
+    } catch {
+      toast.error("Error broadcasting credentials email", { id: toastId });
+    } finally {
+      setPendingEmailAll(false);
+    }
+  }
+
   // Handle multi-disciple assignment
   function handleAssignDisciples(e: React.FormEvent) {
     e.preventDefault();
@@ -331,7 +394,17 @@ export function ShepherdsClient({
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          <button
+            onClick={handleSendAllStandaloneEmails}
+            disabled={pendingEmailAll}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3.5 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+            title="Send Shepherd Portal login credentials (WAM@2026) to all non-staff shepherds"
+          >
+            <Mail className="h-3.5 w-3.5 text-indigo-600" />
+            <span>{pendingEmailAll ? "Sending..." : "Email Non-Staff Shepherds"}</span>
+          </button>
+
           <Link
             href="/shepherd/login"
             target="_blank"
@@ -585,6 +658,17 @@ export function ShepherdsClient({
                         >
                           <KeyRound className="h-3.5 w-3.5" />
                         </button>
+
+                        {!s.staffId && s.email && (
+                          <button
+                            onClick={() => handleSendCredentialsEmail(s)}
+                            disabled={pendingEmailId === s.id}
+                            title={`Email Login Credentials to ${s.email} (WAM@2026)`}
+                            className="h-8 w-8 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center transition-colors disabled:opacity-50"
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                          </button>
+                        )}
 
                         <button
                           onClick={() => handleDelete(s)}

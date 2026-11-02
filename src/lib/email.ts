@@ -1,4 +1,5 @@
 import { sendEmail } from "@/lib/auth";
+import { resolveAppUrl } from "@/lib/notifications";
 
 export interface StaffEmailOptions {
   to: string;
@@ -7,7 +8,7 @@ export interface StaffEmailOptions {
   role: string;
   churchName?: string;
   branches?: string;
-  loginUrl: string;
+  loginUrl?: string;
   temporaryPassword: string;
   isReset?: boolean;
 }
@@ -29,6 +30,8 @@ export async function sendStaffWelcomeEmail({
   const displayChurch = churchName || "World Ark Missions";
   const displayBranches = branches || displayChurch;
   const displayUsername = username || to.split("@")[0];
+  const appUrl = await resolveAppUrl();
+  const effectiveLoginUrl = loginUrl || `${appUrl}/login`;
 
   const subject = isReset
     ? `Your Staff Portal Password Has Been Reset – ${displayChurch}`
@@ -98,7 +101,7 @@ export async function sendStaffWelcomeEmail({
                   <tr>
                     <td style="padding: 8px 0; color: #64748b; font-weight: 600; width: 36%; vertical-align: top;">Portal URL:</td>
                     <td style="padding: 8px 0; color: #1e3a8a; font-weight: 700; word-break: break-all;">
-                      <a href="${loginUrl}" style="color: #2563eb; text-decoration: none;">${loginUrl}</a>
+                      <a href="${effectiveLoginUrl}" style="color: #2563eb; text-decoration: none;">${effectiveLoginUrl}</a>
                     </td>
                   </tr>
                   <tr>
@@ -146,7 +149,7 @@ export async function sendStaffWelcomeEmail({
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 28px;">
                 <tr>
                   <td align="center">
-                    <a href="${loginUrl}" style="display: inline-block; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); color: #ffffff; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 36px; border-radius: 12px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35); text-align: center;">
+                    <a href="${effectiveLoginUrl}" style="display: inline-block; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); color: #ffffff; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 36px; border-radius: 12px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35); text-align: center;">
                       Log In to Staff Portal &rarr;
                     </a>
                   </td>
@@ -162,7 +165,7 @@ export async function sendStaffWelcomeEmail({
 
               <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
                 If the button above does not work, copy and paste this link into your web browser:<br>
-                <a href="${loginUrl}" style="color: #2563eb; word-break: break-all;">${loginUrl}</a>
+                <a href="${effectiveLoginUrl}" style="color: #2563eb; word-break: break-all;">${effectiveLoginUrl}</a>
               </p>
             </td>
           </tr>
@@ -192,3 +195,206 @@ export async function sendStaffWelcomeEmail({
     html,
   });
 }
+
+export function getAppBaseUrl(): string {
+  const url =
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : undefined) ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
+    process.env.BETTER_AUTH_URL ||
+    "http://localhost:3000";
+  return url.startsWith("http") ? url : `https://${url}`;
+}
+
+export interface ShepherdEmailOptions {
+  to: string;
+  name: string;
+  shepherdCode?: string | null;
+  phone?: string | null;
+  churchName?: string;
+  loginUrl?: string;
+  initialPassword?: string;
+  isReset?: boolean;
+}
+
+/**
+ * Send welcome / credentials email to a standalone Shepherd with Shepherd Portal URL and initial password.
+ */
+export async function sendShepherdWelcomeEmail({
+  to,
+  name,
+  shepherdCode,
+  phone,
+  churchName = "World Ark Missions",
+  loginUrl,
+  initialPassword = "WAM@2026",
+  isReset = false,
+}: ShepherdEmailOptions): Promise<void> {
+  const displayChurch = churchName || "World Ark Missions";
+  const appUrl = await resolveAppUrl();
+  const effectiveLoginUrl =
+    loginUrl ||
+    (shepherdCode
+      ? `${appUrl}/shepherd/login?id=${encodeURIComponent(shepherdCode)}`
+      : `${appUrl}/shepherd/login`);
+
+  const subject = isReset
+    ? `Your Shepherd Portal Password Has Been Reset – ${displayChurch}`
+    : `Welcome to the Shepherd Portal – Your Login Credentials (${displayChurch})`;
+
+  const headline = isReset ? "Shepherd Password Reset" : "Welcome to the Shepherd Portal";
+  const introText = isReset
+    ? `Your Shepherd Portal login credentials for <strong>${displayChurch}</strong> have been updated by an administrator.`
+    : `You have been registered as a Shepherd for <strong>${displayChurch}</strong>. You can now access your assigned disciples, take service attendance roll-calls, and evaluate spiritual growth.`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="min-width: 100%; background-color: #f8fafc; padding: 40px 16px;">
+    <tr>
+      <td align="center">
+        <!-- Main Card Container -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04); border: 1px solid #e2e8f0;">
+          
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #0284c7 100%); padding: 36px 32px 32px; text-align: center;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <img src="https://res.cloudinary.com/dm5bp1efp/image/upload/v1792173363/churchy/branding/noka8l1kbu6jz0zuzrva.png" alt="World Ark Missions" width="60" height="60" style="display: block; margin: 0 auto 16px; border-radius: 14px; background: #ffffff; padding: 4px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />
+                    <div style="display: inline-block; padding: 6px 16px; background-color: rgba(255, 255, 255, 0.18); border-radius: 9999px; margin-bottom: 14px; border: 1px solid rgba(255, 255, 255, 0.3);">
+                      <span style="color: #ffffff; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;">
+                        Shepherd Portal &bull; Pastoral Care
+                      </span>
+                    </div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: 900; letter-spacing: -0.5px;">
+                      ${headline}
+                    </h1>
+                    <p style="margin: 8px 0 0; color: #e0f2fe; font-size: 14px; font-weight: 600;">
+                      ${displayChurch}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body Content -->
+          <tr>
+            <td style="padding: 36px 32px;">
+              <p style="margin: 0 0 16px; font-size: 16px; font-weight: 700; color: #0f172a;">
+                Hello ${name || "Beloved Shepherd"},
+              </p>
+              <p style="margin: 0 0 24px; font-size: 14px; color: #475569; line-height: 1.6;">
+                ${introText} Below are your official Shepherd Portal login credentials.
+              </p>
+
+              <!-- Credentials Box -->
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin-bottom: 28px;">
+                <p style="margin: 0 0 16px; font-size: 12px; font-weight: 800; color: #64748b; letter-spacing: 1px; text-transform: uppercase;">
+                  Your Shepherd Portal Credentials
+                </p>
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size: 13.5px;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #64748b; font-weight: 600; width: 36%; vertical-align: top;">Portal URL:</td>
+                    <td style="padding: 8px 0; color: #1e3a8a; font-weight: 700; word-break: break-all;">
+                      <a href="${effectiveLoginUrl}" style="color: #2563eb; text-decoration: none;">${effectiveLoginUrl}</a>
+                    </td>
+                  </tr>
+                  ${shepherdCode ? `
+                  <tr>
+                    <td style="padding: 8px 0; color: #64748b; font-weight: 600; vertical-align: top;">Shepherd Code:</td>
+                    <td style="padding: 8px 0; color: #0f172a; font-weight: 800; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">
+                      <span style="display: inline-block; background-color: #dbeafe; color: #1e40af; padding: 3px 10px; border-radius: 6px; font-size: 13px; font-weight: 800;">
+                        ${shepherdCode}
+                      </span>
+                    </td>
+                  </tr>
+                  ` : ""}
+                  ${phone ? `
+                  <tr>
+                    <td style="padding: 8px 0; color: #64748b; font-weight: 600; vertical-align: top;">Registered Phone:</td>
+                    <td style="padding: 8px 0; color: #0f172a; font-weight: 700;">
+                      ${phone}
+                    </td>
+                  </tr>
+                  ` : ""}
+                  <tr>
+                    <td style="padding: 8px 0; color: #64748b; font-weight: 600; vertical-align: top;">Email:</td>
+                    <td style="padding: 8px 0; color: #0f172a; font-weight: 700;">
+                      ${to}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px 0 4px; color: #64748b; font-weight: 600; vertical-align: middle;">Initial Password:</td>
+                    <td style="padding: 12px 0 4px; vertical-align: middle;">
+                      <div style="display: inline-block; background-color: #0f172a; color: #f8fafc; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 16px; font-weight: 700; letter-spacing: 2px; padding: 8px 14px; border-radius: 8px;">
+                        ${initialPassword}
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Primary Action Button -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 28px;">
+                <tr>
+                  <td align="center">
+                    <a href="${effectiveLoginUrl}" style="display: inline-block; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); color: #ffffff; font-size: 14px; font-weight: 800; text-decoration: none; padding: 14px 36px; border-radius: 12px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35); text-align: center;">
+                      Sign In to Shepherd Portal &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Notice Box -->
+              <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px 16px; border-radius: 0 10px 10px 0; margin-bottom: 24px;">
+                <p style="margin: 0; font-size: 12.5px; color: #92400e; line-height: 1.5;">
+                  <strong>Create Your Own Password:</strong> You will be prompted to create your own secure personal password immediately upon logging in with the initial password (<strong>${initialPassword}</strong>).
+                </p>
+              </div>
+
+              <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+                You can sign in using either your <strong>Registered Phone Number</strong>, your <strong>Email</strong>, or your <strong>Shepherd Code</strong> alongside your password.<br><br>
+                Direct Link: <a href="${effectiveLoginUrl}" style="color: #2563eb; word-break: break-all;">${effectiveLoginUrl}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 24px 32px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #475569;">
+                World Ark Missions &bull; Discipleship &amp; Shepherding Department
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #94a3b8;">
+                This automated message was sent to ${to}. If you were not expecting this, please contact the church administration office.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  await sendEmail({
+    to,
+    subject,
+    html,
+  });
+}
+

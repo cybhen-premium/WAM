@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { and, eq, gt, or } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { getUser, getChurchForUser } from "@/lib/session";
+import { resolveAppUrl } from "@/lib/notifications";
 
 export const SHEPHERD_SESSION_COOKIE = "wam_shepherd_session";
 
@@ -51,6 +52,14 @@ export async function generateShepherdCode(): Promise<string> {
     attempts++;
   }
   return `SHP-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+}
+
+/** Resolves the public Shepherd Portal login URL with optional prefilled ID */
+export async function getShepherdPortalUrl(shepherdCode?: string | null): Promise<string> {
+  const base = await resolveAppUrl();
+  return shepherdCode
+    ? `${base}/shepherd/login?id=${encodeURIComponent(shepherdCode)}`
+    : `${base}/shepherd/login`;
 }
 
 /** Creates a shepherd session and sets the HTTP-only cookie */
