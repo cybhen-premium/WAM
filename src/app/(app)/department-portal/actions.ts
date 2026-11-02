@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { requireChurch } from "@/lib/session";
 import { requireModule } from "@/lib/permissions";
@@ -58,6 +58,10 @@ export async function recordSundayAttendance(input: {
         eq(schema.member.churchId, church.id),
         eq(schema.member.departmentId, input.departmentId),
         eq(schema.member.active, true),
+        // Only actual church members — Visitors and Regular Attendees are still
+        // on the Akwaaba → SOB journey and are not members yet, so they must not
+        // be marked absent on the Sunday register nor receive the absence SMS.
+        notInArray(schema.member.category, ["Visitor", "Regular Attendee"]),
       ),
     );
 
